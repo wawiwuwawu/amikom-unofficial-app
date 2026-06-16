@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'navigation_service.dart';
 
 class ApiClient {
   static ApiClient? _instance;
@@ -16,7 +17,7 @@ class ApiClient {
       BaseOptions(
         baseUrl: dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000',
         connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 60),
         sendTimeout: const Duration(seconds: 10),
         headers: {'Content-Type': 'application/json'},
       ),
@@ -36,6 +37,40 @@ class ApiClient {
         }
         handler.next(options);
       },
+      onResponse: (response, handler) async {
+        if (_token != null && _refreshToken != null) {
+          final data = response.data;
+          if (data is Map<String, dynamic>) {
+            final msg = (data['message'] ?? '').toString().toLowerCase();
+            final path = response.requestOptions.path;
+            if (!path.contains('/auth/') &&
+                (msg.contains('unauthorized') ||
+                    msg.contains('tidak valid') ||
+                    msg.contains('sesi berakhir'))) {
+              final success = await _tryRefresh();
+              if (success) {
+                response.requestOptions.headers['Authorization'] =
+                    'Bearer $_token';
+                final retryResponse =
+                    await dio.fetch(response.requestOptions);
+                handler.resolve(retryResponse);
+              } else {
+                await clearTokens();
+                NavigationService.instance.navigatorKey.currentState
+                    ?.pushReplacementNamed('/login');
+                handler.reject(DioException(
+                  requestOptions: response.requestOptions,
+                  response: response,
+                  type: DioExceptionType.badResponse,
+                  message: 'Sesi berakhir. Silakan login ulang.',
+                ));
+              }
+              return;
+            }
+          }
+        }
+        handler.next(response);
+      },
       onError: (error, handler) async {
         if (error.type == DioExceptionType.connectionError ||
             error.type == DioExceptionType.receiveTimeout) {
@@ -46,35 +81,21 @@ class ApiClient {
         }
 
         if (error.response?.statusCode == 401 && _refreshToken != null) {
-          try {
-            final refreshDio = Dio(
-              BaseOptions(
-                baseUrl: dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000',
-              ),
-            );
-            final res = await refreshDio.post(
-              '/api/v1/auth/refresh',
-              data: {'refreshToken': _refreshToken},
-            );
-
-            _token = res.data['token'];
-            _refreshToken = res.data['refreshToken'];
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString('token', _token!);
-            await prefs.setString('refreshToken', _refreshToken!);
-
+          final success = await _tryRefresh();
+          if (success) {
             error.requestOptions.headers['Authorization'] = 'Bearer $_token';
             final retryResponse = await dio.fetch(error.requestOptions);
             handler.resolve(retryResponse);
-            return;
-          } catch (_) {
-            _token = null;
-            _refreshToken = null;
-            handler.next(error.copyWith(
-              message: 'Sesi berakhir. Silakan login ulang.',
+          } else {
+            await clearTokens();
+            NavigationService.instance.navigatorKey.currentState
+                ?.pushReplacementNamed('/login');
+            handler.resolve(error.response ?? Response(
+              requestOptions: error.requestOptions,
+              data: {'message': 'Sesi berakhir. Silakan login ulang.'},
             ));
-            return;
           }
+          return;
         }
 
         handler.next(error);
@@ -100,7 +121,7 @@ class ApiClient {
   String? get token => _token;
   String? get refreshToken => _refreshToken;
 
-  void setTokens(String token, String refreshToken) async {
+  Future<void> setTokens(String token, String refreshToken) async {
     _token = token;
     _refreshToken = refreshToken;
     final prefs = await SharedPreferences.getInstance();
@@ -108,7 +129,29 @@ class ApiClient {
     await prefs.setString('refreshToken', refreshToken);
   }
 
-  void clearTokens() async {
+  Future<bool> _tryRefresh() async {
+    try {
+      final refreshDio = Dio(
+        BaseOptions(
+          baseUrl: dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000',
+        ),
+      );
+      final res = await refreshDio.post(
+        '/api/v1/auth/refresh',
+        data: {'refreshToken': _refreshToken},
+      );
+      _token = res.data['token'];
+      _refreshToken = res.data['refreshToken'];
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', _token!);
+      await prefs.setString('refreshToken', _refreshToken!);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> clearTokens() async {
     _token = null;
     _refreshToken = null;
     final prefs = await SharedPreferences.getInstance();

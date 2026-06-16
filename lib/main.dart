@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'pages/login_page.dart';
 import 'pages/main_page.dart';
 import 'pages/splash_page.dart';
+import 'services/navigation_service.dart';
 
 void main() async {
   await dotenv.load();
@@ -15,6 +16,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: NavigationService.instance.navigatorKey,
       title: 'Aplikasi Amikom',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

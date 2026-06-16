@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/dashboard.dart';
-import '../services/api_client.dart';
 import '../services/dashboard_service.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -46,13 +45,7 @@ class _DashboardPageState extends State<DashboardPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString().replaceFirst('Exception: ', '');
-      if (msg.contains('Sesi berakhir')) {
-        ApiClient.instance.clearTokens();
-        Navigator.pushReplacementNamed(context, '/login');
-        return;
-      }
-      setState(() => _error = msg);
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

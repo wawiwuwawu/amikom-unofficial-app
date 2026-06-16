@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/api_client.dart';
+import 'berita_list_page.dart';
 import 'dashboard_page.dart';
+import 'khs_page.dart';
 import 'placeholder_page.dart';
 
 class MainPage extends StatefulWidget {
@@ -63,6 +65,29 @@ class _MainPageState extends State<MainPage> {
             _drawerItem(0, Icons.dashboard, 'Dashboard'),
             _drawerItem(1, Icons.calendar_month, 'Jadwal Perkuliahan'),
             _drawerItem(2, Icons.assignment, 'Nilai'),
+            ListTile(
+              leading: const Icon(Icons.newspaper),
+              title: const Text('Berita Kampus'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const BeritaListPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.grading),
+              title: const Text('KHS'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const KhsPage()),
+                );
+              },
+            ),
             const Divider(),
             _drawerItem(3, Icons.more_horiz, 'Lainnya'),
             const Divider(),
