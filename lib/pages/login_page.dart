@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import 'home_page.dart';
+import '../services/api_client.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -36,18 +36,11 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final result = await _authService.login(pengguna, passw);
+      ApiClient.instance.setTokens(result.token, result.refreshToken);
 
       if (!mounted) return;
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => HomePage(
-            nim: result['nim'] ?? '',
-            message: result['message'] ?? '',
-          ),
-        ),
-      );
+      Navigator.pushReplacementNamed(context, '/main');
     } catch (e) {
       if (!mounted) return;
       _showSnackbar(e.toString().replaceFirst('Exception: ', ''));

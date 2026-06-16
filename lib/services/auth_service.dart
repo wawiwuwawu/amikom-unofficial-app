@@ -1,27 +1,18 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../models/login_response.dart';
+import 'api_client.dart';
 
 class AuthService {
-  final Dio _dio;
+  final _dio = ApiClient.instance.dio;
 
-  AuthService()
-    : _dio = Dio(
-        BaseOptions(
-          baseUrl: dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000',
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 10),
-          headers: {'Content-Type': 'application/json'},
-        ),
-      );
-
-  Future<Map<String, dynamic>> login(String pengguna, String passw) async {
+  Future<LoginResponse> login(String pengguna, String passw) async {
     try {
       final response = await _dio.post(
-        '/api/auth/login',
+        '/api/v1/auth/login',
         data: {'pengguna': pengguna, 'passw': passw},
       );
 
-      return response.data as Map<String, dynamic>;
+      return LoginResponse.fromJson(response.data);
     } on DioException catch (e) {
       if (e.response != null) {
         throw Exception(e.response?.data?['message'] ?? 'Login gagal');
