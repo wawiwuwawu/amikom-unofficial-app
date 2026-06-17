@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_client.dart';
+import 'absensi_page.dart';
 import 'berita_list_page.dart';
 import 'dashboard_page.dart';
 import 'khs_page.dart';
@@ -21,7 +22,7 @@ class _MainPageState extends State<MainPage> {
   static const _titles = [
     'Dashboard',
     'Jadwal Perkuliahan',
-    'Nilai',
+    'Transkrip Nilai',
     'Lainnya',
   ];
 
@@ -66,7 +67,7 @@ class _MainPageState extends State<MainPage> {
             ),
             _drawerItem(0, Icons.dashboard, 'Dashboard'),
             _drawerItem(1, Icons.calendar_month, 'Jadwal Perkuliahan'),
-            _drawerItem(2, Icons.assignment, 'Nilai'),
+            _drawerItem(2, Icons.assignment, 'Transkrip Nilai'),
             ListTile(
               leading: const Icon(Icons.newspaper),
               title: const Text('Berita Kampus'),
@@ -123,17 +124,49 @@ class _MainPageState extends State<MainPage> {
       body: _currentIndex == 0
           ? DashboardPage(refreshTrigger: _refreshTrigger)
           : _pages[_currentIndex - 1],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (i) => setState(() => _currentIndex = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard), label: 'Dashboard'),
-          NavigationDestination(
-              icon: Icon(Icons.calendar_month), label: 'Jadwal'),
-          NavigationDestination(icon: Icon(Icons.assignment), label: 'Nilai'),
-          NavigationDestination(icon: Icon(Icons.more_horiz), label: 'Lainnya'),
-        ],
+      floatingActionButton: FloatingActionButton.large(
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AbsensiPage()),
+        ),
+        child: const Icon(Icons.fingerprint),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        child: SizedBox(
+          height: 56,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _navItem(0, Icons.dashboard, 'Dashboard'),
+              _navItem(1, Icons.calendar_month, 'Jadwal'),
+              const SizedBox(width: 48),
+              _navItem(2, Icons.assignment, 'Transkrip'),
+              _navItem(3, Icons.more_horiz, 'Lainnya'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _navItem(int index, IconData icon, String label) {
+    final selected = _currentIndex == index;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: Icon(icon),
+          onPressed: () => setState(() => _currentIndex = index),
+          color: selected ? Colors.indigo : null,
+        ),
+        Text(label,
+            style: TextStyle(
+                fontSize: 10,
+                color: selected ? Colors.indigo : Colors.grey,
+                fontWeight: selected ? FontWeight.w600 : null)),
+      ],
     );
   }
 
