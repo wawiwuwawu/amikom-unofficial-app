@@ -124,7 +124,7 @@ class _MainPageState extends State<MainPage> {
       body: _currentIndex == 0
           ? DashboardPage(refreshTrigger: _refreshTrigger)
           : _pages[_currentIndex - 1],
-      floatingActionButton: FloatingActionButton.large(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const AbsensiPage()),
@@ -153,20 +153,24 @@ class _MainPageState extends State<MainPage> {
 
   Widget _navItem(int index, IconData icon, String label) {
     final selected = _currentIndex == index;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          icon: Icon(icon),
-          onPressed: () => setState(() => _currentIndex = index),
-          color: selected ? Colors.indigo : null,
+    final color = selected ? Colors.indigo : Colors.grey;
+    return InkWell(
+      onTap: () => setState(() => _currentIndex = index),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 24, color: color),
+            const SizedBox(height: 2),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 10,
+                    color: color,
+                    fontWeight: selected ? FontWeight.w600 : null)),
+          ],
         ),
-        Text(label,
-            style: TextStyle(
-                fontSize: 10,
-                color: selected ? Colors.indigo : Colors.grey,
-                fontWeight: selected ? FontWeight.w600 : null)),
-      ],
+      ),
     );
   }
 

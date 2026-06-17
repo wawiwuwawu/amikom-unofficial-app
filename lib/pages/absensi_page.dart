@@ -33,7 +33,20 @@ class _AbsensiPageState extends State<AbsensiPage> {
   @override
   void initState() {
     super.initState();
+    _initAcademicYear();
     _loadBelumValidasi();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSemesterList());
+  }
+
+  void _initAcademicYear() {
+    final now = DateTime.now();
+    final year = now.year;
+    final month = now.month;
+    if (month >= 8) {
+      _selectedThn = '$year/${year + 1}';
+    } else {
+      _selectedThn = '${year - 1}/$year';
+    }
   }
 
   Future<void> _loadBelumValidasi() async {
@@ -339,28 +352,31 @@ class _AbsensiPageState extends State<AbsensiPage> {
         const Text('Filter',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
         const SizedBox(height: 8),
-        TextFormField(
-          decoration: const InputDecoration(
-            labelText: 'Tahun Akademik',
-            hintText: 'Contoh: 2025/2026',
-            border: OutlineInputBorder(),
-            contentPadding:
-                EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            isDense: true,
-          ),
-          initialValue: _selectedThn ?? '',
-          onChanged: (v) {
-            setState(() {
-              _selectedThn = v;
-              _selectedSmt = null;
-              _semesterList = [];
-              _matkulList = [];
-              _selectedMakul = null;
-              _mahasiswa = null;
-              _errorFilter = null;
-            });
-          },
-          textInputAction: TextInputAction.next,
+        Row(
+          children: [
+            Expanded(
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Tahun Akademik',
+                  border: OutlineInputBorder(),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  isDense: true,
+                ),
+                child: Text(_selectedThn ?? '',
+                    style: const TextStyle(fontSize: 14)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Muat ulang semester',
+              onPressed: () {
+                _initAcademicYear();
+                _loadSemesterList();
+              },
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         if (_loadingSemester)
