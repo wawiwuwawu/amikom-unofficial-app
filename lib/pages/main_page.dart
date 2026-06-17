@@ -5,6 +5,7 @@ import 'dashboard_page.dart';
 import 'khs_page.dart';
 import 'pengumuman_list_page.dart';
 import 'placeholder_page.dart';
+import 'transkrip_page.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -26,7 +27,7 @@ class _MainPageState extends State<MainPage> {
 
   final List<Widget> _pages = [
     PlaceholderPage(title: 'Jadwal Perkuliahan', icon: Icons.calendar_month),
-    PlaceholderPage(title: 'Nilai', icon: Icons.assignment),
+    const TranskripPage(),
     PlaceholderPage(title: 'Lainnya', icon: Icons.more_horiz),
   ];
 
@@ -70,6 +71,7 @@ class _MainPageState extends State<MainPage> {
               leading: const Icon(Icons.newspaper),
               title: const Text('Berita Kampus'),
               onTap: () {
+                setState(() => _currentIndex = 0);
                 Navigator.pop(context);
                 Navigator.push(
                   context,
@@ -82,6 +84,7 @@ class _MainPageState extends State<MainPage> {
               leading: const Icon(Icons.grading),
               title: const Text('KHS'),
               onTap: () {
+                setState(() => _currentIndex = 0);
                 Navigator.pop(context);
                 Navigator.push(
                   context,
@@ -93,6 +96,7 @@ class _MainPageState extends State<MainPage> {
               leading: const Icon(Icons.campaign),
               title: const Text('Pengumuman Akademik'),
               onTap: () {
+                setState(() => _currentIndex = 0);
                 Navigator.pop(context);
                 Navigator.push(
                   context,
