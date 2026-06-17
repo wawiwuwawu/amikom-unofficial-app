@@ -6,6 +6,14 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'navigation_service.dart';
 
+const _maxRetries = 3;
+
+int _getRetryCount(RequestOptions opts) =>
+    opts.extra['retryCount'] as int? ?? 0;
+
+Future<void> _retryDelay() =>
+    Future.delayed(const Duration(seconds: 5));
+
 class ApiClient {
   static ApiClient? _instance;
   late final Dio dio;
@@ -49,6 +57,21 @@ class ApiClient {
                 (msg.contains('unauthorized') ||
                     msg.contains('tidak valid') ||
                     msg.contains('sesi berakhir'))) {
+              final retryCount = _getRetryCount(response.requestOptions);
+              if (retryCount >= _maxRetries) {
+                await clearTokens();
+                NavigationService.instance.navigatorKey.currentState
+                    ?.pushReplacementNamed('/login');
+                handler.reject(DioException(
+                  requestOptions: response.requestOptions,
+                  response: response,
+                  type: DioExceptionType.badResponse,
+                  message: 'Sesi berakhir. Silakan login ulang.',
+                ));
+                return;
+              }
+              response.requestOptions.extra['retryCount'] = retryCount + 1;
+              await _retryDelay();
               final success = await _tryRefresh();
               if (success) {
                 response.requestOptions.headers['Authorization'] =
@@ -83,6 +106,19 @@ class ApiClient {
         }
 
         if (error.response?.statusCode == 401 && _refreshToken != null) {
+          final retryCount = _getRetryCount(error.requestOptions);
+          if (retryCount >= _maxRetries) {
+            await clearTokens();
+            NavigationService.instance.navigatorKey.currentState
+                ?.pushReplacementNamed('/login');
+            handler.resolve(error.response ?? Response(
+              requestOptions: error.requestOptions,
+              data: {'message': 'Sesi berakhir. Silakan login ulang.'},
+            ));
+            return;
+          }
+          error.requestOptions.extra['retryCount'] = retryCount + 1;
+          await _retryDelay();
           final success = await _tryRefresh();
           if (success) {
             error.requestOptions.headers['Authorization'] = 'Bearer $_token';

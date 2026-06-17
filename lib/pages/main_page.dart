@@ -8,6 +8,23 @@ import 'pengumuman_list_page.dart';
 import 'placeholder_page.dart';
 import 'transkrip_page.dart';
 
+class _LowerFabLocation extends FloatingActionButtonLocation {
+  const _LowerFabLocation();
+
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry g) {
+    final x = (g.scaffoldSize.width - g.floatingActionButtonSize.width) / 2;
+    final y = g.contentBottom + g.minInsets.bottom -
+        g.floatingActionButtonSize.height / 2 + 20;
+    return Offset(x, y);
+  }
+
+  @override
+  String toString() => 'LowerFabLocation';
+}
+
+const _fabLocation = _LowerFabLocation();
+
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
 
@@ -129,9 +146,9 @@ class _MainPageState extends State<MainPage> {
           context,
           MaterialPageRoute(builder: (_) => const AbsensiPage()),
         ),
-        child: const Icon(Icons.fingerprint),
+        child: const Icon(Icons.person),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButtonLocation: _fabLocation,
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         child: SizedBox(
