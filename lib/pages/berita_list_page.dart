@@ -25,10 +25,12 @@ class _BeritaListPageState extends State<BeritaListPage> {
   }
 
   Future<void> _load(int page) async {
+    if (!mounted) return;
     setState(() => _loading = true);
     try {
       final offset = (page - 1) * 5;
       final res = await _service.getBerita(offset: offset);
+      if (!mounted) return;
       final data = (res['data'] as List)
           .map((e) => Berita.fromJson(e))
           .toList();
@@ -41,6 +43,7 @@ class _BeritaListPageState extends State<BeritaListPage> {
         _error = null;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _loading = false);

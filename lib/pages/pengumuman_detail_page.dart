@@ -23,14 +23,17 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     try {
       final data = await _service.getDetail(widget.id);
+      if (!mounted) return;
       setState(() {
         _detail = data;
         _error = null;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _loading = false);

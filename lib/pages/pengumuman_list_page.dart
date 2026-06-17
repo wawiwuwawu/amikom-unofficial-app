@@ -23,14 +23,17 @@ class _PengumumanListPageState extends State<PengumumanListPage> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     try {
       final data = await _service.getList();
+      if (!mounted) return;
       setState(() {
         _list = data;
         _error = null;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _loading = false);

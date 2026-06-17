@@ -7,9 +7,9 @@ Dibangun dengan Flutter dan Material 3.
 
 ## Fitur
 
-- Login / Logout dengan JWT (token + refresh token)
+- Login / Logout
 - Dashboard (profil, statistik, status akademik)
-- Berita Kampus (list + detail, pagination Prev/Next)
+- Berita Kampus (list + detail)
 - Kartu Hasil Studi / KHS (pilih tahun/semester, tabel nilai, download PDF, share)
 - Pengumuman Akademik (list + detail + lampiran)
 - Jadwal Perkuliahan *(dalam pengembangan)*

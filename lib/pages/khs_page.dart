@@ -32,9 +32,11 @@ class _KhsPageState extends State<KhsPage> {
   }
 
   Future<void> _loadOptions() async {
+    if (!mounted) return;
     setState(() => _loadingOptions = true);
     try {
       final res = await _service.getOptions();
+      if (!mounted) return;
       setState(() {
         _tahunList = (res['tahun_akademik'] as List)
             .map((e) => KhsOption.fromJson(e))
@@ -45,6 +47,7 @@ class _KhsPageState extends State<KhsPage> {
         _error = null;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _loadingOptions = false);
@@ -53,6 +56,7 @@ class _KhsPageState extends State<KhsPage> {
 
   Future<void> _loadDetail() async {
     if (_selectedThn == null || _selectedSmt == null) return;
+    if (!mounted) return;
     setState(() {
       _loadingDetail = true;
       _detail = null;
@@ -60,11 +64,13 @@ class _KhsPageState extends State<KhsPage> {
     });
     try {
       final res = await _service.getDetail(_selectedThn!, _selectedSmt!);
+      if (!mounted) return;
       setState(() {
         _detail = res;
         _error = null;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _loadingDetail = false);
