@@ -6,7 +6,11 @@ import 'pages/splash_page.dart';
 import 'services/navigation_service.dart';
 
 void main() async {
-  await dotenv.load();
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (_) {
+    await dotenv.load(fileName: '.env.example');
+  }
   runApp(const MyApp());
 }
 

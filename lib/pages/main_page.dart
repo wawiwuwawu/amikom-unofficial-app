@@ -3,6 +3,7 @@ import '../services/api_client.dart';
 import 'berita_list_page.dart';
 import 'dashboard_page.dart';
 import 'khs_page.dart';
+import 'pengumuman_list_page.dart';
 import 'placeholder_page.dart';
 
 class MainPage extends StatefulWidget {
@@ -85,6 +86,18 @@ class _MainPageState extends State<MainPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const KhsPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.campaign),
+              title: const Text('Pengumuman Akademik'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const PengumumanListPage()),
                 );
               },
             ),

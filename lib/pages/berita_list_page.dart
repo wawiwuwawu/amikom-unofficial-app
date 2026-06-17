@@ -29,10 +29,13 @@ class _BeritaListPageState extends State<BeritaListPage> {
     try {
       final offset = (page - 1) * 5;
       final res = await _service.getBerita(offset: offset);
-      final data =
-          (res['data'] as List).map((e) => Berita.fromJson(e)).toList();
+      final data = (res['data'] as List)
+          .map((e) => Berita.fromJson(e))
+          .toList();
       setState(() {
-        _list..clear()..addAll(data);
+        _list
+          ..clear()
+          ..addAll(data);
         _hasMore = data.length >= 5;
         _page = page;
         _error = null;
@@ -136,9 +139,7 @@ class _BeritaListPageState extends State<BeritaListPage> {
       child: InkWell(
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => BeritaDetailPage(id: b.id),
-          ),
+          MaterialPageRoute(builder: (_) => BeritaDetailPage(id: b.id)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,22 +163,31 @@ class _BeritaListPageState extends State<BeritaListPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(b.judul,
+                    Text(
+                      b.judul,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (b.excerpt.isNotEmpty)
+                      Text(
+                        b.excerpt,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 14)),
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
                     const SizedBox(height: 4),
-                    if (b.excerpt.isNotEmpty)
-                      Text(b.excerpt,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: Colors.grey, fontSize: 12)),
-                    const SizedBox(height: 4),
-                    Text('${b.author} · ${b.tanggal}',
-                        style: const TextStyle(
-                            color: Colors.grey, fontSize: 11)),
+                    Text(
+                      '${b.author} · ${b.tanggal}',
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
                   ],
                 ),
               ),

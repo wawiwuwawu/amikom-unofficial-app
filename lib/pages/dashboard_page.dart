@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/dashboard.dart';
+import '../services/api_client.dart';
 import '../services/dashboard_service.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -39,6 +40,7 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       final data = await _dashboardService.getDashboard();
       if (!mounted) return;
+      ApiClient.instance.setUserInfo(data.profile.npm, data.profile.nama);
       setState(() {
         _dashboard = data;
         _error = null;

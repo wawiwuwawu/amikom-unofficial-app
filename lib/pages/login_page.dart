@@ -37,6 +37,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final result = await _authService.login(pengguna, passw);
       ApiClient.instance.setTokens(result.token, result.refreshToken);
+      ApiClient.instance.setUserInfo(result.nim, '');
 
       if (!mounted) return;
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/khs.dart';
 import '../services/khs_service.dart';
 
@@ -21,6 +22,7 @@ class _KhsPageState extends State<KhsPage> {
   bool _loadingOptions = true;
   bool _loadingDetail = false;
   bool _downloading = false;
+  String? _downloadPath;
   String? _error;
 
   @override
@@ -54,6 +56,7 @@ class _KhsPageState extends State<KhsPage> {
     setState(() {
       _loadingDetail = true;
       _detail = null;
+      _downloadPath = null;
     });
     try {
       final res = await _service.getDetail(_selectedThn!, _selectedSmt!);
@@ -73,6 +76,7 @@ class _KhsPageState extends State<KhsPage> {
     setState(() => _downloading = true);
     try {
       final path = await _service.download(_selectedThn!, _selectedSmt!);
+      setState(() => _downloadPath = path);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Tersimpan di $path')),
@@ -87,6 +91,20 @@ class _KhsPageState extends State<KhsPage> {
     } finally {
       if (mounted) setState(() => _downloading = false);
     }
+  }
+
+  Future<void> _share() async {
+    if (_selectedThn == null || _selectedSmt == null) return;
+    String? path = _downloadPath;
+    if (path == null) {
+      await _download();
+      path = _downloadPath;
+      if (path == null) return;
+    }
+    final file = XFile(path);
+    await SharePlus.instance.share(
+      ShareParams(files: [file], text: 'KHS $_selectedThn Semester $_selectedSmt'),
+    );
   }
 
   @override
@@ -204,7 +222,7 @@ class _KhsPageState extends State<KhsPage> {
               ),
             ),
           const Spacer(),
-          if (_detail != null)
+          if (_detail != null) ...[
             IconButton(
               icon: _downloading
                   ? const SizedBox(
@@ -216,6 +234,12 @@ class _KhsPageState extends State<KhsPage> {
               tooltip: 'Download KHS',
               onPressed: _downloading ? null : _download,
             ),
+            IconButton(
+              icon: const Icon(Icons.share),
+              tooltip: 'Bagikan KHS',
+              onPressed: _downloading ? null : _share,
+            ),
+          ],
         ],
       ),
     );

@@ -11,6 +11,8 @@ class ApiClient {
   late final Dio dio;
   String? _token;
   String? _refreshToken;
+  String? _nim;
+  String? _nama;
 
   ApiClient._() {
     dio = Dio(
@@ -120,6 +122,13 @@ class ApiClient {
 
   String? get token => _token;
   String? get refreshToken => _refreshToken;
+  String? get nim => _nim;
+  String? get nama => _nama;
+
+  void setUserInfo(String nim, String nama) {
+    _nim = nim;
+    _nama = nama;
+  }
 
   Future<void> setTokens(String token, String refreshToken) async {
     _token = token;

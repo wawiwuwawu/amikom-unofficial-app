@@ -37,6 +37,9 @@ dependencies:
   dio: ^5.9.2
   flutter_dotenv: ^6.0.1
   shared_preferences: ^2.5.5
+  path_provider: ^2.1.6
+  permission_handler: ^12.0.3
+  share_plus: ^13.1.0
 
 dev_dependencies:
   flutter_test:
@@ -61,7 +64,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - .env
+    - .env.example
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

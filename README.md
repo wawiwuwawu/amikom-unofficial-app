@@ -1,17 +1,78 @@
-# app_amikom
+# Aplikasi Amikom (Unofficial)
 
-A new Flutter project.
+Aplikasi mobile **tidak resmi** untuk portal akademik mahasiswa Universitas Amikom Purwokerto.
+Dibangun dengan Flutter dan Material 3.
 
-## Getting Started
+> ⚠️ Aplikasi ini tidak berafiliasi secara resmi dengan Universitas Amikom Purwokerto.
 
-This project is a starting point for a Flutter application.
+## Fitur
 
-A few resources to get you started if this is your first Flutter project:
+- Login / Logout dengan JWT (token + refresh token)
+- Dashboard (profil, statistik, status akademik)
+- Berita Kampus (list + detail, pagination Prev/Next)
+- Kartu Hasil Studi / KHS (pilih tahun/semester, tabel nilai, download PDF, share)
+- Pengumuman Akademik (list + detail + lampiran)
+- Jadwal Perkuliahan *(dalam pengembangan)*
+- Nilai *(dalam pengembangan)*
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Tech Stack
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+| Item | Detail |
+|------|--------|
+| Framework | Flutter 3.11+ (Dart SDK ^3.11.1) |
+| Platform | Android (Material 3) |
+| HTTP Client | Dio 5.9.x |
+| State Management | setState |
+| Persistence | SharedPreferences |
+| File Download | path_provider |
+| Lainnya | share_plus, permission_handler, flutter_dotenv |
+
+## Prerequisites
+
+- Flutter SDK 3.11+
+- Android Studio / Emulator atau device Android fisik
+
+## Cara Build & Install
+
+1. Clone repositori ini:
+
+   ```bash
+   git clone https://github.com/username/app-amikom.git
+   cd app-amikom
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   flutter pub get
+   ```
+
+3. Buat file `.env` dari template:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Lalu isi `API_BASE_URL` dengan URL backend adapter Anda.
+
+4. Build APK:
+
+   ```bash
+   flutter build apk --release
+   ```
+
+5. Install `build/app/outputs/flutter-apk/app-release.apk` ke device Android Anda.
+
+## Kontribusi
+
+Tertarik berkontribusi? Hubungi **[xxx]** untuk mendapatkan API Key khusus development.
+
+## Disclaimer
+
+- Aplikasi ini **tidak resmi** dan tidak berafiliasi dengan Universitas Amikom Purwokerto.
+- API endpoint **tidak disertakan** dalam repositori ini. Anda perlu menyediakan backend adapter sendiri.
+- Gunakan dengan bijak dan sesuai ketentuan yang berlaku.
+
+## License
+
+[MIT](LICENSE)
