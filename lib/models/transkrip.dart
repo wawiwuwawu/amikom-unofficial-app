@@ -19,8 +19,8 @@ class TranskripItem {
         kode: json['KODE'] ?? '',
         mkl: json['MKL'] ?? '',
         sks: (json['SKS'] ?? 0).toInt(),
-        bobot: (json['BOBOT'] ?? 0).toDouble(),
+        bobot: double.tryParse(json['BOBOT']?.toString() ?? '0') ?? 0,
         nilai: json['NILAI'] ?? '',
-        totalBobot: (json['TOTAL_BOBOT'] ?? 0).toDouble(),
+        totalBobot: double.tryParse(json['TOTAL_BOBOT']?.toString() ?? '0') ?? 0,
       );
 }
