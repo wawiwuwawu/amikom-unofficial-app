@@ -257,8 +257,9 @@ class _MainPageState extends State<MainPage> {
             ListTile(
               leading: const Icon(CupertinoIcons.square_arrow_right, color: Colors.redAccent),
               title: const Text('Logout', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-              onTap: () {
-                ApiClient.instance.clearTokens();
+              onTap: () async {
+                await ApiClient.instance.fullLogout();
+                if (!context.mounted) return;
                 Navigator.pushReplacementNamed(context, '/login');
               },
             ),

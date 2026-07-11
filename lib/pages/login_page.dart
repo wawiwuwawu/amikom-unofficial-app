@@ -32,6 +32,12 @@ class _LoginPageState extends State<LoginPage> {
       await ApiClient.instance.setTokens(res.token, res.refreshToken);
       ApiClient.instance.setUserInfo(res.nim, '');
       
+      // Simpan kredensial terenkripsi untuk silent re-login
+      await ApiClient.instance.saveCredentials(
+        _nimController.text, 
+        _passwordController.text,
+      );
+      
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/main');
     } catch (e) {

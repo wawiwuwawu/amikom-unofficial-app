@@ -3,16 +3,19 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'navigation_service.dart';
 
-const _maxRetries = 3;
+const _maxRetries = 2;
+final _secKeyUser = dotenv.env['SEC_KEY_USER']!;
+final _secKeyPass = dotenv.env['SEC_KEY_PASS']!;
 
 int _getRetryCount(RequestOptions opts) =>
     opts.extra['retryCount'] as int? ?? 0;
 
 Future<void> _retryDelay() =>
-    Future.delayed(const Duration(seconds: 5));
+    Future.delayed(const Duration(seconds: 1));
 
 class ApiClient {
   static ApiClient? _instance;
@@ -21,6 +24,7 @@ class ApiClient {
   String? _refreshToken;
   String? _nim;
   String? _nama;
+  final _secureStorage = const FlutterSecureStorage();
 
   ApiClient._() {
     dio = Dio(
@@ -59,9 +63,18 @@ class ApiClient {
                     msg.contains('sesi berakhir'))) {
               final retryCount = _getRetryCount(response.requestOptions);
               if (retryCount >= _maxRetries) {
-                await clearTokens();
-                NavigationService.instance.navigatorKey.currentState
-                    ?.pushReplacementNamed('/login');
+                // Last resort: try silent re-login
+                final reLoginSuccess = await _trySilentReLogin();
+                if (reLoginSuccess) {
+                  response.requestOptions.headers['Authorization'] =
+                      'Bearer $_token';
+                  response.requestOptions.extra['retryCount'] = 0;
+                  final retryResponse =
+                      await dio.fetch(response.requestOptions);
+                  handler.resolve(retryResponse);
+                  return;
+                }
+                await _forceLogout();
                 handler.reject(DioException(
                   requestOptions: response.requestOptions,
                   response: response,
@@ -80,15 +93,24 @@ class ApiClient {
                     await dio.fetch(response.requestOptions);
                 handler.resolve(retryResponse);
               } else {
-                await clearTokens();
-                NavigationService.instance.navigatorKey.currentState
-                    ?.pushReplacementNamed('/login');
-                handler.reject(DioException(
-                  requestOptions: response.requestOptions,
-                  response: response,
-                  type: DioExceptionType.badResponse,
-                  message: 'Sesi berakhir. Silakan login ulang.',
-                ));
+                // Refresh failed, try silent re-login
+                final reLoginSuccess = await _trySilentReLogin();
+                if (reLoginSuccess) {
+                  response.requestOptions.headers['Authorization'] =
+                      'Bearer $_token';
+                  response.requestOptions.extra['retryCount'] = 0;
+                  final retryResponse =
+                      await dio.fetch(response.requestOptions);
+                  handler.resolve(retryResponse);
+                } else {
+                  await _forceLogout();
+                  handler.reject(DioException(
+                    requestOptions: response.requestOptions,
+                    response: response,
+                    type: DioExceptionType.badResponse,
+                    message: 'Sesi berakhir. Silakan login ulang.',
+                  ));
+                }
               }
               return;
             }
@@ -108,9 +130,16 @@ class ApiClient {
         if (error.response?.statusCode == 401 && _refreshToken != null) {
           final retryCount = _getRetryCount(error.requestOptions);
           if (retryCount >= _maxRetries) {
-            await clearTokens();
-            NavigationService.instance.navigatorKey.currentState
-                ?.pushReplacementNamed('/login');
+            // Last resort: try silent re-login
+            final reLoginSuccess = await _trySilentReLogin();
+            if (reLoginSuccess) {
+              error.requestOptions.headers['Authorization'] = 'Bearer $_token';
+              error.requestOptions.extra['retryCount'] = 0;
+              final retryResponse = await dio.fetch(error.requestOptions);
+              handler.resolve(retryResponse);
+              return;
+            }
+            await _forceLogout();
             handler.resolve(error.response ?? Response(
               requestOptions: error.requestOptions,
               data: {'message': 'Sesi berakhir. Silakan login ulang.'},
@@ -125,13 +154,20 @@ class ApiClient {
             final retryResponse = await dio.fetch(error.requestOptions);
             handler.resolve(retryResponse);
           } else {
-            await clearTokens();
-            NavigationService.instance.navigatorKey.currentState
-                ?.pushReplacementNamed('/login');
-            handler.resolve(error.response ?? Response(
-              requestOptions: error.requestOptions,
-              data: {'message': 'Sesi berakhir. Silakan login ulang.'},
-            ));
+            // Refresh failed, try silent re-login
+            final reLoginSuccess = await _trySilentReLogin();
+            if (reLoginSuccess) {
+              error.requestOptions.headers['Authorization'] = 'Bearer $_token';
+              error.requestOptions.extra['retryCount'] = 0;
+              final retryResponse = await dio.fetch(error.requestOptions);
+              handler.resolve(retryResponse);
+            } else {
+              await _forceLogout();
+              handler.resolve(error.response ?? Response(
+                requestOptions: error.requestOptions,
+                data: {'message': 'Sesi berakhir. Silakan login ulang.'},
+              ));
+            }
           }
           return;
         }
@@ -146,6 +182,7 @@ class ApiClient {
     return _instance!;
   }
 
+  // ─── Session Restore ─────────────────────────────────
   Future<void> restoreSession() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -174,6 +211,27 @@ class ApiClient {
     await prefs.setString('refreshToken', refreshToken);
   }
 
+  // ─── Credential Storage (Encrypted) ──────────────────
+  Future<void> saveCredentials(String user, String pass) async {
+    await _secureStorage.write(key: _secKeyUser, value: user);
+    await _secureStorage.write(key: _secKeyPass, value: pass);
+  }
+
+  Future<Map<String, String>?> getSavedCredentials() async {
+    final user = await _secureStorage.read(key: _secKeyUser);
+    final pass = await _secureStorage.read(key: _secKeyPass);
+    if (user != null && pass != null && user.isNotEmpty && pass.isNotEmpty) {
+      return {'user': user, 'pass': pass};
+    }
+    return null;
+  }
+
+  Future<void> clearCredentials() async {
+    await _secureStorage.delete(key: _secKeyUser);
+    await _secureStorage.delete(key: _secKeyPass);
+  }
+
+  // ─── Token Refresh ───────────────────────────────────
   Future<bool> _tryRefresh() async {
     try {
       final refreshDio = Dio(
@@ -196,11 +254,57 @@ class ApiClient {
     }
   }
 
+  // ─── Silent Re-Login (Fallback) ──────────────────────
+  Future<bool> _trySilentReLogin() async {
+    try {
+      final creds = await getSavedCredentials();
+      if (creds == null) return false;
+
+      final loginDio = Dio(
+        BaseOptions(
+          baseUrl: dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000',
+          headers: {'Content-Type': 'application/json'},
+        ),
+      );
+      final res = await loginDio.post(
+        '/api/v1/auth/login',
+        data: {'pengguna': creds['user'], 'passw': creds['pass']},
+      );
+
+      final newToken = res.data['token'];
+      final newRefresh = res.data['refreshToken'];
+      if (newToken != null && newRefresh != null) {
+        await setTokens(newToken, newRefresh);
+        _nim = res.data['nim'] ?? _nim;
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ─── Silent Re-Login (Public, for SplashPage) ────────
+  Future<bool> trySilentReLogin() => _trySilentReLogin();
+
+  // ─── Force Logout ────────────────────────────────────
+  Future<void> _forceLogout() async {
+    await clearTokens();
+    NavigationService.instance.navigatorKey.currentState
+        ?.pushReplacementNamed('/login');
+  }
+
   Future<void> clearTokens() async {
     _token = null;
     _refreshToken = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
     await prefs.remove('refreshToken');
+  }
+
+  /// Full logout: clear tokens + credentials
+  Future<void> fullLogout() async {
+    await clearTokens();
+    await clearCredentials();
   }
 }
