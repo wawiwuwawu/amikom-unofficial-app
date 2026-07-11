@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/khs.dart';
 import '../services/khs_service.dart';
+import '../widgets/glass_card.dart';
 
 class KhsPage extends StatefulWidget {
   const KhsPage({super.key});
@@ -85,13 +88,21 @@ class _KhsPageState extends State<KhsPage> {
       setState(() => _downloadPath = path);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Tersimpan di $path')),
+          SnackBar(
+            content: Text('Tersimpan di $path', style: const TextStyle(color: Colors.white)),
+            backgroundColor: const Color(0xFF501F66),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', ''), style: const TextStyle(color: Colors.white)),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } finally {
@@ -116,28 +127,53 @@ class _KhsPageState extends State<KhsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('KHS')),
-      body: _buildBody(),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('KHS (Kartu Hasil Studi)', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white.withOpacity(0.5),
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+      ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFFAFCFF), Color(0xFFE3F2FD)], // Pearl White to Ice Blue
+          ),
+        ),
+        child: SafeArea(child: _buildBody()),
+      ),
     );
   }
 
   Widget _buildBody() {
     if (_loadingOptions) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: const CircularProgressIndicator(color: Color(0xFFBBDEFB)) // Ice Blue
+            .animate()
+            .scale(duration: 400.ms, curve: Curves.easeOutBack),
+      );
     }
     if (_error != null && _detail == null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64,
-                color: Theme.of(context).colorScheme.error),
+            const Icon(CupertinoIcons.exclamationmark_circle, size: 64, color: Colors.redAccent)
+                .animate()
+                .shake(),
             const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
+            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black87)),
+            const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _loadOptions,
-              child: const Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFBBDEFB),
+                foregroundColor: const Color(0xFF501F66),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -145,10 +181,11 @@ class _KhsPageState extends State<KhsPage> {
     }
     return Column(
       children: [
-        _buildFilter(),
-        if (_loadingDetail) const Expanded(child: Center(child: CircularProgressIndicator())),
+        _buildFilter().animate().slideY(begin: -0.1),
+        if (_loadingDetail) 
+          Expanded(child: Center(child: const CircularProgressIndicator(color: Color(0xFFBBDEFB)).animate().scale())),
         if (_detail != null && !_loadingDetail) ...[
-          _buildStatus(),
+          _buildStatus().animate().fadeIn(delay: 100.ms),
           Expanded(child: _buildTable()),
         ],
       ],
@@ -157,74 +194,115 @@ class _KhsPageState extends State<KhsPage> {
 
   Widget _buildFilter() {
     return Container(
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              initialValue: _selectedThn,
-              decoration: const InputDecoration(
-                labelText: 'Tahun',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                isDense: true,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: GlassCard(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Expanded(
+              child: _buildDropdown(
+                value: _selectedThn,
+                items: _tahunList,
+                hint: 'Tahun',
+                onChanged: (v) => setState(() => _selectedThn = v),
               ),
-              items: _tahunList
-                  .map((t) => DropdownMenuItem(
-                        value: t.value,
-                        child: Text(t.label, style: const TextStyle(fontSize: 13)),
-                      ))
-                  .toList(),
-              onChanged: (v) => setState(() => _selectedThn = v),
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              initialValue: _selectedSmt,
-              decoration: const InputDecoration(
-                labelText: 'Semester',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                isDense: true,
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildDropdown(
+                value: _selectedSmt,
+                items: _semesterList,
+                hint: 'Semester',
+                onChanged: (v) => setState(() => _selectedSmt = v),
               ),
-              items: _semesterList
-                  .map((s) => DropdownMenuItem(
-                        value: s.value,
-                        child: Text(s.label, style: const TextStyle(fontSize: 13)),
-                      ))
-                  .toList(),
-              onChanged: (v) => setState(() => _selectedSmt = v),
             ),
-          ),
-          const SizedBox(width: 8),
-          FilledButton(
-            onPressed: (_selectedThn != null && _selectedSmt != null)
-                ? _loadDetail
-                : null,
-            child: const Text('Cari'),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)]),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(color: const Color(0xFFBBDEFB).withOpacity(0.5), blurRadius: 8, offset: const Offset(0, 4)),
+                ],
+              ),
+              child: IconButton(
+                onPressed: (_selectedThn != null && _selectedSmt != null) ? _loadDetail : null,
+                icon: const Icon(CupertinoIcons.search, color: Color(0xFF501F66)),
+                tooltip: 'Cari KHS',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdown({
+    required String? value,
+    required List<KhsOption> items,
+    required String hint,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          hint: Text(hint, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+          isExpanded: true,
+          icon: const Icon(CupertinoIcons.chevron_down, color: Color(0xFF501F66), size: 16),
+          items: items.map((e) => DropdownMenuItem(
+            value: e.value,
+            child: Text(e.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87)),
+          )).toList(),
+          onChanged: onChanged,
+        ),
       ),
     );
   }
 
   Widget _buildStatus() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
           if (_detail!.finishEvaluasi)
-            Chip(
-              avatar: const Icon(Icons.check_circle, size: 18, color: Colors.green),
-              label: const Text('Evaluasi Selesai', style: TextStyle(fontSize: 12)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.green.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: const [
+                  Icon(CupertinoIcons.checkmark_seal_fill, size: 16, color: Colors.green),
+                  SizedBox(width: 4),
+                  Text('Evaluasi Selesai', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green)),
+                ],
+              ),
             ),
           if (_detail!.canViewSkripsi)
             Padding(
               padding: const EdgeInsets.only(left: 8),
-              child: Chip(
-                avatar: const Icon(Icons.visibility, size: 18, color: Colors.blue),
-                label: const Text('Lihat Skripsi', style: TextStyle(fontSize: 12)),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: const [
+                    Icon(CupertinoIcons.eye_fill, size: 16, color: Colors.blue),
+                    SizedBox(width: 4),
+                    Text('Lihat Skripsi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue)),
+                  ],
+                ),
               ),
             ),
           const Spacer(),
@@ -234,14 +312,14 @@ class _KhsPageState extends State<KhsPage> {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF501F66)),
                     )
-                  : const Icon(Icons.download),
+                  : const Icon(CupertinoIcons.cloud_download, color: Color(0xFF501F66)),
               tooltip: 'Download KHS',
               onPressed: _downloading ? null : _download,
             ),
             IconButton(
-              icon: const Icon(Icons.share),
+              icon: const Icon(CupertinoIcons.share, color: Color(0xFF501F66)),
               tooltip: 'Bagikan KHS',
               onPressed: _downloading ? null : _share,
             ),
@@ -254,16 +332,17 @@ class _KhsPageState extends State<KhsPage> {
   Widget _buildTable() {
     final items = _detail!.data;
     if (items.isEmpty) {
-      return const Center(child: Text('Tidak ada data'));
+      return const Center(child: Text('Tidak ada data nilai', style: TextStyle(color: Colors.black54)));
     }
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      physics: const BouncingScrollPhysics(),
       itemCount: items.length,
-      itemBuilder: (_, i) => _khsCard(items[i]),
+      itemBuilder: (_, i) => _khsCard(items[i], i),
     );
   }
 
-  Widget _khsCard(KhsItem item) {
+  Widget _khsCard(KhsItem item, int index) {
     Color? nilaiColor;
     switch (item.nilai.toUpperCase()) {
       case 'A':
@@ -285,10 +364,10 @@ class _KhsPageState extends State<KhsPage> {
         break;
     }
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GlassCard(
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -296,66 +375,65 @@ class _KhsPageState extends State<KhsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.indigo.shade50,
-                    borderRadius: BorderRadius.circular(4),
+                    color: const Color(0xFFBBDEFB).withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     item.kode,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.indigo.shade700,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF501F66),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     item.mkl,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.black87),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
               children: [
                 _infoChip('SKS', item.sks.toString()),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: (nilaiColor ?? Colors.grey).withValues(alpha: 0.15),
+                    color: (nilaiColor ?? Colors.grey).withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: nilaiColor ?? Colors.grey, width: 1),
+                    border: Border.all(color: (nilaiColor ?? Colors.grey).withOpacity(0.5), width: 1.5),
                   ),
                   child: Text(
                     item.nilai,
                     style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
                       color: nilaiColor,
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 _infoChip('Bobot', item.bobot.toStringAsFixed(2)),
-                const Spacer(),
               ],
             ),
           ],
         ),
-      ),
+      ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.1),
     );
   }
 
   Widget _infoChip(String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: Colors.white.withOpacity(0.6),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -363,11 +441,11 @@ class _KhsPageState extends State<KhsPage> {
         children: [
           Text(
             '$label ',
-            style: const TextStyle(fontSize: 11, color: Colors.grey),
+            style: const TextStyle(fontSize: 11, color: Colors.black54),
           ),
           Text(
             value,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Colors.black87),
           ),
         ],
       ),

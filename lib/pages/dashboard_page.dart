@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../models/dashboard.dart';
-import '../services/api_client.dart';
 import '../services/dashboard_service.dart';
+import '../widgets/glass_card.dart';
+import 'absensi_page.dart';
 
 class DashboardPage extends StatefulWidget {
   final int refreshTrigger;
-
   const DashboardPage({super.key, this.refreshTrigger = 0});
 
   @override
@@ -13,36 +15,33 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  final _dashboardService = DashboardService();
-  Dashboard? _dashboard;
+  final _service = DashboardService();
+  Dashboard? _data;
   bool _loading = true;
   String? _error;
-  int _lastRefresh = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadDashboard();
+    _load();
   }
 
   @override
-  void didUpdateWidget(DashboardPage oldWidget) {
+  void didUpdateWidget(covariant DashboardPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.refreshTrigger != _lastRefresh) {
-      _lastRefresh = widget.refreshTrigger;
-      _loadDashboard();
+    if (oldWidget.refreshTrigger != widget.refreshTrigger) {
+      _load();
     }
   }
 
-  Future<void> _loadDashboard() async {
+  Future<void> _load() async {
+    if (!mounted) return;
     setState(() => _loading = true);
-
     try {
-      final data = await _dashboardService.getDashboard();
+      final data = await _service.getDashboard();
       if (!mounted) return;
-      ApiClient.instance.setUserInfo(data.profile.npm, data.profile.nama);
       setState(() {
-        _dashboard = data;
+        _data = data;
         _error = null;
       });
     } catch (e) {
@@ -56,199 +55,296 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: const CircularProgressIndicator(color: Color(0xFFBBDEFB)) // Ice Blue
+            .animate()
+            .scale(duration: 400.ms, curve: Curves.easeOutBack),
+      );
     }
-
     if (_error != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const Icon(CupertinoIcons.exclamationmark_circle, size: 64, color: Colors.redAccent)
+                .animate()
+                .shake(),
             const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
+            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black87)),
+            const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _loadDashboard,
-              child: const Text('Coba Lagi'),
+              onPressed: _load,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFBBDEFB),
+                foregroundColor: const Color(0xFF501F66),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
       );
     }
+    if (_data == null) return const SizedBox.shrink();
 
-    return _buildContent();
+    final d = _data!;
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: const Color(0xFF501F66),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), // padding bottom for dock
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        children: [
+          _buildGreeting(d.profile).animate().fadeIn(duration: 500.ms).slideX(begin: -0.1, end: 0),
+          const SizedBox(height: 16),
+          _buildProfileCard(d.profile).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1, end: 0),
+          const SizedBox(height: 24),
+          _buildQuickPresensiBanner().animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
+          const SizedBox(height: 24),
+          _buildInfoPenting(d).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1, end: 0),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(child: _buildStatCard('IPK', d.statistik.ipk.toStringAsFixed(2), CupertinoIcons.rosette).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0)),
+              const SizedBox(width: 16),
+              Expanded(child: _buildStatCard('Total SKS', d.statistik.totalSks.toString(), CupertinoIcons.book_fill).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1, end: 0)),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
-  Widget _buildContent() {
-    final p = _dashboard!.profile;
-    final s = _dashboard!.statistik;
-    final st = _dashboard!.status;
-
-    return RefreshIndicator(
-      onRefresh: _loadDashboard,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildProfileCard(p),
-            const SizedBox(height: 16),
-            _buildStatistikCard(s),
-            const SizedBox(height: 16),
-            _buildStatusCard(st),
-            const SizedBox(height: 16),
-            _buildInfoCard(p),
-          ],
+  Widget _buildGreeting(Profile p) {
+    final namaDepan = p.nama.split(' ').first;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Halo, $namaDepan!',
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w900,
+            color: Color(0xFF501F66),
+            letterSpacing: -0.5,
+          ),
         ),
+        const SizedBox(height: 4),
+        Text(
+          p.prodi,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.black54,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickPresensiBanner() {
+    return GlassCard(
+      padding: EdgeInsets.zero,
+      opacity: 0.8,
+      gradient: const LinearGradient(
+        colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)], // Ice Blue gradient
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      child: InkWell(
+        onTap: () {
+          // Tell user to tap the main FAB instead, or we can use Navigator.push if they really want,
+          // but since they didn't like the weird presensi routing, we'll route it manually if possible.
+          // Since we are inside Dashboard which is inside MainPage, we can't easily change the parent's state without a callback.
+          // For now, let's just push it, or we can use the FAB. Let's just push AbsensiPage for this banner.
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AbsensiPage()),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF501F66).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(CupertinoIcons.qrcode_viewfinder, color: Color(0xFF501F66), size: 32),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Jangan Lupa Presensi!',
+                      style: TextStyle(
+                        color: Color(0xFF501F66),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Ketuk di sini untuk scan QR kelasmu sekarang.',
+                      style: TextStyle(
+                        color: Colors.black54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(CupertinoIcons.chevron_right, color: Color(0xFF501F66)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoPenting(Dashboard d) {
+    if (d.status.status != 'Aktif' || d.status.status.isEmpty) {
+      return _buildAlert(
+          CupertinoIcons.exclamationmark_triangle, 'Pembayaran pending', Colors.orange);
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildAlert(IconData icon, String message, Color color) {
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 12),
+          Text(
+            message,
+            style: TextStyle(color: color, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String title, String value, IconData icon) {
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 20, color: const Color(0xFF501F66)),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(color: Colors.black54, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF501F66),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildProfileCard(Profile p) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 36,
-              backgroundImage: p.fotoUrl.isNotEmpty
-                  ? NetworkImage(p.fotoUrl)
-                  : null,
-              child: p.fotoUrl.isEmpty
-                  ? const Icon(Icons.person, size: 36)
-                  : null,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(p.nama,
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text('NPM: ${p.npm}',
-                      style: const TextStyle(color: Colors.grey)),
-                  Text('${p.prodi} - ${p.fakultas}',
-                      style: const TextStyle(color: Colors.grey)),
-                  Text('Angkatan ${p.angkatan}',
-                      style: const TextStyle(color: Colors.grey)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatistikCard(Statistik s) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Statistik Akademik',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _statItem('IPK', s.ipk.toStringAsFixed(2), Colors.indigo),
-                _statItem('SKS Total', '${s.totalSks}', Colors.teal),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _statItem('SKS Maks', '${s.totalSksMaksimal}', Colors.orange),
-                _statItem('SKS Aktif', '${s.sksSekarang}', Colors.purple),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _statItem(String label, String value, Color color) {
-    return Expanded(
+    return GlassCard(
+      padding: EdgeInsets.zero,
       child: Column(
-        children: [
-          Text(value,
-              style: TextStyle(
-                  fontSize: 24, fontWeight: FontWeight.bold, color: color)),
-          Text(label, style: const TextStyle(color: Colors.grey)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusCard(Status st) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _statusItem('Status', st.status, Colors.green),
-            _statusItem('Masa Studi', st.masaStudi, Colors.blue),
-            _statusItem('Sisa', st.sisaMasaStudi, Colors.orange),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _statusItem(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(value,
-            style: TextStyle(
-                fontSize: 14, fontWeight: FontWeight.bold, color: color),
-            textAlign: TextAlign.center),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-      ],
-    );
-  }
-
-  Widget _buildInfoCard(Profile p) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Informasi Lainnya',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            _infoRow('Pembimbing Akademik', p.pembimbingAkademik),
-            _infoRow('No. HP', p.noHp),
-            _infoRow('Email', p.email),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 160,
-            child:
-                Text(label, style: const TextStyle(color: Colors.grey)),
+          ListTile(
+            contentPadding: const EdgeInsets.all(16),
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFBBDEFB).withOpacity(0.3),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(CupertinoIcons.person_crop_circle_fill, size: 32, color: Color(0xFF501F66)),
+            ),
+            title: Text(p.nama, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            subtitle: Text('${p.npm} • ${p.prodi}', style: const TextStyle(color: Colors.black54, fontSize: 12)),
           ),
-          Expanded(child: Text(value)),
+          const Divider(height: 1, color: Colors.black12),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _profileInfo(CupertinoIcons.calendar, 'Angkatan', p.angkatan.toString()),
+                    _profileInfo(CupertinoIcons.building_2_fill, 'Fakultas', p.fakultas),
+                    _profileInfo(CupertinoIcons.phone_fill, 'No HP', p.noHp.isNotEmpty ? p.noHp : '-'),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(CupertinoIcons.mail_solid, size: 16, color: Color(0xFF501F66)),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(p.email, style: const TextStyle(fontSize: 13, color: Colors.black87))),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(CupertinoIcons.person_2_fill, size: 16, color: Color(0xFF501F66)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'DPA: ${p.pembimbingAkademik}', 
+                              style: const TextStyle(fontSize: 13, color: Colors.black87),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _profileInfo(IconData icon, String title, String text) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.black45, size: 20),
+        const SizedBox(height: 4),
+        Text(title, style: const TextStyle(fontSize: 10, color: Colors.black54)),
+        Text(
+          text, 
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }
