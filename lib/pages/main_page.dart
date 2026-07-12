@@ -12,6 +12,8 @@ import 'pengumuman_list_page.dart';
 import 'placeholder_page.dart';
 import 'transkrip_page.dart';
 import 'panduan_list_page.dart';
+import 'jadwal_page.dart';
+import 'krs/krs_main_page.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -38,9 +40,9 @@ class _MainPageState extends State<MainPage> {
         appBarTitle = 'Dashboard';
         break;
       case 1:
-        currentWidget = const PlaceholderPage(title: 'Jadwal Perkuliahan', icon: CupertinoIcons.calendar);
+        currentWidget = const JadwalPage();
         showMainAppBar = true;
-        appBarTitle = 'Jadwal';
+        appBarTitle = 'Jadwal Perkuliahan';
         break;
       case 2:
         currentWidget = const TranskripPage();
@@ -52,6 +54,9 @@ class _MainPageState extends State<MainPage> {
         break;
       case 4:
         currentWidget = const AbsensiPage();
+        break;
+      case 5:
+        currentWidget = const KrsMainPage();
         break;
       default:
         currentWidget = DashboardPage(refreshTrigger: _refreshTrigger);
@@ -259,6 +264,14 @@ class _MainPageState extends State<MainPage> {
                 setState(() => _currentIndex = 0);
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const PanduanListPage()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.doc_text_search),
+              title: const Text('KRS'),
+              onTap: () {
+                setState(() => _currentIndex = 5);
+                Navigator.pop(context);
               },
             ),
             const Divider(),
