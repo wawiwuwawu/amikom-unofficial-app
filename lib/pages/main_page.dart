@@ -11,6 +11,7 @@ import 'khs_page.dart';
 import 'pengumuman_list_page.dart';
 import 'placeholder_page.dart';
 import 'transkrip_page.dart';
+import 'panduan_list_page.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -249,6 +250,15 @@ class _MainPageState extends State<MainPage> {
                 setState(() => _currentIndex = 0);
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const PengumumanListPage()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.book),
+              title: const Text('Panduan Akademik'),
+              onTap: () {
+                setState(() => _currentIndex = 0);
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PanduanListPage()));
               },
             ),
             const Divider(),
