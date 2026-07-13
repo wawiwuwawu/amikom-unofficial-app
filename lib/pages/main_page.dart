@@ -45,7 +45,7 @@ class _MainPageState extends State<MainPage> {
         appBarTitle = 'Jadwal Perkuliahan';
         break;
       case 2:
-        currentWidget = const TranskripPage();
+        currentWidget = TranskripPage(onBack: () => setState(() => _currentIndex = 0));
         break;
       case 3:
         currentWidget = const PlaceholderPage(title: 'Menu Lainnya', icon: CupertinoIcons.ellipsis);
@@ -53,10 +53,10 @@ class _MainPageState extends State<MainPage> {
         appBarTitle = 'Menu Lainnya';
         break;
       case 4:
-        currentWidget = const AbsensiPage();
+        currentWidget = AbsensiPage(onBack: () => setState(() => _currentIndex = 0));
         break;
       case 5:
-        currentWidget = const KrsMainPage();
+        currentWidget = KrsMainPage(onBack: () => setState(() => _currentIndex = 0));
         break;
       default:
         currentWidget = DashboardPage(refreshTrigger: _refreshTrigger);
@@ -73,6 +73,12 @@ class _MainPageState extends State<MainPage> {
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               backgroundColor: Colors.white.withOpacity(0.5),
+              leading: _currentIndex != 0
+                  ? IconButton(
+                      icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
+                      onPressed: () => setState(() => _currentIndex = 0),
+                    )
+                  : null,
               elevation: 0,
               surfaceTintColor: Colors.transparent,
               flexibleSpace: ClipRRect(

@@ -8,7 +8,8 @@ import '../widgets/glass_card.dart';
 import 'absensi_detail_page.dart';
 
 class AbsensiPage extends StatefulWidget {
-  const AbsensiPage({super.key});
+  final VoidCallback? onBack;
+  const AbsensiPage({super.key, this.onBack});
 
   @override
   State<AbsensiPage> createState() => _AbsensiPageState();
@@ -200,6 +201,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
       backgroundColor: Colors.transparent, // Inherit gradient from MainPage
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        leading: widget.onBack != null ? IconButton(icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)), onPressed: widget.onBack) : null,
         title: const Text('Absensi Mahasiswa', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white.withOpacity(0.5),
         elevation: 0,

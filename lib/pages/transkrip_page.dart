@@ -7,7 +7,8 @@ import '../services/transkrip_service.dart';
 import '../widgets/glass_card.dart';
 
 class TranskripPage extends StatefulWidget {
-  const TranskripPage({super.key});
+  final VoidCallback? onBack;
+  const TranskripPage({super.key, this.onBack});
 
   @override
   State<TranskripPage> createState() => _TranskripPageState();
@@ -92,6 +93,7 @@ class _TranskripPageState extends State<TranskripPage> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        leading: widget.onBack != null ? IconButton(icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)), onPressed: widget.onBack) : null,
         title: const Text('Transkrip Nilai', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white.withOpacity(0.5),
         elevation: 0,

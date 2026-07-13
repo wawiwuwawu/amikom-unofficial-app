@@ -95,7 +95,7 @@ class KrsService {
 
   Future<void> sinkronisasi() async {
     try {
-      await _dio.post('/api/v1/krs/sinkronisasi');
+      await _dio.post('/api/v1/krs/sinkronisasi', data: {});
     } catch (e) {
       throw _handleError(e);
     }

@@ -5,7 +5,8 @@ import '../../models/krs.dart';
 import '../jadwal_page.dart';
 
 class KrsMainPage extends StatefulWidget {
-  const KrsMainPage({super.key});
+  final VoidCallback? onBack;
+  const KrsMainPage({super.key, this.onBack});
 
   @override
   State<KrsMainPage> createState() => _KrsMainPageState();
@@ -18,6 +19,7 @@ class _KrsMainPageState extends State<KrsMainPage> {
       length: 4,
       child: Scaffold(
         appBar: AppBar(
+          leading: widget.onBack != null ? IconButton(icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)), onPressed: widget.onBack) : null,
           title: const Text('Kartu Rencana Studi (KRS)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           backgroundColor: const Color(0xFFFAFCFF),
           elevation: 0,
@@ -107,6 +109,22 @@ class _InfoPengajuanTabState extends State<_InfoPengajuanTab> {
     return total;
   }
 
+  void _syncKrs() async {
+    setState(() => _loading = true);
+    try {
+      await _service.sinkronisasi();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sinkronisasi berhasil')));
+        await _load();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal sinkronisasi: ${e.toString()}')));
+        setState(() => _loading = false);
+      }
+    }
+  }
+
   void _submit() async {
     if (_selectedMakul.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih minimal satu mata kuliah')));
@@ -176,32 +194,49 @@ class _InfoPengajuanTabState extends State<_InfoPengajuanTab> {
             ],
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _syncKrs,
+              icon: const Icon(CupertinoIcons.arrow_2_circlepath),
+              label: const Text('Sinkronisasi Tagihan & KRS'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF501F66),
+                side: const BorderSide(color: Color(0xFF501F66)),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         Expanded(
           child: ListView(
             padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 80),
             children: [
-              for (var smt in sortedSemesters) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  color: Colors.grey.withValues(alpha: 0.1),
-                  child: Text('Semester $smt', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
+              for (var smt in sortedSemesters) 
+                ExpansionTile(
+                  initiallyExpanded: false,
+                  title: Text('Semester $smt', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
+                  backgroundColor: Colors.grey.withValues(alpha: 0.05),
+                  children: [
+                    for (var mk in groupedMatkul[smt]!)
+                      CheckboxListTile(
+                        title: Text(mk.nama),
+                        subtitle: Text('${mk.kode} - ${mk.sks} SKS${mk.isUlang ? " (Ulang)" : ""}'),
+                        value: _selectedMakul.contains(mk.kode),
+                        onChanged: (val) {
+                          setState(() {
+                            if (val == true) {
+                              _selectedMakul.add(mk.kode);
+                            } else {
+                              _selectedMakul.remove(mk.kode);
+                            }
+                          });
+                        },
+                      ),
+                  ],
                 ),
-                for (var mk in groupedMatkul[smt]!)
-                  CheckboxListTile(
-                    title: Text(mk.nama),
-                    subtitle: Text('${mk.kode} - ${mk.sks} SKS${mk.isUlang ? " (Ulang)" : ""}'),
-                    value: _selectedMakul.contains(mk.kode),
-                    onChanged: (val) {
-                      setState(() {
-                        if (val == true) {
-                          _selectedMakul.add(mk.kode);
-                        } else {
-                          _selectedMakul.remove(mk.kode);
-                        }
-                      });
-                    },
-                  ),
-              ],
             ],
           ),
         ),
