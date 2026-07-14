@@ -267,13 +267,20 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           ListTile(
             contentPadding: const EdgeInsets.all(16),
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFBBDEFB).withOpacity(0.3),
-                shape: BoxShape.circle,
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                p.fotoUrl,
+                width: 48,
+                height: 64, // 3:4 ratio
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: 48,
+                  height: 64,
+                  color: const Color(0xFF501F66).withValues(alpha: 0.1),
+                  child: const Icon(CupertinoIcons.person_alt, size: 32, color: Color(0xFF501F66)),
+                ),
               ),
-              child: const Icon(CupertinoIcons.person_crop_circle_fill, size: 32, color: Color(0xFF501F66)),
             ),
             title: Text(p.nama, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             subtitle: Text('${p.npm} • ${p.prodi}', style: const TextStyle(color: Colors.black54, fontSize: 12)),
