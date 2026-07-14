@@ -16,6 +16,8 @@ import 'jadwal_page.dart';
 import 'krs/krs_main_page.dart';
 import 'asisten_page.dart';
 import 'seminar_page.dart';
+import 'mbkm_page.dart';
+
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
 
@@ -64,6 +66,9 @@ class _MainPageState extends State<MainPage> {
         break;
       case 7:
         currentWidget = SeminarPage(onBack: () => setState(() => _currentIndex = 0));
+        break;
+      case 8:
+        currentWidget = MbkmPage(onBack: () => setState(() => _currentIndex = 0));
         break;
       default:
         currentWidget = DashboardPage(refreshTrigger: _refreshTrigger);
@@ -300,6 +305,14 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Jadwal Seminar 🎓'),
               onTap: () {
                 setState(() => _currentIndex = 7);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.building_2_fill),
+              title: const Text('MBKM Internal'),
+              onTap: () {
+                setState(() => _currentIndex = 8);
                 Navigator.pop(context);
               },
             ),
