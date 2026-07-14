@@ -22,6 +22,7 @@ import 'visi_misi_institusi_page.dart';
 import 'tata_krama_page.dart';
 import 'agenda_akademik_page.dart';
 import 'jadwal_ujian_page.dart';
+import 'pusat_studi/pusat_studi_page.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -89,6 +90,9 @@ class _MainPageState extends State<MainPage> {
         break;
       case 13:
         currentWidget = JadwalUjianPage(onBack: () => setState(() => _currentIndex = 0));
+        break;
+      case 14:
+        currentWidget = PusatStudiPage(onBack: () => setState(() => _currentIndex = 0));
         break;
       default:
         currentWidget = DashboardPage(refreshTrigger: _refreshTrigger);
@@ -373,6 +377,14 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Jadwal Ujian'),
               onTap: () {
                 setState(() => _currentIndex = 13);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.building_2_fill),
+              title: const Text('Pusat Studi'),
+              onTap: () {
+                setState(() => _currentIndex = 14);
                 Navigator.pop(context);
               },
             ),
