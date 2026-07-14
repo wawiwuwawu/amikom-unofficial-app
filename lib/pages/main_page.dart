@@ -20,6 +20,8 @@ import 'mbkm_page.dart';
 import 'visi_misi_page.dart';
 import 'visi_misi_institusi_page.dart';
 import 'tata_krama_page.dart';
+import 'agenda_akademik_page.dart';
+import 'jadwal_ujian_page.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -81,6 +83,12 @@ class _MainPageState extends State<MainPage> {
         break;
       case 11:
         currentWidget = TataKramaPage(onBack: () => setState(() => _currentIndex = 0));
+        break;
+      case 12:
+        currentWidget = AgendaAkademikPage(onBack: () => setState(() => _currentIndex = 0));
+        break;
+      case 13:
+        currentWidget = JadwalUjianPage(onBack: () => setState(() => _currentIndex = 0));
         break;
       default:
         currentWidget = DashboardPage(refreshTrigger: _refreshTrigger);
@@ -349,6 +357,22 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Tata Krama Mahasiswa'),
               onTap: () {
                 setState(() => _currentIndex = 11);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.calendar),
+              title: const Text('Agenda Akademik'),
+              onTap: () {
+                setState(() => _currentIndex = 12);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.check_mark_circled),
+              title: const Text('Jadwal Ujian'),
+              onTap: () {
+                setState(() => _currentIndex = 13);
                 Navigator.pop(context);
               },
             ),
