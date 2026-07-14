@@ -15,7 +15,7 @@ import 'panduan_list_page.dart';
 import 'jadwal_page.dart';
 import 'krs/krs_main_page.dart';
 import 'asisten_page.dart';
-
+import 'seminar_page.dart';
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
 
@@ -61,6 +61,9 @@ class _MainPageState extends State<MainPage> {
         break;
       case 6:
         currentWidget = AsistenPage(onBack: () => setState(() => _currentIndex = 0));
+        break;
+      case 7:
+        currentWidget = SeminarPage(onBack: () => setState(() => _currentIndex = 0));
         break;
       default:
         currentWidget = DashboardPage(refreshTrigger: _refreshTrigger);
@@ -289,6 +292,14 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Asisten Praktikum'),
               onTap: () {
                 setState(() => _currentIndex = 6);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.person_3_fill),
+              title: const Text('Jadwal Seminar 🎓'),
+              onTap: () {
+                setState(() => _currentIndex = 7);
                 Navigator.pop(context);
               },
             ),
