@@ -17,6 +17,9 @@ import 'krs/krs_main_page.dart';
 import 'asisten_page.dart';
 import 'seminar_page.dart';
 import 'mbkm_page.dart';
+import 'visi_misi_page.dart';
+import 'visi_misi_institusi_page.dart';
+import 'tata_krama_page.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -69,6 +72,15 @@ class _MainPageState extends State<MainPage> {
         break;
       case 8:
         currentWidget = MbkmPage(onBack: () => setState(() => _currentIndex = 0));
+        break;
+      case 9:
+        currentWidget = VisiMisiPage(onBack: () => setState(() => _currentIndex = 0));
+        break;
+      case 10:
+        currentWidget = VisiMisiInstitusiPage(onBack: () => setState(() => _currentIndex = 0));
+        break;
+      case 11:
+        currentWidget = TataKramaPage(onBack: () => setState(() => _currentIndex = 0));
         break;
       default:
         currentWidget = DashboardPage(refreshTrigger: _refreshTrigger);
@@ -313,6 +325,30 @@ class _MainPageState extends State<MainPage> {
               title: const Text('MBKM Internal'),
               onTap: () {
                 setState(() => _currentIndex = 8);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.eye_fill),
+              title: const Text('Visi & Misi Prodi'),
+              onTap: () {
+                setState(() => _currentIndex = 9);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.building_2_fill),
+              title: const Text('Visi & Misi Institusi'),
+              onTap: () {
+                setState(() => _currentIndex = 10);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.person_2_alt),
+              title: const Text('Tata Krama Mahasiswa'),
+              onTap: () {
+                setState(() => _currentIndex = 11);
                 Navigator.pop(context);
               },
             ),
