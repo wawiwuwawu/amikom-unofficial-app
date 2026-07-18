@@ -23,6 +23,7 @@ import 'tata_krama_page.dart';
 import 'agenda_akademik_page.dart';
 import 'jadwal_ujian_page.dart';
 import 'pusat_studi/pusat_studi_page.dart';
+import 'sertifikasi_page.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -93,6 +94,9 @@ class _MainPageState extends State<MainPage> {
         break;
       case 14:
         currentWidget = PusatStudiPage(onBack: () => setState(() => _currentIndex = 0));
+        break;
+      case 15:
+        currentWidget = SertifikasiPage(onBack: () => setState(() => _currentIndex = 0));
         break;
       default:
         currentWidget = DashboardPage(refreshTrigger: _refreshTrigger);
@@ -385,6 +389,14 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Pusat Studi'),
               onTap: () {
                 setState(() => _currentIndex = 14);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.doc_checkmark_fill),
+              title: const Text('Sertifikasi Kompetensi'),
+              onTap: () {
+                setState(() => _currentIndex = 15);
                 Navigator.pop(context);
               },
             ),
