@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:dio/dio.dart';
 import '../services/api_client.dart';
 
 class SplashPage extends StatefulWidget {
@@ -17,7 +18,35 @@ class _SplashPageState extends State<SplashPage> {
     _checkSession();
   }
 
+  String? _serverError;
+
   Future<void> _checkSession() async {
+    setState(() {
+      _serverError = null;
+    });
+
+    try {
+      final health = await ApiClient.instance.dio.get('/health', options: Options(
+        sendTimeout: const Duration(seconds: 5),
+        receiveTimeout: const Duration(seconds: 5),
+      ));
+      if (health.data['status'] != 'ok') {
+        if (mounted) {
+          setState(() {
+            _serverError = 'Maaf, Server Offline atau periksa jaringan Anda.';
+          });
+        }
+        return;
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _serverError = 'Maaf, Server Offline atau periksa jaringan Anda.';
+        });
+      }
+      return;
+    }
+
     await ApiClient.instance.restoreSession();
 
     if (ApiClient.instance.token == null ||
@@ -105,14 +134,34 @@ class _SplashPageState extends State<SplashPage> {
                 ),
               ).animate().fadeIn(delay: 500.ms),
               const SizedBox(height: 32),
-              const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: Color(0xFF501F66),
-                ),
-              ).animate().fadeIn(delay: 700.ms),
+              if (_serverError != null)
+                Column(
+                  children: [
+                    Text(
+                      _serverError!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF501F66),
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: _checkSession,
+                      child: const Text('Coba Lagi'),
+                    ),
+                  ],
+                ).animate().fadeIn()
+              else
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Color(0xFF501F66),
+                  ),
+                ).animate().fadeIn(delay: 700.ms),
             ],
           ),
         ),
