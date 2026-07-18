@@ -159,10 +159,13 @@ class _OrganisasiPageState extends State<OrganisasiPage> {
         ),
       ),
       body: _buildBody(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showForm,
-        backgroundColor: const Color(0xFF501F66),
-        child: const Icon(CupertinoIcons.add, color: Colors.white),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 80.0),
+        child: FloatingActionButton(
+          onPressed: _showForm,
+          backgroundColor: const Color(0xFF501F66),
+          child: const Icon(CupertinoIcons.add, color: Colors.white),
+        ),
       ),
     );
   }
