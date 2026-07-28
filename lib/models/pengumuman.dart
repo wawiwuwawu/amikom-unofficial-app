@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class PengumumanItem {
   final int id;
   final String judul;
@@ -57,8 +59,27 @@ class PengumumanDetail {
 
   factory PengumumanDetail.fromJson(Map<String, dynamic> rawJson) {
     Map<String, dynamic> json = rawJson;
-    if (rawJson['data'] is Map<String, dynamic>) {
-      json = rawJson['data'] as Map<String, dynamic>;
+    
+    if (rawJson['data'] != null) {
+      if (rawJson['data'] is Map<String, dynamic>) {
+        json = rawJson['data'] as Map<String, dynamic>;
+      } else if (rawJson['data'] is Map) {
+        json = Map<String, dynamic>.from(rawJson['data']);
+      } else if (rawJson['data'] is List && (rawJson['data'] as List).isNotEmpty) {
+        final firstItem = (rawJson['data'] as List).first;
+        if (firstItem is Map) {
+          json = Map<String, dynamic>.from(firstItem);
+        }
+      } else if (rawJson['data'] is String) {
+        try {
+          final parsed = jsonDecode(rawJson['data']);
+          if (parsed is Map) {
+            json = Map<String, dynamic>.from(parsed);
+          } else if (parsed is List && parsed.isNotEmpty && parsed.first is Map) {
+            json = Map<String, dynamic>.from(parsed.first);
+          }
+        } catch (_) {}
+      }
     }
 
     String cleanText(String str) {
@@ -86,8 +107,8 @@ class PengumumanDetail {
       if (raw is List) {
         final list = <Lampiran>[];
         for (final item in raw) {
-          if (item is Map<String, dynamic>) {
-            list.add(Lampiran.fromJson(item));
+          if (item is Map) {
+            list.add(Lampiran.fromJson(Map<String, dynamic>.from(item)));
           } else if (item is String && item.isNotEmpty) {
             list.add(Lampiran(nama: 'Lampiran Dokumen', url: item.trim()));
           }
