@@ -78,8 +78,9 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Tidak dapat membuka link: ${lampiran.url}')),
+          SnackBar(content: Text('Membuka tautan di browser: ${lampiran.url}')),
         );
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     } catch (e) {
       if (!mounted) return;
@@ -235,9 +236,20 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
                   for (int i = 0; i < _detail!.konten.length; i++) ...[
                     if (_detail!.konten[i].contains('<') &&
                         _detail!.konten[i].contains('>'))
-                      Html(data: _detail!.konten[i])
+                      Html(
+                        data: _detail!.konten[i],
+                        style: {
+                          "body": Style(
+                            margin: Margins.zero,
+                            padding: HtmlPaddings.zero,
+                            fontSize: FontSize(14),
+                            color: Colors.black87,
+                            lineHeight: LineHeight.number(1.5),
+                          ),
+                        },
+                      )
                     else
-                      Text(
+                      SelectableText(
                         _detail!.konten[i],
                         style: const TextStyle(
                           fontSize: 14,

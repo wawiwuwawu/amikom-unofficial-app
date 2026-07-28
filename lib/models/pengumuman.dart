@@ -13,8 +13,14 @@ class PengumumanItem {
         id: json['ID'] is int
             ? json['ID']
             : int.tryParse(json['ID']?.toString() ?? json['id']?.toString() ?? '0') ?? 0,
-        judul: json['JUDUL']?.toString() ?? json['judul']?.toString() ?? '',
-        tanggal: json['TANGGAL']?.toString() ?? json['tanggal']?.toString() ?? '',
+        judul: (json['JUDUL']?.toString() ?? json['judul']?.toString() ?? '')
+            .replaceAll('\u00a0', ' ')
+            .replaceAll('&nbsp;', ' ')
+            .trim(),
+        tanggal: (json['TANGGAL']?.toString() ?? json['tanggal']?.toString() ?? '')
+            .replaceAll('\u00a0', ' ')
+            .replaceAll('&nbsp;', ' ')
+            .trim(),
       );
 }
 
@@ -25,8 +31,12 @@ class Lampiran {
   Lampiran({required this.nama, required this.url});
 
   factory Lampiran.fromJson(Map<String, dynamic> json) => Lampiran(
-        nama: json['nama']?.toString() ?? json['NAMA']?.toString() ?? 'Lampiran Dokumen',
-        url: json['url']?.toString() ?? json['URL']?.toString() ?? json['link']?.toString() ?? '',
+        nama: (json['nama']?.toString() ?? json['NAMA']?.toString() ?? 'Lampiran Dokumen')
+            .replaceAll('\u00a0', ' ')
+            .replaceAll('&nbsp;', ' ')
+            .trim(),
+        url: (json['url']?.toString() ?? json['URL']?.toString() ?? json['link']?.toString() ?? '')
+            .trim(),
       );
 }
 
@@ -51,18 +61,22 @@ class PengumumanDetail {
       json = rawJson['data'] as Map<String, dynamic>;
     }
 
+    String cleanText(String str) {
+      return str.replaceAll('\u00a0', ' ').replaceAll('&nbsp;', ' ').trim();
+    }
+
     List<String> parseKonten(dynamic raw) {
       if (raw is List) {
         return raw
-            .map((e) => e.toString().trim())
+            .map((e) => cleanText(e.toString()))
             .where((s) => s.isNotEmpty)
             .toList();
       } else if (raw is String && raw.trim().isNotEmpty) {
-        return [raw.trim()];
+        return [cleanText(raw)];
       } else if (raw is Map) {
         final text = raw['text'] ?? raw['content'] ?? raw['html'] ?? raw['isi'];
         if (text != null && text.toString().trim().isNotEmpty) {
-          return [text.toString().trim()];
+          return [cleanText(text.toString())];
         }
       }
       return [];
@@ -75,7 +89,7 @@ class PengumumanDetail {
           if (item is Map<String, dynamic>) {
             list.add(Lampiran.fromJson(item));
           } else if (item is String && item.isNotEmpty) {
-            list.add(Lampiran(nama: 'Lampiran', url: item));
+            list.add(Lampiran(nama: 'Lampiran Dokumen', url: item.trim()));
           }
         }
         return list;
@@ -83,23 +97,29 @@ class PengumumanDetail {
       return [];
     }
 
-    final judul = json['judul']?.toString() ??
-        json['JUDUL']?.toString() ??
-        json['title']?.toString() ??
-        json['name']?.toString() ??
-        '';
+    final judul = cleanText(
+      json['judul']?.toString() ??
+          json['JUDUL']?.toString() ??
+          json['title']?.toString() ??
+          json['name']?.toString() ??
+          '',
+    );
 
-    final oleh = json['oleh']?.toString() ??
-        json['OLEH']?.toString() ??
-        json['author']?.toString() ??
-        json['pengirim']?.toString() ??
-        '';
+    final oleh = cleanText(
+      json['oleh']?.toString() ??
+          json['OLEH']?.toString() ??
+          json['author']?.toString() ??
+          json['pengirim']?.toString() ??
+          '',
+    );
 
-    final pukul = json['pukul']?.toString() ??
-        json['PUKUL']?.toString() ??
-        json['tanggal']?.toString() ??
-        json['date']?.toString() ??
-        '';
+    final pukul = cleanText(
+      json['pukul']?.toString() ??
+          json['PUKUL']?.toString() ??
+          json['tanggal']?.toString() ??
+          json['date']?.toString() ??
+          '',
+    );
 
     var kontenList = parseKonten(
       json['konten'] ??
@@ -113,7 +133,6 @@ class PengumumanDetail {
           json['text'],
     );
 
-    // Fallback if konten is empty but rawJson has nested details
     if (kontenList.isEmpty && json['pengumuman'] != null) {
       kontenList = parseKonten(json['pengumuman']);
     }
