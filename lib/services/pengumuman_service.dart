@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'dart:developer' as dev;
 import 'api_client.dart';
 import '../models/pengumuman.dart';
 
@@ -27,7 +26,6 @@ class PengumumanService {
     try {
       final str = idOrUrl.toString().trim();
       final endpoint = _buildEndpoint(str);
-      dev.log('[PengumumanService] GET $endpoint');
       final response = await _dio.get(endpoint);
       final raw = response.data;
 
@@ -38,7 +36,6 @@ class PengumumanService {
       }
 
       final detail = PengumumanDetail.fromJson(jsonMap);
-      dev.log('[PengumumanService] judul: "${detail.judul}" konten: ${detail.konten.length}');
 
       // Validate that we got actual content (not an auth error response)
       if (detail.judul.isEmpty && detail.konten.isEmpty) {
@@ -51,7 +48,6 @@ class PengumumanService {
 
       return detail;
     } on DioException catch (e) {
-      dev.log('[PengumumanService] DioException: ${e.message}');
       if (e.response != null) {
         final msg = e.response?.data?['message'];
         if (msg != null && msg.toString().isNotEmpty) {
@@ -94,3 +90,4 @@ class PengumumanService {
     return {};
   }
 }
+

@@ -129,9 +129,11 @@ class ApiClient {
             if (creds == null) {
               await _forceLogout();
             }
-            handler.resolve(error.response ?? Response(
+            handler.reject(DioException(
               requestOptions: error.requestOptions,
-              data: {'message': 'Sesi berakhir. Silakan login ulang.'},
+              response: error.response,
+              type: DioExceptionType.badResponse,
+              message: 'Sesi berakhir. Silakan login ulang.',
             ));
             return;
           }
@@ -161,9 +163,11 @@ class ApiClient {
           if (creds == null) {
             await _forceLogout();
           }
-          handler.resolve(error.response ?? Response(
+          handler.reject(DioException(
             requestOptions: error.requestOptions,
-            data: {'message': 'Sesi berakhir. Silakan login ulang.'},
+            response: error.response,
+            type: DioExceptionType.badResponse,
+            message: 'Sesi berakhir. Silakan login ulang.',
           ));
           return;
         }

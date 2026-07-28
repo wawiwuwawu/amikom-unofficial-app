@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:developer' as dev;
 import 'api_client.dart';
 import '../models/notifikasi.dart';
 
@@ -28,7 +27,6 @@ class NotifikasiService {
   Future<NotifikasiDetail> getNotifikasiDetail(String id) async {
     try {
       final endpoint = '/api/v1/notifikasi/$id';
-      dev.log('[NotifikasiService] GET $endpoint');
       final response = await _dio.get(endpoint);
       final raw = response.data;
 
@@ -64,7 +62,6 @@ class NotifikasiService {
 
       return detail;
     } on DioException catch (e) {
-      dev.log('[NotifikasiService] DioException: ${e.message}');
       if (e.response != null) {
         final msg = e.response?.data?['message'];
         if (msg != null && msg.toString().isNotEmpty) {
@@ -111,3 +108,4 @@ class NotifikasiService {
     }
   }
 }
+
