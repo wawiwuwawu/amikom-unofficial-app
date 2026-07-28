@@ -58,12 +58,26 @@ dev_dependencies:
 
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.4
 
 flutter_launcher_icons:
   android: "ic_launcher"
   ios: false
   image_path: "assets/icon_amiapp.png"
   min_sdk_android: 21
+
+flutter_native_splash:
+  color: "#FAFCFF"
+  image: "assets/splash_book_icon.png"
+  color_dark: "#FAFCFF"
+  image_dark: "assets/splash_book_icon.png"
+  android_12:
+    color: "#FAFCFF"
+    image: "assets/splash_book_icon.png"
+    color_dark: "#FAFCFF"
+    image_dark: "assets/splash_book_icon.png"
+  android: true
+  ios: false
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -80,6 +94,7 @@ flutter:
     - .env
     - .env.example
     - assets/icon_amiapp.png
+    - assets/splash_book_icon.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
