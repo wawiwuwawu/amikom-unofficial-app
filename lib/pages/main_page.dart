@@ -64,48 +64,6 @@ class _MainPageState extends State<MainPage> {
         showMainAppBar = true;
         appBarTitle = 'Menu Lainnya';
         break;
-      case 4:
-        currentWidget = AbsensiPage(onBack: () => setState(() => _currentIndex = 0));
-        break;
-      case 5:
-        currentWidget = KrsMainPage(onBack: () => setState(() => _currentIndex = 0));
-        break;
-      case 6:
-        currentWidget = AsistenPage(onBack: () => setState(() => _currentIndex = 0));
-        break;
-      case 7:
-        currentWidget = SeminarPage(onBack: () => setState(() => _currentIndex = 0));
-        break;
-      case 8:
-        currentWidget = MbkmPage(onBack: () => setState(() => _currentIndex = 0));
-        break;
-      case 9:
-        currentWidget = VisiMisiPage(onBack: () => setState(() => _currentIndex = 0));
-        break;
-      case 10:
-        currentWidget = VisiMisiInstitusiPage(onBack: () => setState(() => _currentIndex = 0));
-        break;
-      case 11:
-        currentWidget = TataKramaPage(onBack: () => setState(() => _currentIndex = 0));
-        break;
-      case 12:
-        currentWidget = AgendaAkademikPage(onBack: () => setState(() => _currentIndex = 0));
-        break;
-      case 13:
-        currentWidget = JadwalUjianPage(onBack: () => setState(() => _currentIndex = 0));
-        break;
-      case 14:
-        currentWidget = PusatStudiPage(onBack: () => setState(() => _currentIndex = 0));
-        break;
-      case 15:
-        currentWidget = SertifikasiPage(onBack: () => setState(() => _currentIndex = 0));
-        break;
-      case 16:
-        currentWidget = OrganisasiPage(onBack: () => setState(() => _currentIndex = 0));
-        break;
-      case 17:
-        currentWidget = PrestasiPage(onBack: () => setState(() => _currentIndex = 0));
-        break;
       default:
         currentWidget = DashboardPage(refreshTrigger: _refreshTrigger);
         showMainAppBar = true;
@@ -178,7 +136,14 @@ class _MainPageState extends State<MainPage> {
         ],
       ),
       child: FloatingActionButton(
-        onPressed: () => setState(() => _currentIndex = 4), // Changed from Navigator.push
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AbsensiPage(onBack: () => Navigator.pop(context)),
+            ),
+          );
+        },
         backgroundColor: const Color(0xFFBBDEFB), // Ice Blue Deep
         elevation: 0,
         shape: const CircleBorder(),
@@ -288,7 +253,6 @@ class _MainPageState extends State<MainPage> {
               leading: const Icon(CupertinoIcons.news_solid),
               title: const Text('Berita Kampus'),
               onTap: () {
-                setState(() => _currentIndex = 0);
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const BeritaListPage()));
               },
@@ -297,7 +261,6 @@ class _MainPageState extends State<MainPage> {
               leading: const Icon(CupertinoIcons.rosette),
               title: const Text('KHS'),
               onTap: () {
-                setState(() => _currentIndex = 0);
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const KhsPage()));
               },
@@ -306,7 +269,6 @@ class _MainPageState extends State<MainPage> {
               leading: const Icon(CupertinoIcons.speaker_2_fill),
               title: const Text('Pengumuman Akademik'),
               onTap: () {
-                setState(() => _currentIndex = 0);
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const PengumumanListPage()));
               },
@@ -315,7 +277,6 @@ class _MainPageState extends State<MainPage> {
               leading: const Icon(CupertinoIcons.book),
               title: const Text('Panduan Akademik'),
               onTap: () {
-                setState(() => _currentIndex = 0);
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const PanduanListPage()));
               },
@@ -324,104 +285,104 @@ class _MainPageState extends State<MainPage> {
               leading: const Icon(CupertinoIcons.doc_text_search),
               title: const Text('KRS'),
               onTap: () {
-                setState(() => _currentIndex = 5);
                 Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => KrsMainPage(onBack: () => Navigator.pop(context))));
               },
             ),
             ListTile(
               leading: const Icon(CupertinoIcons.briefcase),
               title: const Text('Asisten Praktikum'),
               onTap: () {
-                setState(() => _currentIndex = 6);
                 Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => AsistenPage(onBack: () => Navigator.pop(context))));
               },
             ),
             ListTile(
               leading: const Icon(CupertinoIcons.person_3_fill),
               title: const Text('Jadwal Seminar 🎓'),
               onTap: () {
-                setState(() => _currentIndex = 7);
                 Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => SeminarPage(onBack: () => Navigator.pop(context))));
               },
             ),
             ListTile(
               leading: const Icon(CupertinoIcons.building_2_fill),
               title: const Text('MBKM Internal'),
               onTap: () {
-                setState(() => _currentIndex = 8);
                 Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => MbkmPage(onBack: () => Navigator.pop(context))));
               },
             ),
             ListTile(
               leading: const Icon(CupertinoIcons.eye_fill),
               title: const Text('Visi & Misi Prodi'),
               onTap: () {
-                setState(() => _currentIndex = 9);
                 Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => VisiMisiPage(onBack: () => Navigator.pop(context))));
               },
             ),
             ListTile(
               leading: const Icon(CupertinoIcons.building_2_fill),
               title: const Text('Visi & Misi Institusi'),
               onTap: () {
-                setState(() => _currentIndex = 10);
                 Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => VisiMisiInstitusiPage(onBack: () => Navigator.pop(context))));
               },
             ),
             ListTile(
               leading: const Icon(CupertinoIcons.person_2_alt),
               title: const Text('Tata Krama Mahasiswa'),
               onTap: () {
-                setState(() => _currentIndex = 11);
                 Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => TataKramaPage(onBack: () => Navigator.pop(context))));
               },
             ),
             ListTile(
               leading: const Icon(CupertinoIcons.calendar),
               title: const Text('Agenda Akademik'),
               onTap: () {
-                setState(() => _currentIndex = 12);
                 Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => AgendaAkademikPage(onBack: () => Navigator.pop(context))));
               },
             ),
             ListTile(
               leading: const Icon(CupertinoIcons.check_mark_circled),
               title: const Text('Jadwal Ujian'),
               onTap: () {
-                setState(() => _currentIndex = 13);
                 Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => JadwalUjianPage(onBack: () => Navigator.pop(context))));
               },
             ),
             ListTile(
               leading: const Icon(CupertinoIcons.building_2_fill),
               title: const Text('Pusat Studi'),
               onTap: () {
-                setState(() => _currentIndex = 14);
                 Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => PusatStudiPage(onBack: () => Navigator.pop(context))));
               },
             ),
             ListTile(
               leading: const Icon(CupertinoIcons.doc_checkmark_fill),
               title: const Text('Sertifikasi Kompetensi'),
               onTap: () {
-                setState(() => _currentIndex = 15);
                 Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => SertifikasiPage(onBack: () => Navigator.pop(context))));
               },
             ),
             ListTile(
               leading: const Icon(CupertinoIcons.person_3_fill),
               title: const Text('Organisasi Mahasiswa'),
               onTap: () {
-                setState(() => _currentIndex = 16);
                 Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => OrganisasiPage(onBack: () => Navigator.pop(context))));
               },
             ),
             ListTile(
               leading: const Icon(CupertinoIcons.star_fill),
               title: const Text('Prestasi Mahasiswa'),
               onTap: () {
-                setState(() => _currentIndex = 17);
                 Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => PrestasiPage(onBack: () => Navigator.pop(context))));
               },
             ),
             const Divider(),
