@@ -26,6 +26,7 @@ import 'pusat_studi/pusat_studi_page.dart';
 import 'sertifikasi_page.dart';
 import 'organisasi_page.dart';
 import 'prestasi_page.dart';
+import 'seminar_workshop_page.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -383,6 +384,14 @@ class _MainPageState extends State<MainPage> {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => PrestasiPage(onBack: () => Navigator.pop(context))));
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.rectangle_grid_2x2_fill),
+              title: const Text('Seminar & Workshop'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => SeminarWorkshopPage(onBack: () => Navigator.pop(context))));
               },
             ),
             const Divider(),
