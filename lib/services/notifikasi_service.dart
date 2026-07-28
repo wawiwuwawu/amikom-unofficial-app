@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:developer' as dev;
 import 'api_client.dart';
 import '../models/notifikasi.dart';
 
@@ -20,6 +22,56 @@ class NotifikasiService {
         }
       }
       throw Exception(e.message ?? 'Gagal memuat notifikasi');
+    }
+  }
+
+  Future<NotifikasiDetail> getNotifikasiDetail(String id) async {
+    try {
+      final endpoint = '/api/v1/notifikasi/$id';
+      dev.log('[NotifikasiService] GET $endpoint');
+      final response = await _dio.get(endpoint);
+      final raw = response.data;
+
+      Map<String, dynamic> jsonMap = {};
+      if (raw is Map) {
+        jsonMap = Map<String, dynamic>.from(raw);
+      } else if (raw is List && raw.isNotEmpty && raw.first is Map) {
+        jsonMap = Map<String, dynamic>.from(raw.first);
+      } else if (raw is String) {
+        try {
+          final parsed = jsonDecode(raw);
+          if (parsed is Map) {
+            jsonMap = Map<String, dynamic>.from(parsed);
+          } else if (parsed is List && parsed.isNotEmpty && parsed.first is Map) {
+            jsonMap = Map<String, dynamic>.from(parsed.first);
+          }
+        } catch (_) {}
+      }
+
+      if (jsonMap.isEmpty) {
+        throw Exception('Format data detail notifikasi tidak valid');
+      }
+
+      final detail = NotifikasiDetail.fromJson(jsonMap);
+
+      if (detail.judul.isEmpty && detail.konten.isEmpty) {
+        final msg = jsonMap['message']?.toString();
+        if (msg != null && msg.isNotEmpty) {
+          throw Exception(msg);
+        }
+        throw Exception('Data notifikasi tidak tersedia');
+      }
+
+      return detail;
+    } on DioException catch (e) {
+      dev.log('[NotifikasiService] DioException: ${e.message}');
+      if (e.response != null) {
+        final msg = e.response?.data?['message'];
+        if (msg != null && msg.toString().isNotEmpty) {
+          throw Exception(msg);
+        }
+      }
+      throw Exception(e.message ?? 'Gagal memuat detail notifikasi');
     }
   }
 

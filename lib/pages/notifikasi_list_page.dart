@@ -6,7 +6,7 @@ import '../models/notifikasi.dart';
 import '../services/notifikasi_service.dart';
 import '../services/api_client.dart';
 import '../widgets/glass_card.dart';
-import 'pengumuman_detail_page.dart';
+import 'notifikasi_detail_page.dart';
 
 class NotifikasiListPage extends StatefulWidget {
   final VoidCallback? onBack;
@@ -95,10 +95,7 @@ class _NotifikasiListPageState extends State<NotifikasiListPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => PengumumanDetailPage(
-          id: item.id,
-          detailUrl: item.detailUrl.isNotEmpty ? item.detailUrl : null,
-        ),
+        builder: (_) => NotifikasiDetailPage(id: item.id),
       ),
     );
   }
