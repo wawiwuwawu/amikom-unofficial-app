@@ -25,6 +25,7 @@ import 'jadwal_ujian_page.dart';
 import 'pusat_studi/pusat_studi_page.dart';
 import 'sertifikasi_page.dart';
 import 'organisasi_page.dart';
+import 'prestasi_page.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -101,6 +102,9 @@ class _MainPageState extends State<MainPage> {
         break;
       case 16:
         currentWidget = OrganisasiPage(onBack: () => setState(() => _currentIndex = 0));
+        break;
+      case 17:
+        currentWidget = PrestasiPage(onBack: () => setState(() => _currentIndex = 0));
         break;
       default:
         currentWidget = DashboardPage(refreshTrigger: _refreshTrigger);
@@ -409,6 +413,14 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Organisasi Mahasiswa'),
               onTap: () {
                 setState(() => _currentIndex = 16);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.star_fill),
+              title: const Text('Prestasi Mahasiswa'),
+              onTap: () {
+                setState(() => _currentIndex = 17);
                 Navigator.pop(context);
               },
             ),
