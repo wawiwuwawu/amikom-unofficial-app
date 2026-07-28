@@ -284,8 +284,17 @@ class ApiClient {
     }
   }
 
-  // ─── Silent Re-Login (Public, for SplashPage) ────────
+  // ─── Silent Re-Login (Public, for SplashPage & Retry) ────────
   Future<bool> trySilentReLogin() => _trySilentReLogin();
+
+  /// Ensures an active valid session or performs silent re-login
+  Future<bool> ensureSessionOrSilentLogin() async {
+    if (_token != null && _token!.isNotEmpty) {
+      final refreshed = await _tryRefresh();
+      if (refreshed) return true;
+    }
+    return await _trySilentReLogin();
+  }
 
   // ─── Force Logout ────────────────────────────────────
   Future<void> _forceLogout() async {

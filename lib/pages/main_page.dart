@@ -27,6 +27,8 @@ import 'sertifikasi_page.dart';
 import 'organisasi_page.dart';
 import 'prestasi_page.dart';
 import 'seminar_workshop_page.dart';
+import 'notifikasi_list_page.dart';
+import '../services/notifikasi_service.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -38,6 +40,22 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
   int _refreshTrigger = 0;
+  int _unreadNotifCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkUnreadNotif();
+  }
+
+  Future<void> _checkUnreadNotif() async {
+    try {
+      final count = await NotifikasiService().getUnreadCount();
+      if (mounted) {
+        setState(() => _unreadNotifCount = count);
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,11 +113,43 @@ class _MainPageState extends State<MainPage> {
                 ),
               ),
               actions: [
-                if (_currentIndex == 0)
-                  IconButton(
-                    icon: const Icon(CupertinoIcons.refresh),
-                    onPressed: () => setState(() => _refreshTrigger++),
-                  ).animate().rotate(),
+                IconButton(
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(CupertinoIcons.bell_fill, color: Color(0xFF501F66)),
+                      if (_unreadNotifCount > 0)
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              _unreadNotifCount > 9 ? '9+' : _unreadNotifCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => NotifikasiListPage(onBack: () => Navigator.pop(context)),
+                      ),
+                    );
+                    _checkUnreadNotif();
+                  },
+                ),
               ],
             )
           : null, // Hide main AppBar if the inner page (Transkrip/Absensi) has its own
@@ -247,6 +297,31 @@ class _MainPageState extends State<MainPage> {
               ),
             ),
             _drawerItem(0, CupertinoIcons.square_grid_2x2_fill, 'Dashboard'),
+            ListTile(
+              leading: const Icon(CupertinoIcons.bell_fill, color: Color(0xFF501F66)),
+              title: const Text('Notifikasi & Pengumuman'),
+              trailing: _unreadNotifCount > 0
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$_unreadNotifCount baru',
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    )
+                  : null,
+              onTap: () async {
+                Navigator.pop(context);
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => NotifikasiListPage(onBack: () => Navigator.pop(context))),
+                );
+                _checkUnreadNotif();
+              },
+            ),
             _drawerItem(1, CupertinoIcons.calendar, 'Jadwal Perkuliahan'),
             _drawerItem(2, CupertinoIcons.doc_text_fill, 'Transkrip Nilai'),
             const Divider(),
