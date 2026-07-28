@@ -10,9 +10,11 @@ class PengumumanItem {
   });
 
   factory PengumumanItem.fromJson(Map<String, dynamic> json) => PengumumanItem(
-        id: json['ID'] ?? 0,
-        judul: json['JUDUL'] ?? '',
-        tanggal: json['TANGGAL'] ?? '',
+        id: json['ID'] is int
+            ? json['ID']
+            : int.tryParse(json['ID']?.toString() ?? json['id']?.toString() ?? '0') ?? 0,
+        judul: json['JUDUL']?.toString() ?? json['judul']?.toString() ?? '',
+        tanggal: json['TANGGAL']?.toString() ?? json['tanggal']?.toString() ?? '',
       );
 }
 
@@ -23,8 +25,8 @@ class Lampiran {
   Lampiran({required this.nama, required this.url});
 
   factory Lampiran.fromJson(Map<String, dynamic> json) => Lampiran(
-        nama: json['nama'] ?? '',
-        url: json['url'] ?? '',
+        nama: json['nama']?.toString() ?? json['NAMA']?.toString() ?? 'Lampiran',
+        url: json['url']?.toString() ?? json['URL']?.toString() ?? json['link']?.toString() ?? '',
       );
 }
 
@@ -43,15 +45,48 @@ class PengumumanDetail {
     required this.lampiran,
   });
 
-  factory PengumumanDetail.fromJson(Map<String, dynamic> json) =>
-      PengumumanDetail(
-        judul: json['judul'] ?? '',
-        oleh: json['oleh'] ?? '',
-        pukul: json['pukul'] ?? '',
-        konten: (json['konten'] as List?)?.map((e) => e.toString()).toList() ?? [],
-        lampiran: (json['lampiran'] as List?)
-                ?.map((e) => Lampiran.fromJson(e))
-                .toList() ??
-            [],
-      );
+  factory PengumumanDetail.fromJson(Map<String, dynamic> rawJson) {
+    final Map<String, dynamic> json = (rawJson['data'] is Map<String, dynamic>)
+        ? rawJson['data'] as Map<String, dynamic>
+        : rawJson;
+
+    List<String> parseKonten(dynamic raw) {
+      if (raw is List) {
+        return raw.map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList();
+      } else if (raw is String) {
+        if (raw.trim().isEmpty) return [];
+        return [raw.trim()];
+      }
+      return [];
+    }
+
+    List<Lampiran> parseLampiran(dynamic raw) {
+      if (raw is List) {
+        return raw
+            .whereType<Map<String, dynamic>>()
+            .map((e) => Lampiran.fromJson(e))
+            .toList();
+      }
+      return [];
+    }
+
+    return PengumumanDetail(
+      judul: json['judul']?.toString() ??
+          json['JUDUL']?.toString() ??
+          json['title']?.toString() ??
+          '',
+      oleh: json['oleh']?.toString() ??
+          json['OLEH']?.toString() ??
+          json['author']?.toString() ??
+          json['pengirim']?.toString() ??
+          '',
+      pukul: json['pukul']?.toString() ??
+          json['PUKUL']?.toString() ??
+          json['tanggal']?.toString() ??
+          json['date']?.toString() ??
+          '',
+      konten: parseKonten(json['konten'] ?? json['KONTEN'] ?? json['isi'] ?? json['detail']),
+      lampiran: parseLampiran(json['lampiran'] ?? json['LAMPIRAN'] ?? json['files']),
+    );
+  }
 }
