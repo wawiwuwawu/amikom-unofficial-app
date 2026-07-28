@@ -63,18 +63,10 @@ class ApiClient {
                     msg.contains('sesi berakhir'))) {
               final retryCount = _getRetryCount(response.requestOptions);
               if (retryCount >= _maxRetries) {
-                // Last resort: try silent re-login
-                final reLoginSuccess = await _trySilentReLogin();
-                if (reLoginSuccess) {
-                  response.requestOptions.headers['Authorization'] =
-                      'Bearer $_token';
-                  response.requestOptions.extra['retryCount'] = 0;
-                  final retryResponse =
-                      await dio.fetch(response.requestOptions);
-                  handler.resolve(retryResponse);
-                  return;
+                final creds = await getSavedCredentials();
+                if (creds == null) {
+                  await _forceLogout();
                 }
-                await _forceLogout();
                 handler.reject(DioException(
                   requestOptions: response.requestOptions,
                   response: response,
@@ -85,33 +77,36 @@ class ApiClient {
               }
               response.requestOptions.extra['retryCount'] = retryCount + 1;
               await _retryDelay();
-              final success = await _tryRefresh();
-              if (success) {
-                response.requestOptions.headers['Authorization'] =
-                    'Bearer $_token';
-                final retryResponse =
-                    await dio.fetch(response.requestOptions);
+
+              // 1. Try silent re-login first (most robust if server restarted)
+              final reLoginSuccess = await _trySilentReLogin();
+              if (reLoginSuccess) {
+                response.requestOptions.headers['Authorization'] = 'Bearer $_token';
+                response.requestOptions.extra['retryCount'] = 0;
+                final retryResponse = await dio.fetch(response.requestOptions);
                 handler.resolve(retryResponse);
-              } else {
-                // Refresh failed, try silent re-login
-                final reLoginSuccess = await _trySilentReLogin();
-                if (reLoginSuccess) {
-                  response.requestOptions.headers['Authorization'] =
-                      'Bearer $_token';
-                  response.requestOptions.extra['retryCount'] = 0;
-                  final retryResponse =
-                      await dio.fetch(response.requestOptions);
-                  handler.resolve(retryResponse);
-                } else {
-                  await _forceLogout();
-                  handler.reject(DioException(
-                    requestOptions: response.requestOptions,
-                    response: response,
-                    type: DioExceptionType.badResponse,
-                    message: 'Sesi berakhir. Silakan login ulang.',
-                  ));
-                }
+                return;
               }
+
+              // 2. Try refresh token
+              final refreshSuccess = await _tryRefresh();
+              if (refreshSuccess) {
+                response.requestOptions.headers['Authorization'] = 'Bearer $_token';
+                final retryResponse = await dio.fetch(response.requestOptions);
+                handler.resolve(retryResponse);
+                return;
+              }
+
+              final creds = await getSavedCredentials();
+              if (creds == null) {
+                await _forceLogout();
+              }
+              handler.reject(DioException(
+                requestOptions: response.requestOptions,
+                response: response,
+                type: DioExceptionType.badResponse,
+                message: 'Sesi berakhir. Silakan login ulang.',
+              ));
               return;
             }
           }
@@ -127,19 +122,13 @@ class ApiClient {
           return;
         }
 
-        if (error.response?.statusCode == 401 && _refreshToken != null) {
+        if (error.response?.statusCode == 401) {
           final retryCount = _getRetryCount(error.requestOptions);
           if (retryCount >= _maxRetries) {
-            // Last resort: try silent re-login
-            final reLoginSuccess = await _trySilentReLogin();
-            if (reLoginSuccess) {
-              error.requestOptions.headers['Authorization'] = 'Bearer $_token';
-              error.requestOptions.extra['retryCount'] = 0;
-              final retryResponse = await dio.fetch(error.requestOptions);
-              handler.resolve(retryResponse);
-              return;
+            final creds = await getSavedCredentials();
+            if (creds == null) {
+              await _forceLogout();
             }
-            await _forceLogout();
             handler.resolve(error.response ?? Response(
               requestOptions: error.requestOptions,
               data: {'message': 'Sesi berakhir. Silakan login ulang.'},
@@ -148,27 +137,34 @@ class ApiClient {
           }
           error.requestOptions.extra['retryCount'] = retryCount + 1;
           await _retryDelay();
-          final success = await _tryRefresh();
-          if (success) {
+
+          // 1. Try silent re-login first
+          final reLoginSuccess = await _trySilentReLogin();
+          if (reLoginSuccess) {
+            error.requestOptions.headers['Authorization'] = 'Bearer $_token';
+            error.requestOptions.extra['retryCount'] = 0;
+            final retryResponse = await dio.fetch(error.requestOptions);
+            handler.resolve(retryResponse);
+            return;
+          }
+
+          // 2. Try token refresh
+          final refreshSuccess = await _tryRefresh();
+          if (refreshSuccess) {
             error.requestOptions.headers['Authorization'] = 'Bearer $_token';
             final retryResponse = await dio.fetch(error.requestOptions);
             handler.resolve(retryResponse);
-          } else {
-            // Refresh failed, try silent re-login
-            final reLoginSuccess = await _trySilentReLogin();
-            if (reLoginSuccess) {
-              error.requestOptions.headers['Authorization'] = 'Bearer $_token';
-              error.requestOptions.extra['retryCount'] = 0;
-              final retryResponse = await dio.fetch(error.requestOptions);
-              handler.resolve(retryResponse);
-            } else {
-              await _forceLogout();
-              handler.resolve(error.response ?? Response(
-                requestOptions: error.requestOptions,
-                data: {'message': 'Sesi berakhir. Silakan login ulang.'},
-              ));
-            }
+            return;
           }
+
+          final creds = await getSavedCredentials();
+          if (creds == null) {
+            await _forceLogout();
+          }
+          handler.resolve(error.response ?? Response(
+            requestOptions: error.requestOptions,
+            data: {'message': 'Sesi berakhir. Silakan login ulang.'},
+          ));
           return;
         }
 
@@ -231,24 +227,44 @@ class ApiClient {
     await _secureStorage.delete(key: _secKeyPass);
   }
 
+  Dio _createUtilityDio() {
+    final utilityDio = Dio(
+      BaseOptions(
+        baseUrl: dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000',
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 15),
+        sendTimeout: const Duration(seconds: 10),
+        headers: {'Content-Type': 'application/json'},
+      ),
+    );
+    (utilityDio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+      final client = HttpClient();
+      client.idleTimeout = const Duration(seconds: 5);
+      return client;
+    };
+    return utilityDio;
+  }
+
   // ─── Token Refresh ───────────────────────────────────
   Future<bool> _tryRefresh() async {
+    if (_refreshToken == null || _refreshToken!.isEmpty) return false;
     try {
-      final refreshDio = Dio(
-        BaseOptions(
-          baseUrl: dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000',
-        ),
-      );
+      final refreshDio = _createUtilityDio();
       final res = await refreshDio.post(
         '/api/v1/auth/refresh',
         data: {'refreshToken': _refreshToken},
       );
-      _token = res.data['token'];
-      _refreshToken = res.data['refreshToken'];
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', _token!);
-      await prefs.setString('refreshToken', _refreshToken!);
-      return true;
+      final newToken = res.data['token'];
+      final newRefresh = res.data['refreshToken'];
+      if (newToken != null && newRefresh != null) {
+        _token = newToken;
+        _refreshToken = newRefresh;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', _token!);
+        await prefs.setString('refreshToken', _refreshToken!);
+        return true;
+      }
+      return false;
     } catch (_) {
       return false;
     }
@@ -260,12 +276,7 @@ class ApiClient {
       final creds = await getSavedCredentials();
       if (creds == null) return false;
 
-      final loginDio = Dio(
-        BaseOptions(
-          baseUrl: dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000',
-          headers: {'Content-Type': 'application/json'},
-        ),
-      );
+      final loginDio = _createUtilityDio();
       final res = await loginDio.post(
         '/api/v1/auth/login',
         data: {'pengguna': creds['user'], 'passw': creds['pass']},
@@ -275,7 +286,9 @@ class ApiClient {
       final newRefresh = res.data['refreshToken'];
       if (newToken != null && newRefresh != null) {
         await setTokens(newToken, newRefresh);
-        _nim = res.data['nim'] ?? _nim;
+        if (res.data['nim'] != null) {
+          _nim = res.data['nim'].toString();
+        }
         return true;
       }
       return false;
@@ -289,11 +302,15 @@ class ApiClient {
 
   /// Ensures an active valid session or performs silent re-login
   Future<bool> ensureSessionOrSilentLogin() async {
-    if (_token != null && _token!.isNotEmpty) {
-      final refreshed = await _tryRefresh();
-      if (refreshed) return true;
+    // 1. Try silent re-login first if credentials exist (most robust when server restarted)
+    final silentSuccess = await _trySilentReLogin();
+    if (silentSuccess) return true;
+
+    // 2. Fallback to token refresh
+    if (_token != null && _token!.isNotEmpty && _refreshToken != null) {
+      return await _tryRefresh();
     }
-    return await _trySilentReLogin();
+    return false;
   }
 
   // ─── Force Logout ────────────────────────────────────

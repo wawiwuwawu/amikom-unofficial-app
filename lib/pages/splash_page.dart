@@ -27,8 +27,8 @@ class _SplashPageState extends State<SplashPage> {
 
     try {
       final health = await ApiClient.instance.dio.get('/health', options: Options(
-        sendTimeout: const Duration(seconds: 5),
-        receiveTimeout: const Duration(seconds: 5),
+        sendTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
       ));
       if (health.data['status'] != 'ok') {
         if (mounted) {
