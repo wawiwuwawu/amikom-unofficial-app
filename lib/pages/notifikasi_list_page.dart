@@ -90,13 +90,15 @@ class _NotifikasiListPageState extends State<NotifikasiListPage> {
       _readIds = readSet;
     });
 
-    final targetId = int.tryParse(item.id) ?? 0;
     if (!mounted) return;
 
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => PengumumanDetailPage(id: targetId),
+        builder: (_) => PengumumanDetailPage(
+          id: item.id,
+          detailUrl: item.detailUrl.isNotEmpty ? item.detailUrl : null,
+        ),
       ),
     );
   }

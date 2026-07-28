@@ -8,8 +8,8 @@ class PengumumanService {
   Future<List<PengumumanItem>> getList() async {
     try {
       final response = await _dio.get('/api/v1/pengumumanAkademik');
-      final data = response.data['data'] as List;
-      return data.map((e) => PengumumanItem.fromJson(e)).toList();
+      final data = response.data['data'] as List?;
+      return data?.map((e) => PengumumanItem.fromJson(e)).toList() ?? [];
     } on DioException catch (e) {
       if (e.response != null) {
         final msg = e.response?.data?['message'];
@@ -21,10 +21,16 @@ class PengumumanService {
     }
   }
 
-  Future<PengumumanDetail> getDetail(int id) async {
+  Future<PengumumanDetail> getDetail(dynamic idOrUrl) async {
     try {
-      final response = await _dio.get('/api/v1/pengumumanAkademik/$id');
-      return PengumumanDetail.fromJson(response.data);
+      final str = idOrUrl.toString().trim();
+      final endpoint = str.startsWith('/') ? str : '/api/v1/pengumumanAkademik/$str';
+      final response = await _dio.get(endpoint);
+      final raw = response.data;
+      if (raw is Map<String, dynamic>) {
+        return PengumumanDetail.fromJson(raw);
+      }
+      throw Exception('Format data detail pengumuman tidak valid');
     } on DioException catch (e) {
       if (e.response != null) {
         final msg = e.response?.data?['message'];

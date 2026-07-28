@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_html/flutter_html.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/pengumuman.dart';
@@ -8,8 +9,14 @@ import '../services/pengumuman_service.dart';
 import '../widgets/glass_card.dart';
 
 class PengumumanDetailPage extends StatefulWidget {
-  final int id;
-  const PengumumanDetailPage({super.key, required this.id});
+  final dynamic id;
+  final String? detailUrl;
+
+  const PengumumanDetailPage({
+    super.key,
+    required this.id,
+    this.detailUrl,
+  });
 
   @override
   State<PengumumanDetailPage> createState() => _PengumumanDetailPageState();
@@ -35,7 +42,10 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
     });
 
     try {
-      final data = await _service.getDetail(widget.id);
+      final target = (widget.detailUrl != null && widget.detailUrl!.isNotEmpty)
+          ? widget.detailUrl!
+          : widget.id;
+      final data = await _service.getDetail(target);
       if (!mounted) return;
       setState(() {
         _detail = data;
@@ -223,14 +233,18 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   for (int i = 0; i < _detail!.konten.length; i++) ...[
-                    Text(
-                      _detail!.konten[i],
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black87,
-                        height: 1.6,
+                    if (_detail!.konten[i].contains('<') &&
+                        _detail!.konten[i].contains('>'))
+                      Html(data: _detail!.konten[i])
+                    else
+                      Text(
+                        _detail!.konten[i],
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                          height: 1.6,
+                        ),
                       ),
-                    ),
                     if (i < _detail!.konten.length - 1)
                       const SizedBox(height: 12),
                   ],

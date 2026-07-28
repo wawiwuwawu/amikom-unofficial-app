@@ -25,7 +25,7 @@ class Lampiran {
   Lampiran({required this.nama, required this.url});
 
   factory Lampiran.fromJson(Map<String, dynamic> json) => Lampiran(
-        nama: json['nama']?.toString() ?? json['NAMA']?.toString() ?? 'Lampiran',
+        nama: json['nama']?.toString() ?? json['NAMA']?.toString() ?? 'Lampiran Dokumen',
         url: json['url']?.toString() ?? json['URL']?.toString() ?? json['link']?.toString() ?? '',
       );
 }
@@ -46,47 +46,88 @@ class PengumumanDetail {
   });
 
   factory PengumumanDetail.fromJson(Map<String, dynamic> rawJson) {
-    final Map<String, dynamic> json = (rawJson['data'] is Map<String, dynamic>)
-        ? rawJson['data'] as Map<String, dynamic>
-        : rawJson;
+    Map<String, dynamic> json = rawJson;
+    if (rawJson['data'] is Map<String, dynamic>) {
+      json = rawJson['data'] as Map<String, dynamic>;
+    }
 
     List<String> parseKonten(dynamic raw) {
       if (raw is List) {
-        return raw.map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList();
-      } else if (raw is String) {
-        if (raw.trim().isEmpty) return [];
+        return raw
+            .map((e) => e.toString().trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+      } else if (raw is String && raw.trim().isNotEmpty) {
         return [raw.trim()];
+      } else if (raw is Map) {
+        final text = raw['text'] ?? raw['content'] ?? raw['html'] ?? raw['isi'];
+        if (text != null && text.toString().trim().isNotEmpty) {
+          return [text.toString().trim()];
+        }
       }
       return [];
     }
 
     List<Lampiran> parseLampiran(dynamic raw) {
       if (raw is List) {
-        return raw
-            .whereType<Map<String, dynamic>>()
-            .map((e) => Lampiran.fromJson(e))
-            .toList();
+        final list = <Lampiran>[];
+        for (final item in raw) {
+          if (item is Map<String, dynamic>) {
+            list.add(Lampiran.fromJson(item));
+          } else if (item is String && item.isNotEmpty) {
+            list.add(Lampiran(nama: 'Lampiran', url: item));
+          }
+        }
+        return list;
       }
       return [];
     }
 
+    final judul = json['judul']?.toString() ??
+        json['JUDUL']?.toString() ??
+        json['title']?.toString() ??
+        json['name']?.toString() ??
+        '';
+
+    final oleh = json['oleh']?.toString() ??
+        json['OLEH']?.toString() ??
+        json['author']?.toString() ??
+        json['pengirim']?.toString() ??
+        '';
+
+    final pukul = json['pukul']?.toString() ??
+        json['PUKUL']?.toString() ??
+        json['tanggal']?.toString() ??
+        json['date']?.toString() ??
+        '';
+
+    var kontenList = parseKonten(
+      json['konten'] ??
+          json['KONTEN'] ??
+          json['isi'] ??
+          json['detail'] ??
+          json['deskripsi'] ??
+          json['body'] ??
+          json['content'] ??
+          json['html'] ??
+          json['text'],
+    );
+
+    // Fallback if konten is empty but rawJson has nested details
+    if (kontenList.isEmpty && json['pengumuman'] != null) {
+      kontenList = parseKonten(json['pengumuman']);
+    }
+
+    final lampiranList = parseLampiran(
+      json['lampiran'] ?? json['LAMPIRAN'] ?? json['files'] ?? json['attachments'],
+    );
+
     return PengumumanDetail(
-      judul: json['judul']?.toString() ??
-          json['JUDUL']?.toString() ??
-          json['title']?.toString() ??
-          '',
-      oleh: json['oleh']?.toString() ??
-          json['OLEH']?.toString() ??
-          json['author']?.toString() ??
-          json['pengirim']?.toString() ??
-          '',
-      pukul: json['pukul']?.toString() ??
-          json['PUKUL']?.toString() ??
-          json['tanggal']?.toString() ??
-          json['date']?.toString() ??
-          '',
-      konten: parseKonten(json['konten'] ?? json['KONTEN'] ?? json['isi'] ?? json['detail']),
-      lampiran: parseLampiran(json['lampiran'] ?? json['LAMPIRAN'] ?? json['files']),
+      judul: judul,
+      oleh: oleh,
+      pukul: pukul,
+      konten: kontenList,
+      lampiran: lampiranList,
     );
   }
 }
