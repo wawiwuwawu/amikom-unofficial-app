@@ -162,38 +162,48 @@ class _AsistenPageState extends State<AsistenPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        leading: widget.onBack != null
-            ? IconButton(
-                icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-                onPressed: widget.onBack,
-              )
-            : null,
-        title: const Text(
-          'Asisten Praktikum',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.white.withValues(alpha: 0.5),
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        flexibleSpace: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(color: Colors.transparent),
-          ),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFFAFCFF), // Pearl White
+            Color(0xFFE3F2FD), // Ice Blue
+          ],
         ),
       ),
-      body: SafeArea(
-        child: _loading
-            ? const Center(
-                child: CircularProgressIndicator(color: Color(0xFF501F66)),
-              )
-            : _error != null
-            ? _buildErrorState()
-            : _buildContent(),
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          leading: widget.onBack != null
+              ? IconButton(
+                  icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
+                  onPressed: widget.onBack,
+                )
+              : null,
+          title: const Text(
+            'Asisten Praktikum',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Colors.white.withValues(alpha: 0.5),
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          flexibleSpace: ClipRRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+        ),
+        body: SafeArea(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
+                  ? _buildErrorState()
+                  : _buildContent(),
+        ),
       ),
     );
   }

@@ -79,63 +79,75 @@ class _SeminarPageState extends State<SeminarPage> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        leading: widget.onBack != null
-            ? IconButton(
-                icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-                onPressed: widget.onBack,
-              )
-            : null,
-        title: const Text(
-          'Jadwal Seminar',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.white.withValues(alpha: 0.5),
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        flexibleSpace: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(color: Colors.transparent),
-          ),
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: const Color(0xFF501F66),
-          unselectedLabelColor: Colors.grey.shade600,
-          indicatorColor: const Color(0xFF501F66),
-          indicatorWeight: 3,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-          tabs: const [
-            Tab(text: 'Kerja Praktik'),
-            Tab(text: 'Skripsi'),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFFAFCFF), // Pearl White
+            Color(0xFFE3F2FD), // Ice Blue
           ],
         ),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: _buildSearchBar(),
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          leading: widget.onBack != null
+              ? IconButton(
+                  icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
+                  onPressed: widget.onBack,
+                )
+              : null,
+          title: const Text(
+            'Jadwal Seminar',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Colors.white.withValues(alpha: 0.5),
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          flexibleSpace: ClipRRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(color: Colors.transparent),
             ),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)))
-                  : _error != null
-                      ? _buildErrorState()
-                      : TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _buildList(_getFilteredList(_listKP), isSkripsi: false),
-                            _buildList(_getFilteredList(_listSkripsi), isSkripsi: true),
-                          ],
-                        ),
-            ),
-          ],
+          ),
+          bottom: TabBar(
+            controller: _tabController,
+            labelColor: const Color(0xFF501F66),
+            unselectedLabelColor: Colors.grey.shade600,
+            indicatorColor: const Color(0xFF501F66),
+            indicatorWeight: 3,
+            labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+            tabs: const [
+              Tab(text: 'Kerja Praktik'),
+              Tab(text: 'Skripsi'),
+            ],
+          ),
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: _buildSearchBar(),
+              ),
+              Expanded(
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)))
+                    : _error != null
+                        ? _buildErrorState()
+                        : TabBarView(
+                            controller: _tabController,
+                            children: [
+                              _buildList(_getFilteredList(_listKP), isSkripsi: false),
+                              _buildList(_getFilteredList(_listSkripsi), isSkripsi: true),
+                            ],
+                          ),
+              ),
+            ],
+          ),
         ),
       ),
     );

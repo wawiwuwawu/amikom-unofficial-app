@@ -193,25 +193,36 @@ class _PrestasiPageState extends State<PrestasiPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: const Text('Prestasi Mahasiswa', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white.withOpacity(0.5),
-        leading: IconButton(
-          icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-          onPressed: widget.onBack,
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFFAFCFF), // Pearl White
+            Color(0xFFE3F2FD), // Ice Blue
+          ],
         ),
-        elevation: 0,
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddFormSheet,
-        backgroundColor: const Color(0xFF501F66),
-        foregroundColor: Colors.white,
-        icon: const Icon(CupertinoIcons.add),
-        label: const Text('Tambah Prestasi'),
-      ),
-      body: RefreshIndicator(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text('Prestasi Mahasiswa', style: TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.white.withOpacity(0.5),
+          leading: IconButton(
+            icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
+            onPressed: widget.onBack,
+          ),
+          elevation: 0,
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _showAddFormSheet,
+          backgroundColor: const Color(0xFF501F66),
+          foregroundColor: Colors.white,
+          icon: const Icon(CupertinoIcons.add),
+          label: const Text('Tambah Prestasi'),
+        ),
+        body: RefreshIndicator(
         onRefresh: _loadData,
         child: _loading
             ? const Center(child: CircularProgressIndicator())
@@ -352,6 +363,7 @@ class _PrestasiPageState extends State<PrestasiPage> {
                           ).animate().fadeIn().slideY(begin: 0.1, delay: Duration(milliseconds: 50 * index));
                         },
                       ),
+        ),
       ),
     );
   }

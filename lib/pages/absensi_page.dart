@@ -197,34 +197,45 @@ class _AbsensiPageState extends State<AbsensiPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent, // Inherit gradient from MainPage
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        leading: widget.onBack != null ? IconButton(icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)), onPressed: widget.onBack) : null,
-        title: const Text('Absensi Mahasiswa', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white.withOpacity(0.5),
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        flexibleSpace: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(color: Colors.transparent),
-          ),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFFAFCFF), // Pearl White
+            Color(0xFFE3F2FD), // Ice Blue
+          ],
         ),
       ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            await _loadBelumValidasi();
-            if (_selectedThn != null && _selectedSmt != null && _selectedMakul != null) {
-              await _loadMahasiswa();
-            }
-          },
-          color: const Color(0xFF501F66),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), // padding for dock
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // Inherit gradient from MainPage
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          leading: widget.onBack != null ? IconButton(icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)), onPressed: widget.onBack) : null,
+          title: const Text('Absensi Mahasiswa', style: TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.white.withOpacity(0.5),
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          flexibleSpace: ClipRRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+        ),
+        body: SafeArea(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await _loadBelumValidasi();
+              if (_selectedThn != null && _selectedSmt != null && _selectedMakul != null) {
+                await _loadMahasiswa();
+              }
+            },
+            color: const Color(0xFF501F66),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -257,8 +268,9 @@ class _AbsensiPageState extends State<AbsensiPage> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildBelumValidasi() {
     if (_loadingBelumValidasi) {

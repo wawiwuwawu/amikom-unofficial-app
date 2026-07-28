@@ -147,21 +147,30 @@ class _OrganisasiPageState extends State<OrganisasiPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: const Text('Organisasi Mahasiswa', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white.withValues(alpha: 0.5),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-          onPressed: widget.onBack,
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFFAFCFF), // Pearl White
+            Color(0xFFE3F2FD), // Ice Blue
+          ],
         ),
       ),
-      body: _buildBody(),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 80.0),
-        child: FloatingActionButton(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text('Organisasi Mahasiswa', style: TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.white.withValues(alpha: 0.5),
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
+            onPressed: widget.onBack,
+          ),
+        ),
+        body: _buildBody(),
+        floatingActionButton: FloatingActionButton(
           onPressed: _showForm,
           backgroundColor: const Color(0xFF501F66),
           child: const Icon(CupertinoIcons.add, color: Colors.white),

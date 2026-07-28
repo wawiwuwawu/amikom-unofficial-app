@@ -125,30 +125,41 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        leading: widget.onBack != null
-            ? IconButton(
-                icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-                onPressed: widget.onBack,
-              )
-            : null,
-        title: const Text(
-          'Jadwal Ujian',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.white.withOpacity(0.5),
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        flexibleSpace: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(color: Colors.transparent),
-          ),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFFAFCFF), // Pearl White
+            Color(0xFFE3F2FD), // Ice Blue
+          ],
         ),
       ),
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          leading: widget.onBack != null
+              ? IconButton(
+                  icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
+                  onPressed: widget.onBack,
+                )
+              : null,
+          title: const Text(
+            'Jadwal Ujian',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Colors.white.withOpacity(0.5),
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          flexibleSpace: ClipRRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+        ),
       body: SafeArea(
         child: Column(
           children: [
@@ -212,6 +223,7 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
               ).animate().fadeIn().scale(),
             )
           : null,
+      ),
     );
   }
 
