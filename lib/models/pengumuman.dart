@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 class PengumumanItem {
   final int id;
   final String judul;
@@ -59,26 +57,24 @@ class PengumumanDetail {
 
   factory PengumumanDetail.fromJson(Map<String, dynamic> rawJson) {
     Map<String, dynamic> json = rawJson;
-    
-    if (rawJson['data'] != null) {
-      if (rawJson['data'] is Map<String, dynamic>) {
-        json = rawJson['data'] as Map<String, dynamic>;
-      } else if (rawJson['data'] is Map) {
-        json = Map<String, dynamic>.from(rawJson['data']);
-      } else if (rawJson['data'] is List && (rawJson['data'] as List).isNotEmpty) {
-        final firstItem = (rawJson['data'] as List).first;
-        if (firstItem is Map) {
-          json = Map<String, dynamic>.from(firstItem);
-        }
-      } else if (rawJson['data'] is String) {
-        try {
-          final parsed = jsonDecode(rawJson['data']);
-          if (parsed is Map) {
-            json = Map<String, dynamic>.from(parsed);
-          } else if (parsed is List && parsed.isNotEmpty && parsed.first is Map) {
-            json = Map<String, dynamic>.from(parsed.first);
-          }
-        } catch (_) {}
+
+    // Only unwrap 'data' key if it contains expected announcement fields
+    final dataVal = rawJson['data'];
+    if (dataVal != null) {
+      Map<String, dynamic>? candidate;
+      if (dataVal is Map) {
+        candidate = Map<String, dynamic>.from(dataVal);
+      } else if (dataVal is List && dataVal.isNotEmpty && dataVal.first is Map) {
+        candidate = Map<String, dynamic>.from(dataVal.first);
+      }
+      if (candidate != null &&
+          (candidate.containsKey('judul') ||
+              candidate.containsKey('JUDUL') ||
+              candidate.containsKey('konten') ||
+              candidate.containsKey('KONTEN') ||
+              candidate.containsKey('oleh') ||
+              candidate.containsKey('oleh'))) {
+        json = candidate;
       }
     }
 

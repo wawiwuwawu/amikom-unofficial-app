@@ -26,39 +26,32 @@ class PengumumanService {
   Future<PengumumanDetail> getDetail(dynamic idOrUrl) async {
     try {
       final str = idOrUrl.toString().trim();
-      final endpoint = str.startsWith('/') ? str : '/api/v1/pengumumanAkademik/$str';
+      final endpoint = _buildEndpoint(str);
       dev.log('[PengumumanService] GET $endpoint');
       final response = await _dio.get(endpoint);
       final raw = response.data;
-      dev.log('[PengumumanService] response.data type: ${raw.runtimeType}');
-      
-      Map<String, dynamic> jsonMap = {};
-      if (raw is Map) {
-        jsonMap = Map<String, dynamic>.from(raw);
-      } else if (raw is List && raw.isNotEmpty && raw.first is Map) {
-        jsonMap = Map<String, dynamic>.from(raw.first);
-      } else if (raw is String) {
-        try {
-          final parsed = jsonDecode(raw);
-          if (parsed is Map) {
-            jsonMap = Map<String, dynamic>.from(parsed);
-          } else if (parsed is List && parsed.isNotEmpty && parsed.first is Map) {
-            jsonMap = Map<String, dynamic>.from(parsed.first);
-          }
-        } catch (_) {}
+
+      Map<String, dynamic> jsonMap = _extractJsonMap(raw);
+
+      if (jsonMap.isEmpty) {
+        throw Exception('Format data detail pengumuman tidak valid: $raw');
       }
 
-      if (jsonMap.isNotEmpty) {
-        final detail = PengumumanDetail.fromJson(jsonMap);
-        dev.log('[PengumumanService] parsed judul: "${detail.judul}"');
-        dev.log('[PengumumanService] parsed konten count: ${detail.konten.length}');
-        return detail;
+      final detail = PengumumanDetail.fromJson(jsonMap);
+      dev.log('[PengumumanService] judul: "${detail.judul}" konten: ${detail.konten.length}');
+
+      // Validate that we got actual content (not an auth error response)
+      if (detail.judul.isEmpty && detail.konten.isEmpty) {
+        final msg = jsonMap['message']?.toString();
+        if (msg != null && msg.isNotEmpty) {
+          throw Exception(msg);
+        }
+        throw Exception('Data pengumuman tidak tersedia');
       }
-      
-      throw Exception('Format data detail pengumuman tidak valid: $raw');
+
+      return detail;
     } on DioException catch (e) {
       dev.log('[PengumumanService] DioException: ${e.message}');
-      dev.log('[PengumumanService] DioException response: ${e.response?.data}');
       if (e.response != null) {
         final msg = e.response?.data?['message'];
         if (msg != null && msg.toString().isNotEmpty) {
@@ -67,5 +60,37 @@ class PengumumanService {
       }
       throw Exception(e.message ?? 'Gagal memuat detail pengumuman');
     }
+  }
+
+  String _buildEndpoint(String raw) {
+    // Full URL: pass through as-is
+    if (raw.startsWith('http')) return raw;
+
+    // Already correct prefix
+    if (raw.startsWith('/api/')) return raw;
+
+    // Starts with "/" but missing "/api/v1" prefix
+    if (raw.startsWith('/')) return '/api/v1$raw';
+
+    // Plain ID: construct full path
+    return '/api/v1/pengumumanAkademik/$raw';
+  }
+
+  Map<String, dynamic> _extractJsonMap(dynamic raw) {
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    } else if (raw is List && raw.isNotEmpty && raw.first is Map) {
+      return Map<String, dynamic>.from(raw.first);
+    } else if (raw is String) {
+      try {
+        final parsed = jsonDecode(raw);
+        if (parsed is Map) {
+          return Map<String, dynamic>.from(parsed);
+        } else if (parsed is List && parsed.isNotEmpty && parsed.first is Map) {
+          return Map<String, dynamic>.from(parsed.first);
+        }
+      } catch (_) {}
+    }
+    return {};
   }
 }
