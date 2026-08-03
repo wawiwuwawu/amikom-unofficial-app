@@ -109,6 +109,14 @@ class _RiwayatPembayaranTabState extends State<_RiwayatPembayaranTab> {
     return currencyFormatter.format(number);
   }
 
+  String _semesterLabel(int semester) {
+    return semester == 1
+        ? 'Ganjil'
+        : semester == 2
+            ? 'Genap'
+            : 'Semester $semester';
+  }
+
   Future<void> _downloadHistoryPdf() async {
     setState(() => _downloadingAll = true);
     try {
@@ -340,7 +348,7 @@ class _RiwayatPembayaranTabState extends State<_RiwayatPembayaranTab> {
           ),
           const SizedBox(height: 4),
           Text(
-            'TA ${item.tahunAkademik} • Semester ${item.semester} (Smt Tempuh ${item.semesterTempuh})',
+            'TA ${item.tahunAkademik} • Semester ${_semesterLabel(item.semester)} (Smt Tempuh ${item.semesterTempuh})',
             style: const TextStyle(
               fontSize: 13,
               color: Colors.black54,
@@ -580,6 +588,14 @@ class _KeuanganDetailSheetState extends State<_KeuanganDetailSheet> {
     return currencyFormatter.format(number);
   }
 
+  String _semesterLabel(int semester) {
+    return semester == 1
+        ? 'Ganjil'
+        : semester == 2
+            ? 'Genap'
+            : 'Semester $semester';
+  }
+
   @override
   Widget build(BuildContext context) {
     final totalNominal = _details.fold<int>(0, (sum, e) => sum + e.nominal);
@@ -626,7 +642,7 @@ class _KeuanganDetailSheetState extends State<_KeuanganDetailSheet> {
               ],
             ),
             Text(
-              'TA ${widget.item.tahunAkademik} • Semester ${widget.item.semester} (${widget.item.channelBank})',
+              'TA ${widget.item.tahunAkademik} • Semester ${_semesterLabel(widget.item.semester)} (${widget.item.channelBank})',
               style: const TextStyle(color: Colors.black54, fontSize: 13),
             ),
             const SizedBox(height: 12),
@@ -797,6 +813,21 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
       decimalDigits: 0,
     );
     return currencyFormatter.format(number);
+  }
+
+  String _formatTahunAkademik(String tahunAkademik) {
+    final parts = tahunAkademik.split('-');
+    if (parts.length == 2) {
+      final semesterLabel = parts[1].trim();
+      final num = int.tryParse(semesterLabel);
+      if (num == 1) {
+        return '${parts[0].trim()} - Ganjil';
+      }
+      if (num == 2) {
+        return '${parts[0].trim()} - Genap';
+      }
+    }
+    return tahunAkademik;
   }
 
   Future<void> _copyToClipboard(String text, {String label = 'Nomor disalin'}) async {
@@ -1311,7 +1342,7 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
           children: [
             const SizedBox(height: 2),
             Text(
-              'TA ${item.tahunAkademik}',
+              'TA ${_formatTahunAkademik(item.tahunAkademik)}',
               style: const TextStyle(fontSize: 12, color: Colors.black54),
             ),
             const SizedBox(height: 6),
