@@ -65,6 +65,7 @@ class _InfoPengajuanTabState extends State<_InfoPengajuanTab> {
   List<MatkulDitawarkan> _matkulList = [];
   int _maxSks = 0;
   int _sksSaatIni = 0;
+  bool _isAnnouncementExpanded = false;
   
   // Set of selected KODE
   final Set<String> _selectedMakul = {};
@@ -149,6 +150,98 @@ class _InfoPengajuanTabState extends State<_InfoPengajuanTab> {
     }
   }
 
+  Widget _buildAnnouncementBanner(String text) {
+    final cleanText = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE3F2FD),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF90CAF9)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(CupertinoIcons.info_circle_fill,
+                  size: 18, color: Color(0xFF1976D2)),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Ketentuan & Informasi KRS',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1976D2),
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          AnimatedCrossFade(
+            firstChild: Text(
+              cleanText,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.black87,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+            secondChild: Text(
+              cleanText,
+              style: const TextStyle(
+                color: Colors.black87,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+            crossFadeState: _isAnnouncementExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 250),
+          ),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: () {
+              setState(() {
+                _isAnnouncementExpanded = !_isAnnouncementExpanded;
+              });
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                Text(
+                  _isAnnouncementExpanded
+                      ? 'Sembunyikan'
+                      : 'Lihat Selengkapnya',
+                  style: const TextStyle(
+                    color: Color(0xFF1976D2),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  _isAnnouncementExpanded
+                      ? CupertinoIcons.chevron_up
+                      : CupertinoIcons.chevron_down,
+                  size: 14,
+                  color: const Color(0xFF1976D2),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)));
@@ -174,14 +267,7 @@ class _InfoPengajuanTabState extends State<_InfoPengajuanTab> {
     return Column(
       children: [
         if (_info?.periodePengajuan != null && _info!.periodePengajuan!.teksMentah.isNotEmpty)
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.blue.withValues(alpha: 0.1),
-            child: Text(
-              _info!.periodePengajuan!.teksMentah,
-              style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
-            ),
-          ),
+          _buildAnnouncementBanner(_info!.periodePengajuan!.teksMentah),
         Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
