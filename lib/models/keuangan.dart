@@ -45,7 +45,6 @@ class KeuanganHistoryItem {
       'angsuran_ke': angsuranKe,
       'tahun_akademik': tahunAkademik,
       'semester': semester,
-      'kode_bank': kodeBank,
     };
   }
 

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../models/keuangan.dart';
 import '../services/keuangan_service.dart';
 import '../widgets/glass_card.dart';
+import 'panduan_pembayaran_page.dart';
 
 class KeuanganPage extends StatefulWidget {
   final VoidCallback? onBack;
@@ -405,19 +406,20 @@ class _RiwayatPembayaranTabState extends State<_RiwayatPembayaranTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              OutlinedButton.icon(
-                onPressed: () => _showDetailBottomSheet(item),
-                icon: const Icon(CupertinoIcons.info_circle, size: 14),
-                label: const Text('Rincian Biaya', style: TextStyle(fontSize: 12)),
-                style: OutlinedButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  foregroundColor: const Color(0xFF501F66),
-                  side: const BorderSide(color: Color(0xFF501F66)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              if (item.nomorKwitansi != null && item.nomorKwitansi!.isNotEmpty)
+                OutlinedButton.icon(
+                  onPressed: () => _showDetailBottomSheet(item),
+                  icon: const Icon(CupertinoIcons.info_circle, size: 14),
+                  label: const Text('Rincian Biaya', style: TextStyle(fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    foregroundColor: const Color(0xFF501F66),
+                    side: const BorderSide(color: Color(0xFF501F66)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ],
@@ -1146,6 +1148,79 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
     );
   }
 
+  Widget _buildPanduanCard() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF501F66).withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFF501F66).withValues(alpha: 0.3),
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const PanduanPembayaranPage(),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF501F66).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  CupertinoIcons.book,
+                  color: Color(0xFF501F66),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Panduan & Tata Cara Pembayaran',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF501F66),
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Ketuk untuk melihat langkah-langkah pembayaran via Bank Muamalat & BRI/BRIVA.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                CupertinoIcons.chevron_right,
+                color: Color(0xFF501F66),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildActiveVaCard() {
     final active = _tagihan!.activeTransaction;
     return Container(
@@ -1430,6 +1505,7 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
         ),
         children: [
           _buildSummaryHeader().animate().fadeIn().slideY(begin: -0.1, end: 0),
+          _buildPanduanCard().animate().fadeIn().slideY(begin: -0.1, end: 0),
           if (_hasActiveVa) ...[
             _buildActiveVaCard().animate().fadeIn().slideY(begin: -0.1, end: 0),
             _buildVaActiveWarning(),
