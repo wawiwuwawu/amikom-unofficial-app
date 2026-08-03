@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -25,6 +26,10 @@ class ApiClient {
   String? _nim;
   String? _nama;
   final _secureStorage = const FlutterSecureStorage();
+
+  // Concurrency lock for silent login / refresh token
+  bool _isRefreshing = false;
+  Completer<bool>? _refreshCompleter;
 
   ApiClient._() {
     dio = Dio(
@@ -63,10 +68,7 @@ class ApiClient {
                     msg.contains('sesi berakhir'))) {
               final retryCount = _getRetryCount(response.requestOptions);
               if (retryCount >= _maxRetries) {
-                final creds = await getSavedCredentials();
-                if (creds == null) {
-                  await _forceLogout();
-                }
+                await _forceLogout();
                 handler.reject(DioException(
                   requestOptions: response.requestOptions,
                   response: response,
@@ -75,32 +77,32 @@ class ApiClient {
                 ));
                 return;
               }
+
               response.requestOptions.extra['retryCount'] = retryCount + 1;
-              await _retryDelay();
-
-              // 1. Try silent re-login first (most robust if server restarted)
-              final reLoginSuccess = await _trySilentReLogin();
-              if (reLoginSuccess) {
-                response.requestOptions.headers['Authorization'] = 'Bearer $_token';
+              final renewed = await _renewSessionWithLock();
+              if (renewed) {
+                response.requestOptions.headers['Authorization'] =
+                    'Bearer $_token';
                 response.requestOptions.extra['retryCount'] = 0;
-                final retryResponse = await dio.fetch(response.requestOptions);
-                handler.resolve(retryResponse);
-                return;
+                try {
+                  final retryResponse =
+                      await dio.fetch(response.requestOptions);
+                  handler.resolve(retryResponse);
+                  return;
+                } catch (e) {
+                  if (e is DioException) {
+                    handler.reject(e);
+                  } else {
+                    handler.reject(DioException(
+                      requestOptions: response.requestOptions,
+                      error: e,
+                    ));
+                  }
+                  return;
+                }
               }
 
-              // 2. Try refresh token
-              final refreshSuccess = await _tryRefresh();
-              if (refreshSuccess) {
-                response.requestOptions.headers['Authorization'] = 'Bearer $_token';
-                final retryResponse = await dio.fetch(response.requestOptions);
-                handler.resolve(retryResponse);
-                return;
-              }
-
-              final creds = await getSavedCredentials();
-              if (creds == null) {
-                await _forceLogout();
-              }
+              await _forceLogout();
               handler.reject(DioException(
                 requestOptions: response.requestOptions,
                 response: response,
@@ -125,10 +127,7 @@ class ApiClient {
         if (error.response?.statusCode == 401) {
           final retryCount = _getRetryCount(error.requestOptions);
           if (retryCount >= _maxRetries) {
-            final creds = await getSavedCredentials();
-            if (creds == null) {
-              await _forceLogout();
-            }
+            await _forceLogout();
             handler.reject(DioException(
               requestOptions: error.requestOptions,
               response: error.response,
@@ -137,32 +136,30 @@ class ApiClient {
             ));
             return;
           }
-          error.requestOptions.extra['retryCount'] = retryCount + 1;
-          await _retryDelay();
 
-          // 1. Try silent re-login first
-          final reLoginSuccess = await _trySilentReLogin();
-          if (reLoginSuccess) {
+          error.requestOptions.extra['retryCount'] = retryCount + 1;
+          final renewed = await _renewSessionWithLock();
+          if (renewed) {
             error.requestOptions.headers['Authorization'] = 'Bearer $_token';
             error.requestOptions.extra['retryCount'] = 0;
-            final retryResponse = await dio.fetch(error.requestOptions);
-            handler.resolve(retryResponse);
-            return;
+            try {
+              final retryResponse = await dio.fetch(error.requestOptions);
+              handler.resolve(retryResponse);
+              return;
+            } catch (e) {
+              if (e is DioException) {
+                handler.reject(e);
+              } else {
+                handler.reject(DioException(
+                  requestOptions: error.requestOptions,
+                  error: e,
+                ));
+              }
+              return;
+            }
           }
 
-          // 2. Try token refresh
-          final refreshSuccess = await _tryRefresh();
-          if (refreshSuccess) {
-            error.requestOptions.headers['Authorization'] = 'Bearer $_token';
-            final retryResponse = await dio.fetch(error.requestOptions);
-            handler.resolve(retryResponse);
-            return;
-          }
-
-          final creds = await getSavedCredentials();
-          if (creds == null) {
-            await _forceLogout();
-          }
+          await _forceLogout();
           handler.reject(DioException(
             requestOptions: error.requestOptions,
             response: error.response,
@@ -303,6 +300,40 @@ class ApiClient {
 
   // ─── Silent Re-Login (Public, for SplashPage & Retry) ────────
   Future<bool> trySilentReLogin() => _trySilentReLogin();
+
+  // ─── Concurrency-locked Session Renewal ───────────────────
+  Future<bool> _renewSessionWithLock() async {
+    if (_isRefreshing) {
+      return (await _refreshCompleter?.future) ?? false;
+    }
+
+    _isRefreshing = true;
+    _refreshCompleter = Completer<bool>();
+
+    bool success = false;
+    try {
+      // 1. Try silent re-login first (most robust when server restarted)
+      success = await _trySilentReLogin();
+
+      // If server was just restarting, retry once after a brief delay
+      if (!success) {
+        await _retryDelay();
+        success = await _trySilentReLogin();
+      }
+
+      // 2. Try refresh token if silent login failed
+      if (!success) {
+        success = await _tryRefresh();
+      }
+    } catch (_) {
+      success = false;
+    } finally {
+      _refreshCompleter?.complete(success);
+      _isRefreshing = false;
+    }
+
+    return success;
+  }
 
   /// Ensures an active valid session or performs silent re-login
   Future<bool> ensureSessionOrSilentLogin() async {
