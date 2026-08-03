@@ -1214,6 +1214,54 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
     );
   }
 
+  Widget _buildVaActiveWarning() {
+    final totalNominal = _tagihan?.activeTransaction.totalNominal ?? 0;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            CupertinoIcons.exclamationmark_triangle_fill,
+            size: 20,
+            color: Colors.orange,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Transaksi VA masih aktif (${_formatRupiah(totalNominal)})',
+                  style: const TextStyle(
+                    color: Colors.orange,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Batalkan transaksi sebelum mengganti pilihan tagihan agar tidak terjadi transaksi ganda.',
+                  style: TextStyle(
+                    color: Colors.orange[800],
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTagihanCard(KeuanganTagihanItem item) {
     final isSelected = _selectedIdtrans.contains(item.idtrans);
     final disabled = _hasActiveVa;
@@ -1351,30 +1399,16 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
         ),
         children: [
           _buildSummaryHeader().animate().fadeIn().slideY(begin: -0.1, end: 0),
-          if (_hasActiveVa)
+          if (_hasActiveVa) ...[
             _buildActiveVaCard().animate().fadeIn().slideY(begin: -0.1, end: 0),
-          if (_hasActiveVa)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: Row(
-                children: [
-                  const Icon(CupertinoIcons.info_circle, size: 16, color: Colors.orange),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Terdapat transaksi VA aktif. Batalkan transaksi sebelum mengganti pilihan tagihan agar tidak terjadi transaksi ganda.',
-                      style: TextStyle(fontSize: 12, color: Colors.orange[800], height: 1.3),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          if (tagihanList.isEmpty)
+            _buildVaActiveWarning(),
+          ],
+          if (!_hasActiveVa && tagihanList.isEmpty)
             SizedBox(
               height: MediaQuery.of(context).size.height * 0.35,
               child: _buildEmptyState(),
             )
-          else ...[
+          else if (!_hasActiveVa) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
               child: Row(
