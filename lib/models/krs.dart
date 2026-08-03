@@ -66,6 +66,7 @@ class MatkulDitawarkan {
   final String status;
   final bool isUlang;
   final String? nilaiSebelumnya;
+  final String? rawValue;
 
   MatkulDitawarkan({
     required this.semester,
@@ -75,6 +76,7 @@ class MatkulDitawarkan {
     required this.status,
     required this.isUlang,
     this.nilaiSebelumnya,
+    this.rawValue,
   });
 
   factory MatkulDitawarkan.fromJson(Map<String, dynamic> json) {
@@ -84,8 +86,9 @@ class MatkulDitawarkan {
       nama: json['nama'] ?? '',
       sks: json['sks'] ?? 0,
       status: json['status'] ?? '',
-      isUlang: json['isUlang'] ?? false,
-      nilaiSebelumnya: json['nilaiSebelumnya'],
+      isUlang: json['is_ulang'] ?? json['isUlang'] ?? false,
+      nilaiSebelumnya: json['nilai_sebelumnya'] ?? json['nilaiSebelumnya'],
+      rawValue: json['raw_value']?.toString(),
     );
   }
 }
@@ -103,10 +106,11 @@ class MatkulDitawarkanResponse {
 
   factory MatkulDitawarkanResponse.fromJson(Map<String, dynamic> json) {
     var list = json['data'] as List? ?? [];
+    final parsedMaxSks = json['max_sks'] ?? json['maxSks'] ?? 0;
     return MatkulDitawarkanResponse(
       data: list.map((e) => MatkulDitawarkan.fromJson(e)).toList(),
-      maxSks: json['max_sks'] ?? 0,
-      sksSaatIni: json['sks_saat_ini'] ?? 0,
+      maxSks: parsedMaxSks > 0 ? parsedMaxSks : 24,
+      sksSaatIni: json['sks_saat_ini'] ?? json['sksSaatIni'] ?? 0,
     );
   }
 }
@@ -132,13 +136,13 @@ class KrsPengajuan {
 
   factory KrsPengajuan.fromJson(Map<String, dynamic> json) {
     return KrsPengajuan(
-      idKrs: json['ID_KRS'] ?? 0,
-      sks: json['SKS'] ?? 0,
-      kode: json['KODE'] ?? '',
-      total: json['TOTAL'] ?? 0,
-      mkl: json['MKL'] ?? '',
-      aktivasi: json['AKTIVASI'] ?? 0,
-      ambilKe: json['AMBILKE'] ?? 0,
+      idKrs: json['ID_KRS'] ?? json['id_krs'] ?? json['idKrs'] ?? json['id'] ?? 0,
+      sks: json['SKS'] ?? json['sks'] ?? 0,
+      kode: json['KODE'] ?? json['kode'] ?? json['kode_mk'] ?? '',
+      total: json['TOTAL'] ?? json['total'] ?? 0,
+      mkl: json['MKL'] ?? json['mkl'] ?? json['nama'] ?? json['nama_matkul'] ?? '',
+      aktivasi: json['AKTIVASI'] ?? json['aktivasi'] ?? 0,
+      ambilKe: json['AMBILKE'] ?? json['ambil_ke'] ?? json['ambilKe'] ?? 1,
     );
   }
 }
@@ -154,9 +158,12 @@ class KrsPengajuanResponse {
 
   factory KrsPengajuanResponse.fromJson(Map<String, dynamic> json) {
     var list = json['data'] as List? ?? [];
+    final items = list.map((e) => KrsPengajuan.fromJson(e)).toList();
+    final parsedTotalSks = json['total_sks'] ?? json['totalSks'];
+    final calculatedTotalSks = items.fold<int>(0, (sum, item) => sum + item.sks);
     return KrsPengajuanResponse(
-      data: list.map((e) => KrsPengajuan.fromJson(e)).toList(),
-      totalSks: json['total_sks'] ?? 0,
+      data: items,
+      totalSks: parsedTotalSks ?? calculatedTotalSks,
     );
   }
 }

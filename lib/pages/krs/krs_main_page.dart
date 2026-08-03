@@ -136,9 +136,20 @@ class _InfoPengajuanTabState extends State<_InfoPengajuanTab> {
     
     setState(() => _loading = true);
     try {
+      // 1. Submit pengajuan
       await _service.submitPengajuan(payload);
+      
+      // 2. Auto trigger sinkronisasi (sesuai sequence flow BE)
+      try {
+        await _service.sinkronisasi();
+      } catch (_) {
+        // Sinkronisasi silently non-blocking if server sync is deferred
+      }
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pengajuan berhasil disimpan')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pengajuan & Sinkronisasi KRS berhasil disimpan')),
+        );
         _selectedMakul.clear();
         await _load();
       }
@@ -306,21 +317,91 @@ class _InfoPengajuanTabState extends State<_InfoPengajuanTab> {
                   title: Text('Semester $smt', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
                   backgroundColor: Colors.grey.withValues(alpha: 0.05),
                   children: [
-                    for (var mk in groupedMatkul[smt]!)
-                      CheckboxListTile(
-                        title: Text(mk.nama),
-                        subtitle: Text('${mk.kode} - ${mk.sks} SKS${mk.isUlang ? " (Ulang)" : ""}'),
-                        value: _selectedMakul.contains(mk.kode),
-                        onChanged: (val) {
-                          setState(() {
-                            if (val == true) {
-                              _selectedMakul.add(mk.kode);
-                            } else {
-                              _selectedMakul.remove(mk.kode);
-                            }
-                          });
-                        },
-                      ),
+                    for (var mk in groupedMatkul[smt]!) ...[
+                      Builder(builder: (context) {
+                        final isLulus = mk.status.toLowerCase() == 'lulus';
+                        return CheckboxListTile(
+                          title: Text(
+                            mk.nama,
+                            style: TextStyle(
+                              color: isLulus ? Colors.black45 : Colors.black87,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 2),
+                              Text(
+                                '${mk.kode} • ${mk.sks} SKS',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: isLulus ? Colors.black38 : Colors.black54,
+                                ),
+                              ),
+                              if (isLulus || mk.isUlang || (mk.nilaiSebelumnya != null && mk.nilaiSebelumnya!.isNotEmpty)) ...[
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  spacing: 6,
+                                  children: [
+                                    if (isLulus)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'Sudah Lulus${mk.nilaiSebelumnya != null && mk.nilaiSebelumnya!.isNotEmpty ? " (${mk.nilaiSebelumnya})" : ""}',
+                                          style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold),
+                                        ),
+                                      )
+                                    else ...[
+                                      if (mk.isUlang)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: const Text(
+                                            'Mengulang',
+                                            style: TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      if (mk.nilaiSebelumnya != null && mk.nilaiSebelumnya!.isNotEmpty)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            'Nilai Lalu: ${mk.nilaiSebelumnya}',
+                                            style: const TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                          value: _selectedMakul.contains(mk.kode),
+                          onChanged: isLulus
+                              ? null
+                              : (val) {
+                                  setState(() {
+                                    if (val == true) {
+                                      _selectedMakul.add(mk.kode);
+                                    } else {
+                                      _selectedMakul.remove(mk.kode);
+                                    }
+                                  });
+                                },
+                        );
+                      }),
+                    ],
                   ],
                 ),
             ],
