@@ -110,3 +110,148 @@ class KeuanganDetailItem {
     );
   }
 }
+
+class KeuanganTagihanItem {
+  final int no;
+  final String tahunAkademik;
+  final String jenisPembayaran;
+  final int nominal;
+  final String keterangan;
+  final String jenisId;
+  final String idtrans;
+
+  KeuanganTagihanItem({
+    required this.no,
+    required this.tahunAkademik,
+    required this.jenisPembayaran,
+    required this.nominal,
+    required this.keterangan,
+    required this.jenisId,
+    required this.idtrans,
+  });
+
+  factory KeuanganTagihanItem.fromJson(Map<String, dynamic> json) {
+    return KeuanganTagihanItem(
+      no: (json['no'] as num?)?.toInt() ?? 0,
+      tahunAkademik: json['tahun_akademik'] ?? '',
+      jenisPembayaran: json['jenis_pembayaran'] ?? '',
+      nominal: (json['nominal'] as num?)?.toInt() ?? 0,
+      keterangan: json['keterangan'] ?? '',
+      jenisId: json['jenis_id']?.toString() ?? '',
+      idtrans: json['idtrans']?.toString() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toBayarPayload() {
+    return {
+      'idtrans': idtrans,
+      'jenis': jenisId,
+      'nominal': nominal,
+    };
+  }
+}
+
+class KeuanganActiveTransaction {
+  final bool hasActive;
+  final String channelBank;
+  final String va;
+  final int totalNominal;
+  final List<dynamic> items;
+
+  KeuanganActiveTransaction({
+    required this.hasActive,
+    this.channelBank = '',
+    this.va = '',
+    this.totalNominal = 0,
+    this.items = const [],
+  });
+
+  factory KeuanganActiveTransaction.fromJson(Map<String, dynamic> json) {
+    return KeuanganActiveTransaction(
+      hasActive: json['has_active'] ?? false,
+      channelBank: json['channel_bank'] ?? '',
+      va: json['va'] ?? '',
+      totalNominal: (json['total_nominal'] as num?)?.toInt() ?? 0,
+      items: json['items'] as List? ?? [],
+    );
+  }
+}
+
+class KeuanganTagihanResponse {
+  final int totalTagihan;
+  final List<KeuanganTagihanItem> data;
+  final KeuanganActiveTransaction activeTransaction;
+
+  KeuanganTagihanResponse({
+    required this.totalTagihan,
+    required this.data,
+    required this.activeTransaction,
+  });
+
+  factory KeuanganTagihanResponse.fromJson(Map<String, dynamic> json) {
+    var list = json['data'] as List? ?? [];
+    return KeuanganTagihanResponse(
+      totalTagihan: (json['total_tagihan'] as num?)?.toInt() ?? 0,
+      data: list.map((e) => KeuanganTagihanItem.fromJson(e)).toList(),
+      activeTransaction: KeuanganActiveTransaction.fromJson(
+        json['active_transaction'] as Map<String, dynamic>? ?? {},
+      ),
+    );
+  }
+}
+
+class KeuanganVaItem {
+  final String tahunAkademik;
+  final int semester;
+  final String jenisPembayaran;
+  final String va;
+  final String idtrans;
+  final int nominal;
+
+  KeuanganVaItem({
+    required this.tahunAkademik,
+    required this.semester,
+    required this.jenisPembayaran,
+    required this.va,
+    required this.idtrans,
+    required this.nominal,
+  });
+
+  factory KeuanganVaItem.fromJson(Map<String, dynamic> json) {
+    return KeuanganVaItem(
+      tahunAkademik: json['tahun_akademik'] ?? '',
+      semester: (json['semester'] as num?)?.toInt() ?? 0,
+      jenisPembayaran: json['jenis_pembayaran'] ?? '',
+      va: json['va'] ?? '',
+      idtrans: json['idtrans']?.toString() ?? '',
+      nominal: (json['nominal'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class KeuanganVaResult {
+  final String message;
+  final String channelBank;
+  final String va;
+  final int totalNominal;
+  final List<KeuanganVaItem> items;
+
+  KeuanganVaResult({
+    required this.message,
+    this.channelBank = '',
+    this.va = '',
+    this.totalNominal = 0,
+    this.items = const [],
+  });
+
+  factory KeuanganVaResult.fromJson(Map<String, dynamic> json) {
+    var list = json['items'] as List? ?? [];
+    return KeuanganVaResult(
+      message: json['message'] ?? '',
+      channelBank: json['channel_bank'] ?? '',
+      va: json['va'] ?? '',
+      totalNominal: (json['total_nominal'] as num?)?.toInt() ?? 0,
+      items: list.map((e) => KeuanganVaItem.fromJson(e)).toList(),
+    );
+  }
+}
