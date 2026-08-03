@@ -468,61 +468,352 @@ class _DaftarPengajuanTabState extends State<_DaftarPengajuanTab> {
     }
   }
 
+  Future<void> _confirmDelete(KrsPengajuan mk) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Pengajuan'),
+        content: Text('Apakah Anda yakin ingin menghapus mata kuliah "${mk.mkl}" dari pengajuan?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      _delete(mk.idKrs.toString());
+    }
+  }
+
   void _delete(String idKrs) async {
     setState(() => _loading = true);
     try {
       await _service.deletePengajuan(idKrs);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mata kuliah berhasil dihapus dari pengajuan')),
+        );
+      }
       await _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menghapus: ${e.toString()}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menghapus: ${e.toString()}')),
+        );
         setState(() => _loading = false);
       }
     }
   }
 
+  Widget _buildSummaryHeader() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF501F66), Color(0xFF6B2D86)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF501F66).withValues(alpha: 0.25),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  CupertinoIcons.book_circle_fill,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Total SKS Diajukan',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$_totalSks SKS',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '${_list.length} Matkul',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPengajuanCard(KrsPengajuan mk) {
+    final isAktif = mk.aktivasi == 1;
+    final isUlang = mk.ambilKe > 1;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isAktif
+              ? Colors.green.withValues(alpha: 0.3)
+              : Colors.grey.withValues(alpha: 0.25),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isUlang
+                      ? Colors.orange.withValues(alpha: 0.15)
+                      : const Color(0xFF501F66).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  isUlang ? 'Ambil Ulang' : 'Baru',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: isUlang ? Colors.orange[800] : const Color(0xFF501F66),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isAktif
+                      ? Colors.green.withValues(alpha: 0.15)
+                      : Colors.amber.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isAktif
+                          ? CupertinoIcons.checkmark_seal_fill
+                          : CupertinoIcons.clock_fill,
+                      size: 12,
+                      color: isAktif ? Colors.green[700] : Colors.amber[800],
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      isAktif ? 'Teraktivasi' : 'Belum Teraktivasi',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isAktif ? Colors.green[800] : Colors.amber[900],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            mk.mkl,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  mk.kode,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${mk.sks} SKS',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black54,
+                ),
+              ),
+            ],
+          ),
+          if (!isAktif) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton.icon(
+                onPressed: () => _confirmDelete(mk),
+                icon: const Icon(CupertinoIcons.trash, size: 14, color: Colors.redAccent),
+                label: const Text('Hapus', style: TextStyle(fontSize: 12, color: Colors.redAccent)),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  side: const BorderSide(color: Colors.redAccent),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              CupertinoIcons.doc_plaintext,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Belum Ada Mata Kuliah Diajukan',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Silakan pilih mata kuliah pada tab "Pengajuan" untuk mengajukan KRS.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.black45,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)));
+    if (_loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF501F66)),
+      );
+    }
     if (_error != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(_error!, style: const TextStyle(color: Colors.redAccent)),
+            const SizedBox(height: 12),
             ElevatedButton(onPressed: _load, child: const Text('Coba Lagi'))
           ],
         ),
       );
     }
-    if (_list.isEmpty) return const Center(child: Text('Belum ada matkul yang diajukan'));
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text('Total SKS Diajukan: $_totalSks', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: const Color(0xFF501F66),
+      child: ListView(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom + 80,
         ),
-        Expanded(
-          child: ListView.builder(
-            padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 80),
-            itemCount: _list.length,
-            itemBuilder: (context, index) {
-              final mk = _list[index];
-              return ListTile(
-                title: Text(mk.mkl),
-                subtitle: Text('${mk.kode} - ${mk.sks} SKS\nStatus: ${mk.aktivasi == 1 ? "Aktif" : "Belum Aktif"}'),
-                trailing: mk.aktivasi == 0 
-                  ? IconButton(
-                      icon: const Icon(CupertinoIcons.trash, color: Colors.red),
-                      onPressed: () => _delete(mk.idKrs.toString()),
-                    )
-                  : const Icon(CupertinoIcons.checkmark_seal_fill, color: Colors.green),
-              );
-            },
-          ),
-        ),
-      ],
+        children: [
+          _buildSummaryHeader(),
+          if (_list.isEmpty)
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.4,
+              child: _buildEmptyState(),
+            )
+          else
+            for (var mk in _list) _buildPengajuanCard(mk),
+        ],
+      ),
     );
   }
 }
