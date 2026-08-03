@@ -28,6 +28,7 @@ import 'organisasi_page.dart';
 import 'prestasi_page.dart';
 import 'seminar_workshop_page.dart';
 import 'notifikasi_list_page.dart';
+import 'keuangan_page.dart';
 import '../services/notifikasi_service.dart';
 
 class MainPage extends StatefulWidget {
@@ -355,6 +356,14 @@ class _MainPageState extends State<MainPage> {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const PanduanListPage()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.creditcard_fill),
+              title: const Text('Keuangan & Pembayaran'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => KeuanganPage(onBack: () => Navigator.pop(context))));
               },
             ),
             ListTile(

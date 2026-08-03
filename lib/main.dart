@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'pages/login_page.dart';
 import 'pages/main_page.dart';
 import 'pages/splash_page.dart';
+import 'pages/keuangan_page.dart';
 import 'services/navigation_service.dart';
 
 void main() async {
@@ -35,6 +36,7 @@ class MyApp extends StatelessWidget {
         '/splash': (_) => const SplashPage(),
         '/login': (_) => const LoginPage(),
         '/main': (_) => const MainPage(),
+        '/keuangan': (_) => const KeuanganPage(),
       },
     );
   }
