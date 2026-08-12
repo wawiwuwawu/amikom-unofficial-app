@@ -51,13 +51,8 @@ class _SplashPageState extends State<SplashPage> {
 
     if (ApiClient.instance.token == null ||
         ApiClient.instance.refreshToken == null) {
-      // No tokens, try silent re-login with saved credentials
-      final reLoginSuccess = await ApiClient.instance.trySilentReLogin();
-      if (reLoginSuccess) {
-        _goToMain();
-      } else {
-        _goToLogin();
-      }
+      // Tidak ada token tersimpan — langsung ke halaman login
+      _goToLogin();
       return;
     }
 
@@ -65,9 +60,10 @@ class _SplashPageState extends State<SplashPage> {
       await ApiClient.instance.dio.get('/api/v1/dashboard');
       _goToMain();
     } catch (_) {
-      // Token invalid, try silent re-login
-      final reLoginSuccess = await ApiClient.instance.trySilentReLogin();
-      if (reLoginSuccess) {
+      // Token mungkin expired — coba refresh (tanpa password)
+      final renewed =
+          await ApiClient.instance.ensureSessionOrSilentLogin();
+      if (renewed) {
         _goToMain();
       } else {
         _goToLogin();

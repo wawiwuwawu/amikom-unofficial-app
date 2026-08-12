@@ -5,12 +5,9 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'navigation_service.dart';
 
 const _maxRetries = 2;
-final _secKeyUser = dotenv.env['SEC_KEY_USER']!;
-final _secKeyPass = dotenv.env['SEC_KEY_PASS']!;
 
 int _getRetryCount(RequestOptions opts) =>
     opts.extra['retryCount'] as int? ?? 0;
@@ -181,9 +178,8 @@ class ApiClient {
 
   // ─── Session Restore ─────────────────────────────────
   Future<void> restoreSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    final refreshToken = prefs.getString('refreshToken');
+    final token = await _secureStorage.read(key: 'token');
+    final refreshToken = await _secureStorage.read(key: 'refreshToken');
     if (token != null && refreshToken != null) {
       _token = token;
       _refreshToken = refreshToken;
@@ -203,29 +199,8 @@ class ApiClient {
   Future<void> setTokens(String token, String refreshToken) async {
     _token = token;
     _refreshToken = refreshToken;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('token', token);
-    await prefs.setString('refreshToken', refreshToken);
-  }
-
-  // ─── Credential Storage (Encrypted) ──────────────────
-  Future<void> saveCredentials(String user, String pass) async {
-    await _secureStorage.write(key: _secKeyUser, value: user);
-    await _secureStorage.write(key: _secKeyPass, value: pass);
-  }
-
-  Future<Map<String, String>?> getSavedCredentials() async {
-    final user = await _secureStorage.read(key: _secKeyUser);
-    final pass = await _secureStorage.read(key: _secKeyPass);
-    if (user != null && pass != null && user.isNotEmpty && pass.isNotEmpty) {
-      return {'user': user, 'pass': pass};
-    }
-    return null;
-  }
-
-  Future<void> clearCredentials() async {
-    await _secureStorage.delete(key: _secKeyUser);
-    await _secureStorage.delete(key: _secKeyPass);
+    await _secureStorage.write(key: 'token', value: token);
+    await _secureStorage.write(key: 'refreshToken', value: refreshToken);
   }
 
   Dio _createUtilityDio() {
@@ -260,9 +235,8 @@ class ApiClient {
       if (newToken != null && newRefresh != null) {
         _token = newToken;
         _refreshToken = newRefresh;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', _token!);
-        await prefs.setString('refreshToken', _refreshToken!);
+        await _secureStorage.write(key: 'token', value: _token!);
+        await _secureStorage.write(key: 'refreshToken', value: _refreshToken!);
         return true;
       }
       return false;
@@ -270,36 +244,6 @@ class ApiClient {
       return false;
     }
   }
-
-  // ─── Silent Re-Login (Fallback) ──────────────────────
-  Future<bool> _trySilentReLogin() async {
-    try {
-      final creds = await getSavedCredentials();
-      if (creds == null) return false;
-
-      final loginDio = _createUtilityDio();
-      final res = await loginDio.post(
-        '/api/v1/auth/login',
-        data: {'pengguna': creds['user'], 'passw': creds['pass']},
-      );
-
-      final newToken = res.data['token'];
-      final newRefresh = res.data['refreshToken'];
-      if (newToken != null && newRefresh != null) {
-        await setTokens(newToken, newRefresh);
-        if (res.data['nim'] != null) {
-          _nim = res.data['nim'].toString();
-        }
-        return true;
-      }
-      return false;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  // ─── Silent Re-Login (Public, for SplashPage & Retry) ────────
-  Future<bool> trySilentReLogin() => _trySilentReLogin();
 
   // ─── Concurrency-locked Session Renewal ───────────────────
   Future<bool> _renewSessionWithLock() async {
@@ -312,17 +256,15 @@ class ApiClient {
 
     bool success = false;
     try {
-      // 1. Try silent re-login first (most robust when server restarted)
-      success = await _trySilentReLogin();
+      // 1. Refresh token dulu (aman, tanpa password, sesuai desain backend
+      //    yang me-rotate refresh token). JANGAN login ulang dengan password
+      //    — password tidak pernah disimpan di perangkat.
+      success = await _tryRefresh();
 
-      // If server was just restarting, retry once after a brief delay
+      // Jika server baru saja restart / refresh token gagal sementara,
+      // coba sekali lagi setelah jeda singkat.
       if (!success) {
         await _retryDelay();
-        success = await _trySilentReLogin();
-      }
-
-      // 2. Try refresh token if silent login failed
-      if (!success) {
         success = await _tryRefresh();
       }
     } catch (_) {
@@ -335,17 +277,14 @@ class ApiClient {
     return success;
   }
 
-  /// Ensures an active valid session or performs silent re-login
+  /// Memastikan sesi aktif: refresh token bila diperlukan.
+  /// Tidak ada silent re-login dengan password — kalau refresh gagal,
+  /// user harus login ulang manual (standar & aman).
   Future<bool> ensureSessionOrSilentLogin() async {
-    // 1. Try silent re-login first if credentials exist (most robust when server restarted)
-    final silentSuccess = await _trySilentReLogin();
-    if (silentSuccess) return true;
-
-    // 2. Fallback to token refresh
-    if (_token != null && _token!.isNotEmpty && _refreshToken != null) {
-      return await _tryRefresh();
+    if (_token == null || _token!.isEmpty || _refreshToken == null) {
+      return false;
     }
-    return false;
+    return await _renewSessionWithLock();
   }
 
   // ─── Force Logout ────────────────────────────────────
@@ -358,14 +297,12 @@ class ApiClient {
   Future<void> clearTokens() async {
     _token = null;
     _refreshToken = null;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-    await prefs.remove('refreshToken');
+    await _secureStorage.delete(key: 'token');
+    await _secureStorage.delete(key: 'refreshToken');
   }
 
-  /// Full logout: clear tokens + credentials
+  /// Full logout: clear tokens (password tidak pernah disimpan)
   Future<void> fullLogout() async {
     await clearTokens();
-    await clearCredentials();
   }
 }
