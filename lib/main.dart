@@ -5,6 +5,12 @@ import 'pages/login_page.dart';
 import 'pages/main_page.dart';
 import 'pages/splash_page.dart';
 import 'pages/keuangan_page.dart';
+import 'pages/sp_page.dart';
+import 'pages/skmk_page.dart';
+import 'pages/izin_penelitian_page.dart';
+import 'pages/surat_tugas_page.dart';
+import 'pages/pkl_page.dart';
+import 'pages/ujian_susulan_page.dart';
 import 'services/navigation_service.dart';
 
 void main() async {
@@ -37,6 +43,12 @@ class MyApp extends StatelessWidget {
         '/login': (_) => const LoginPage(),
         '/main': (_) => const MainPage(),
         '/keuangan': (_) => const KeuanganPage(),
+        '/sp': (_) => const SpPage(),
+        '/skmk': (_) => const SkmkPage(),
+        '/izin-penelitian': (_) => const IzinPenelitianPage(),
+        '/surat-tugas': (_) => const SuratTugasPage(),
+        '/pkl': (_) => const PklPage(),
+        '/ujian-susulan': (_) => const UjianSusulanPage(),
       },
     );
   }

@@ -70,6 +70,33 @@ class PusatStudiService {
     }
   }
 
+  Future<PusatStudiJoinedPageData?> getJoinedPage(String base64Id) async {
+    try {
+      final response = await _dio.get('/api/v1/pusat-studi/$base64Id/joined-page');
+      if (response.statusCode == 200 && response.data['data'] != null) {
+        return PusatStudiJoinedPageData.fromJson(response.data['data']);
+      }
+      return null;
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['message'] ?? e.message);
+    }
+  }
+
+  Future<Map<String, dynamic>> cancelAjuan(String idAjuan) async {
+    try {
+      final response = await _dio.post(
+        '/api/v1/pusat-studi/cancel-ajuan',
+        data: {'id_ajuan': idAjuan},
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return response.data;
+      }
+      throw Exception(response.data['message'] ?? 'Gagal membatalkan ajuan');
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['message'] ?? e.message);
+    }
+  }
+
   Future<Map<String, dynamic>> proposeTema(String idps, String judul, String deskripsi, String rencanaJudul) async {
     try {
       final response = await _dio.post(

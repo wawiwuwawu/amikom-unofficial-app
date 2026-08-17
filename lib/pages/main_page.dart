@@ -29,6 +29,12 @@ import 'prestasi_page.dart';
 import 'seminar_workshop_page.dart';
 import 'notifikasi_list_page.dart';
 import 'keuangan_page.dart';
+import 'sp_page.dart';
+import 'skmk_page.dart';
+import 'izin_penelitian_page.dart';
+import 'surat_tugas_page.dart';
+import 'pkl_page.dart';
+import 'ujian_susulan_page.dart';
 import '../services/notifikasi_service.dart';
 
 class MainPage extends StatefulWidget {
@@ -372,6 +378,54 @@ class _MainPageState extends State<MainPage> {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => KrsMainPage(onBack: () => Navigator.pop(context))));
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.layers_alt_fill),
+              title: const Text('Semester Pendek (SP)'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => SpPage(onBack: () => Navigator.pop(context))));
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.doc_plaintext),
+              title: const Text('Surat Masih Kuliah (SKMK)'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => SkmkPage(onBack: () => Navigator.pop(context))));
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.search_circle_fill),
+              title: const Text('Izin Penelitian 🔬'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => IzinPenelitianPage(onBack: () => Navigator.pop(context))));
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.doc_on_clipboard_fill),
+              title: const Text('Surat Tugas 📝'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => SuratTugasPage(onBack: () => Navigator.pop(context))));
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.briefcase_fill),
+              title: const Text('PKL & Tugas Mandiri 🏢'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => PklPage(onBack: () => Navigator.pop(context))));
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.calendar_badge_minus),
+              title: const Text('Ujian Susulan 📝'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => UjianSusulanPage(onBack: () => Navigator.pop(context))));
               },
             ),
             ListTile(

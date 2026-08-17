@@ -158,3 +158,77 @@ class JoinedDetailTema {
     );
   }
 }
+
+class DetailPengajuanTema {
+  final String npm;
+  final String nama;
+  final String rencanaJudul;
+  final String namaTema;
+  final String pusatStudi;
+  final String deskripsiTema;
+  final String jenisTema;
+  final String tanggalPengajuan;
+
+  DetailPengajuanTema({
+    required this.npm,
+    required this.nama,
+    required this.rencanaJudul,
+    required this.namaTema,
+    required this.pusatStudi,
+    required this.deskripsiTema,
+    required this.jenisTema,
+    required this.tanggalPengajuan,
+  });
+
+  factory DetailPengajuanTema.fromJson(Map<String, dynamic> json) {
+    return DetailPengajuanTema(
+      npm: json['npm']?.toString() ?? '',
+      nama: json['nama'] ?? '',
+      rencanaJudul: json['rencana_judul'] ?? '',
+      namaTema: json['nama_tema'] ?? '',
+      pusatStudi: json['pusat_studi'] ?? '',
+      deskripsiTema: json['deskripsi_tema'] ?? '',
+      jenisTema: json['jenis_tema'] ?? '',
+      tanggalPengajuan: json['tanggal_pengajuan'] ?? '',
+    );
+  }
+}
+
+class PusatStudiJoinedPageData {
+  final String? infoBanner;
+  final String statusCode;
+  final String statusText;
+  final String? alasanDitolak;
+  final bool canSubmitProposal;
+  final String? idAjuan;
+  final DetailPengajuanTema? detailPengajuan;
+
+  PusatStudiJoinedPageData({
+    this.infoBanner,
+    required this.statusCode,
+    required this.statusText,
+    this.alasanDitolak,
+    required this.canSubmitProposal,
+    this.idAjuan,
+    this.detailPengajuan,
+  });
+
+  factory PusatStudiJoinedPageData.fromJson(Map<String, dynamic> json) {
+    final detailMap = json['detail_pengajuan'] as Map<String, dynamic>?;
+    final extractedIdAjuan = json['id_ajuan']?.toString() ??
+        detailMap?['id_ajuan']?.toString() ??
+        detailMap?['id']?.toString();
+
+    return PusatStudiJoinedPageData(
+      infoBanner: json['info_banner'],
+      statusCode: (json['status_code']?.toString() ?? '').trim(),
+      statusText: (json['status_text']?.toString() ?? '').trim(),
+      alasanDitolak: json['alasan_ditolak'],
+      canSubmitProposal: json['can_submit_proposal'] == true,
+      idAjuan: extractedIdAjuan,
+      detailPengajuan: detailMap != null
+          ? DetailPengajuanTema.fromJson(detailMap)
+          : null,
+    );
+  }
+}
