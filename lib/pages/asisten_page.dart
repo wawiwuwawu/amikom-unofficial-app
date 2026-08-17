@@ -162,6 +162,7 @@ class _AsistenPageState extends State<AsistenPage> {
 
   @override
   Widget build(BuildContext context) {
+    final canPop = Navigator.canPop(context);
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -175,12 +176,12 @@ class _AsistenPageState extends State<AsistenPage> {
       ),
       child: Scaffold(
         extendBodyBehindAppBar: true,
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color(0xFFFAFCFF),
         appBar: AppBar(
-          leading: widget.onBack != null
+          leading: (widget.onBack != null || canPop)
               ? IconButton(
                   icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-                  onPressed: widget.onBack,
+                  onPressed: widget.onBack ?? () => Navigator.pop(context),
                 )
               : null,
           title: const Text(

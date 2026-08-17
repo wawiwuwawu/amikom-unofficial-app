@@ -20,6 +20,7 @@ class _SpPageState extends State<SpPage> {
   bool _isLoadingAvailable = true;
   String _errorAvailable = '';
   SpAvailableData? _availableData;
+  SpRekomendasiData? _rekomendasiData;
   final Set<String> _selectedKodes = {};
 
   bool _isLoadingTaken = true;
@@ -38,7 +39,17 @@ class _SpPageState extends State<SpPage> {
     await Future.wait([
       _fetchAvailable(),
       _fetchTaken(),
+      _fetchRekomendasi(),
     ]);
+  }
+
+  Future<void> _fetchRekomendasi() async {
+    try {
+      final data = await _service.getRekomendasi();
+      if (mounted) {
+        setState(() => _rekomendasiData = data);
+      }
+    } catch (_) {}
   }
 
   Future<void> _fetchAvailable() async {
@@ -338,10 +349,15 @@ class _SpPageState extends State<SpPage> {
     return Stack(
       children: [
         RefreshIndicator(
-          onRefresh: _fetchAvailable,
+          onRefresh: () async {
+            await Future.wait([
+              _fetchAvailable(),
+              _fetchRekomendasi(),
+            ]);
+          },
           color: const Color(0xFF501F66),
           child: ListView(
-            padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 100),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 140),
             children: [
               // Banner Periode Info
               Container(
@@ -396,6 +412,11 @@ class _SpPageState extends State<SpPage> {
               ).animate().fadeIn(delay: 100.ms),
               const SizedBox(height: 20),
 
+              if (_rekomendasiData != null && _rekomendasiData!.hasRekomendasi) ...[
+                _buildRekomendasiSection(_rekomendasiData!),
+                const SizedBox(height: 20),
+              ],
+
               if (!data.isOpen)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 40),
@@ -445,7 +466,7 @@ class _SpPageState extends State<SpPage> {
           Positioned(
             left: 16,
             right: 16,
-            bottom: 16,
+            bottom: MediaQuery.of(context).padding.bottom + 20,
             child: SizedBox(
               height: 52,
               child: ElevatedButton.icon(
@@ -605,7 +626,7 @@ class _SpPageState extends State<SpPage> {
       onRefresh: _fetchTaken,
       color: const Color(0xFF501F66),
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 120),
         children: [
           // Total SKS Taken Card
           GlassCard(
@@ -687,7 +708,7 @@ class _SpPageState extends State<SpPage> {
 
   Widget _buildJadwalTab() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).padding.bottom + 120),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -733,6 +754,204 @@ class _SpPageState extends State<SpPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  SpMatkul? _findMatkulByKode(String kode) {
+    if (_availableData == null) return null;
+    final allMatkul = [
+      ..._availableData!.matkulTahunBerjalan,
+      ..._availableData!.matkulTahunLain,
+    ];
+    for (var m in allMatkul) {
+      if (m.kode == kode) return m;
+    }
+    return null;
+  }
+
+  Widget _buildRekomendasiSection(SpRekomendasiData rekomendasi) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (rekomendasi.kategoriSangatDianjurkan.isNotEmpty) ...[
+          Row(
+            children: [
+              const Icon(CupertinoIcons.exclamationmark_triangle_fill, color: Colors.red, size: 18),
+              const SizedBox(width: 8),
+              const Text(
+                'Sangat Dianjurkan (Nilai D/E)',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.red),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () {
+                  if (_availableData == null) return;
+                  final availableKodes = [
+                    ..._availableData!.matkulTahunBerjalan,
+                    ..._availableData!.matkulTahunLain,
+                  ].map((m) => m.kode).toSet();
+
+                  setState(() {
+                    for (var item in rekomendasi.kategoriSangatDianjurkan) {
+                      if (availableKodes.contains(item.kode)) {
+                        _selectedKodes.add(item.kode);
+                      }
+                    }
+                  });
+                },
+                child: const Text('Pilih Semua D/E', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ...rekomendasi.kategoriSangatDianjurkan.map((item) => _buildRekomendasiCard(item, isHighPriority: true)),
+          const SizedBox(height: 16),
+        ],
+        if (rekomendasi.kategoriOpsionalSksBesar.isNotEmpty) ...[
+          Row(
+            children: const [
+              Icon(CupertinoIcons.lightbulb_fill, color: Colors.deepOrange, size: 18),
+              SizedBox(width: 8),
+              Text(
+                'Opsional SKS Besar (Dongkrak IPK)',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.deepOrange),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...rekomendasi.kategoriOpsionalSksBesar.map((item) => _buildRekomendasiCard(item, isHighPriority: false)),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildRekomendasiCard(SpRekomendasiItem item, {required bool isHighPriority}) {
+    final matkul = _findMatkulByKode(item.kode);
+    final isSelected = _selectedKodes.contains(item.kode);
+    final isDisabled = matkul?.disabled ?? false;
+    final badgeColor = isHighPriority ? Colors.red : Colors.orange;
+    final borderColor = isHighPriority ? Colors.red.shade300 : Colors.orange.shade300;
+    final bgColor = isHighPriority ? Colors.red.shade50.withOpacity(0.6) : Colors.orange.shade50.withOpacity(0.6);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: borderColor, width: 1.2),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: InkWell(
+          onTap: (isDisabled || matkul == null) ? null : () => _toggleSelection(matkul),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Checkbox(
+                    value: isSelected,
+                    onChanged: (isDisabled || matkul == null) ? null : (_) => _toggleSelection(matkul),
+                    activeColor: const Color(0xFF501F66),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: badgeColor.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: badgeColor.withOpacity(0.4)),
+                              ),
+                              child: Text(
+                                'Nilai: ${item.nilaiSebelumnya}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color: badgeColor.shade800,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF501F66).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '${item.sks} SKS',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF501F66),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          item.mkl,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: isDisabled ? Colors.grey : const Color(0xFF501F66),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Kode: ${item.kode}',
+                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (item.alasan.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isHighPriority ? CupertinoIcons.info_circle_fill : CupertinoIcons.lightbulb_fill,
+                        size: 14,
+                        color: badgeColor.shade700,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          item.alasan,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: badgeColor.shade900,
+                            height: 1.3,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

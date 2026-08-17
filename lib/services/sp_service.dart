@@ -31,6 +31,32 @@ class SpService {
     }
   }
 
+  Future<SpRekomendasiData> getRekomendasi() async {
+    try {
+      final response = await _dio.get('/api/v1/sp/rekomendasi');
+      if (response.statusCode == 200 && response.data['data'] != null) {
+        return SpRekomendasiData.fromJson(response.data['data']);
+      }
+      return SpRekomendasiData(
+        hasRekomendasi: false,
+        warningMessage: '',
+        totalRekomendasi: 0,
+        totalSks: 0,
+        kategoriSangatDianjurkan: [],
+        kategoriOpsionalSksBesar: [],
+      );
+    } on DioException catch (_) {
+      return SpRekomendasiData(
+        hasRekomendasi: false,
+        warningMessage: '',
+        totalRekomendasi: 0,
+        totalSks: 0,
+        kategoriSangatDianjurkan: [],
+        kategoriOpsionalSksBesar: [],
+      );
+    }
+  }
+
   Future<Map<String, dynamic>> submitSp(List<String> kodeList) async {
     try {
       final response = await _dio.post(

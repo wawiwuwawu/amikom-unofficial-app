@@ -125,3 +125,70 @@ class SpTakenData {
     );
   }
 }
+
+class SpRekomendasiItem {
+  final String kode;
+  final String mkl;
+  final int sks;
+  final String nilaiSebelumnya;
+  final double bobot;
+  final String prioritas;
+  final String alasan;
+
+  SpRekomendasiItem({
+    required this.kode,
+    required this.mkl,
+    required this.sks,
+    required this.nilaiSebelumnya,
+    required this.bobot,
+    required this.prioritas,
+    required this.alasan,
+  });
+
+  factory SpRekomendasiItem.fromJson(Map<String, dynamic> json) {
+    return SpRekomendasiItem(
+      kode: json['kode']?.toString() ?? '',
+      mkl: json['mkl']?.toString() ?? '',
+      sks: int.tryParse(json['sks']?.toString() ?? '0') ?? 0,
+      nilaiSebelumnya: json['nilai_sebelumnya']?.toString() ?? '',
+      bobot: double.tryParse(json['bobot']?.toString() ?? '0') ?? 0.0,
+      prioritas: json['prioritas']?.toString() ?? '',
+      alasan: json['alasan']?.toString() ?? '',
+    );
+  }
+}
+
+class SpRekomendasiData {
+  final bool hasRekomendasi;
+  final String warningMessage;
+  final int totalRekomendasi;
+  final int totalSks;
+  final List<SpRekomendasiItem> kategoriSangatDianjurkan;
+  final List<SpRekomendasiItem> kategoriOpsionalSksBesar;
+
+  SpRekomendasiData({
+    required this.hasRekomendasi,
+    required this.warningMessage,
+    required this.totalRekomendasi,
+    required this.totalSks,
+    required this.kategoriSangatDianjurkan,
+    required this.kategoriOpsionalSksBesar,
+  });
+
+  factory SpRekomendasiData.fromJson(Map<String, dynamic> json) {
+    return SpRekomendasiData(
+      hasRekomendasi: json['has_rekomendasi'] == true,
+      warningMessage: json['warning_message']?.toString() ?? '',
+      totalRekomendasi: int.tryParse(json['total_rekomendasi']?.toString() ?? '0') ?? 0,
+      totalSks: int.tryParse(json['total_sks']?.toString() ?? '0') ?? 0,
+      kategoriSangatDianjurkan: (json['kategori_sangat_dianjurkan'] as List?)
+              ?.map((e) => SpRekomendasiItem.fromJson(e))
+              .toList() ??
+          [],
+      kategoriOpsionalSksBesar: (json['kategori_opsional_sks_besar'] as List?)
+              ?.map((e) => SpRekomendasiItem.fromJson(e))
+              .toList() ??
+          [],
+    );
+  }
+}
