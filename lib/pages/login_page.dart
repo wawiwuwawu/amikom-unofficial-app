@@ -78,7 +78,7 @@ class _LoginPageState extends State<LoginPage> {
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(CupertinoIcons.book_fill, size: 64, color: Color(0xFF501F66)),
@@ -121,7 +121,7 @@ class _LoginPageState extends State<LoginPage> {
                               labelStyle: const TextStyle(color: Colors.black54),
                               prefixIcon: const Icon(CupertinoIcons.person_fill, color: Color(0xFF501F66)),
                               filled: true,
-                              fillColor: Colors.white.withOpacity(0.4),
+                              fillColor: Colors.white.withValues(alpha: 0.4),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
                                 borderSide: BorderSide.none,
@@ -146,7 +146,7 @@ class _LoginPageState extends State<LoginPage> {
                                 onPressed: () => setState(() => _obscureText = !_obscureText),
                               ),
                               filled: true,
-                              fillColor: Colors.white.withOpacity(0.4),
+                              fillColor: Colors.white.withValues(alpha: 0.4),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
                                 borderSide: BorderSide.none,

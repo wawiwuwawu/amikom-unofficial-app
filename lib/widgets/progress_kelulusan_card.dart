@@ -36,7 +36,7 @@ class _ProgressKelulusanCardState extends State<ProgressKelulusanCard> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF501F66).withOpacity(0.1),
+                  color: const Color(0xFF501F66).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(CupertinoIcons.checkmark_seal_fill, color: Color(0xFF501F66), size: 22),
@@ -183,7 +183,7 @@ class _ProgressKelulusanCardState extends State<ProgressKelulusanCard> {
                         color: _selectedJalur == 0 ? Colors.white : Colors.transparent,
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: _selectedJalur == 0
-                            ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)]
+                            ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)]
                             : [],
                       ),
                       child: Text(
@@ -207,7 +207,7 @@ class _ProgressKelulusanCardState extends State<ProgressKelulusanCard> {
                         color: _selectedJalur == 1 ? Colors.white : Colors.transparent,
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: _selectedJalur == 1
-                            ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)]
+                            ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)]
                             : [],
                       ),
                       child: Text(

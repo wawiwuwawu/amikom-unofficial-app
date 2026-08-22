@@ -85,6 +85,7 @@ class _OrganisasiPageState extends State<OrganisasiPage> {
 
     if (confirm != true) return;
 
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Menghapus data...')),
     );

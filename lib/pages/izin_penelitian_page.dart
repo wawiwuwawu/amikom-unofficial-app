@@ -363,7 +363,7 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
 
                 // Dropdown Jenis Penelitian
                 DropdownButtonFormField<String>(
-                  value: _selectedJenis,
+                  initialValue: _selectedJenis,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Jenis Penelitian',
@@ -388,7 +388,7 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
 
                 // Dropdown Ditujukan
                 DropdownButtonFormField<String>(
-                  value: _selectedDitujukan,
+                  initialValue: _selectedDitujukan,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Ditujukan Kepada',

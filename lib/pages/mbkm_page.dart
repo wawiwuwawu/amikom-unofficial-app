@@ -431,10 +431,11 @@ class _MbkmPageState extends State<MbkmPage> {
                       type: FileType.custom,
                       allowedExtensions: ['pdf'],
                     );
-                    if (result != null)
+                    if (result != null) {
                       setSheetState(
                         () => komitmenPath = result.files.single.path,
                       );
+                    }
                   },
                 ),
                 const SizedBox(height: 12),
@@ -446,10 +447,11 @@ class _MbkmPageState extends State<MbkmPage> {
                       type: FileType.custom,
                       allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
                     );
-                    if (result != null)
+                    if (result != null) {
                       setSheetState(
                         () => pembayaranPath = result.files.single.path,
                       );
+                    }
                   },
                 ),
                 const SizedBox(height: 24),
@@ -469,7 +471,7 @@ class _MbkmPageState extends State<MbkmPage> {
                                 komitmenPath!,
                                 pembayaranPath!,
                               );
-                              if (mounted) {
+                              if (context.mounted) {
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
@@ -482,7 +484,7 @@ class _MbkmPageState extends State<MbkmPage> {
                                 _loadData();
                               }
                             } catch (e) {
-                              if (mounted)
+                              if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
@@ -494,9 +496,11 @@ class _MbkmPageState extends State<MbkmPage> {
                                     backgroundColor: Colors.red,
                                   ),
                                 );
+                              }
                             } finally {
-                              if (mounted)
+                              if (context.mounted) {
                                 setSheetState(() => isSubmitting = false);
+                              }
                             }
                           },
                     style: ElevatedButton.styleFrom(
@@ -578,7 +582,7 @@ class _MbkmPageState extends State<MbkmPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: jenis.isEmpty ? null : jenis,
+                  initialValue: jenis.isEmpty ? null : jenis,
                   items: const [
                     DropdownMenuItem(
                       value: 'Proposal PKM',
@@ -606,10 +610,11 @@ class _MbkmPageState extends State<MbkmPage> {
                       type: FileType.custom,
                       allowedExtensions: ['pdf'],
                     );
-                    if (result != null)
+                    if (result != null) {
                       setSheetState(
                         () => luaranPath = result.files.single.path,
                       );
+                    }
                   },
                 ),
                 const SizedBox(height: 24),
@@ -637,7 +642,7 @@ class _MbkmPageState extends State<MbkmPage> {
                                 jenis,
                                 luaranPath!,
                               );
-                              if (mounted) {
+                              if (context.mounted) {
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
@@ -648,7 +653,7 @@ class _MbkmPageState extends State<MbkmPage> {
                                 _loadData();
                               }
                             } catch (e) {
-                              if (mounted)
+                              if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
@@ -660,9 +665,11 @@ class _MbkmPageState extends State<MbkmPage> {
                                     backgroundColor: Colors.red,
                                   ),
                                 );
+                              }
                             } finally {
-                              if (mounted)
+                              if (context.mounted) {
                                 setSheetState(() => isSubmitting = false);
+                              }
                             }
                           },
                     style: ElevatedButton.styleFrom(

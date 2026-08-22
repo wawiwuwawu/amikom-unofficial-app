@@ -104,7 +104,7 @@ class _NotifikasiDetailPageState extends State<NotifikasiDetailPage> {
         appBar: AppBar(
           title: const Text('Detail Notifikasi',
               style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.white.withOpacity(0.5),
+          backgroundColor: Colors.white.withValues(alpha: 0.5),
           leading: IconButton(
             icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
             onPressed: () => Navigator.pop(context),

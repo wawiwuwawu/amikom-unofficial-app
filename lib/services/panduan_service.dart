@@ -57,13 +57,21 @@ class PanduanService {
         }
       } else {
         final contentType = response.headers.value('content-type') ?? '';
-        if (contentType.contains('wordprocessingml') || contentType.contains('msword')) ext = '.docx';
-        else if (contentType.contains('spreadsheetml') || contentType.contains('ms-excel')) ext = '.xlsx';
-        else if (contentType.contains('presentationml') || contentType.contains('ms-powerpoint')) ext = '.pptx';
-        else if (contentType.contains('pdf')) ext = '.pdf';
-        else if (contentType.contains('zip')) ext = '.zip';
-        else if (contentType.contains('jpeg') || contentType.contains('jpg')) ext = '.jpg';
-        else if (contentType.contains('png')) ext = '.png';
+        if (contentType.contains('wordprocessingml') || contentType.contains('msword')) {
+          ext = '.docx';
+        } else if (contentType.contains('spreadsheetml') || contentType.contains('ms-excel')) {
+          ext = '.xlsx';
+        } else if (contentType.contains('presentationml') || contentType.contains('ms-powerpoint')) {
+          ext = '.pptx';
+        } else if (contentType.contains('pdf')) {
+          ext = '.pdf';
+        } else if (contentType.contains('zip')) {
+          ext = '.zip';
+        } else if (contentType.contains('jpeg') || contentType.contains('jpg')) {
+          ext = '.jpg';
+        } else if (contentType.contains('png')) {
+          ext = '.png';
+        }
       }
 
       final savePath = '$dir/$filename$ext';

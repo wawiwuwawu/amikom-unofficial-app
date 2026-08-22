@@ -108,7 +108,7 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
         appBar: AppBar(
           title: const Text('Detail Pengumuman',
               style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.white.withOpacity(0.5),
+          backgroundColor: Colors.white.withValues(alpha: 0.5),
           leading: IconButton(
             icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
             onPressed: () => Navigator.pop(context),

@@ -329,7 +329,7 @@ class _PklPageState extends State<PklPage> {
 
                   // Dropdown Jenis
                   DropdownButtonFormField<String>(
-                    value: _selectedJenis,
+                    initialValue: _selectedJenis,
                     isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Jenis Pendaftaran',

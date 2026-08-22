@@ -47,7 +47,7 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
-  int _refreshTrigger = 0;
+  final int _refreshTrigger = 0;
   int _unreadNotifCount = 0;
 
   @override
@@ -107,7 +107,7 @@ class _MainPageState extends State<MainPage> {
                 appBarTitle,
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              backgroundColor: Colors.white.withOpacity(0.5),
+              backgroundColor: Colors.white.withValues(alpha: 0.5),
               leading: _currentIndex != 0
                   ? IconButton(
                       icon: const Icon(
@@ -200,7 +200,7 @@ class _MainPageState extends State<MainPage> {
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF501F66).withOpacity(0.2),
+            color: const Color(0xFF501F66).withValues(alpha: 0.2),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -762,7 +762,7 @@ class _MainPageState extends State<MainPage> {
               ),
               onTap: () async {
                 await ApiClient.instance.fullLogout();
-                if (!context.mounted) return;
+                if (!mounted) return;
                 Navigator.pushReplacementNamed(context, '/login');
               },
             ),
@@ -787,7 +787,7 @@ class _MainPageState extends State<MainPage> {
         ),
       ),
       selected: selected,
-      selectedTileColor: const Color(0xFF501F66).withOpacity(0.1),
+      selectedTileColor: const Color(0xFF501F66).withValues(alpha: 0.1),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 24),
       onTap: () {
@@ -1087,7 +1087,7 @@ class _MainPageState extends State<MainPage> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: itemColor.withOpacity(0.12),
+                          color: itemColor.withValues(alpha: 0.12),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(

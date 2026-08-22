@@ -209,7 +209,7 @@ class _SeminarWorkshopPageState extends State<SeminarWorkshopPage> {
         appBar: AppBar(
           title: const Text('Seminar & Workshop Mahasiswa',
               style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.white.withOpacity(0.5),
+          backgroundColor: Colors.white.withValues(alpha: 0.5),
           leading: IconButton(
             icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
             onPressed: widget.onBack,
@@ -306,7 +306,7 @@ class _SeminarWorkshopPageState extends State<SeminarWorkshopPage> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF501F66).withOpacity(0.1),
+                                          color: const Color(0xFF501F66).withValues(alpha: 0.1),
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Text(

@@ -258,7 +258,7 @@ class _SkmkPageState extends State<SkmkPage> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _selectedKeperluan,
+                  initialValue: _selectedKeperluan,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Pilih Keperluan',
@@ -284,7 +284,7 @@ class _SkmkPageState extends State<SkmkPage> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _selectedOrtu,
+                  initialValue: _selectedOrtu,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Pilih Orang Tua',

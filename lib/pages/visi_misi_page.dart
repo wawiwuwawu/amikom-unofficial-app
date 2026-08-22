@@ -159,7 +159,7 @@ class _VisiMisiPageState extends State<VisiMisiPage> {
             'Visi & Misi',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          backgroundColor: Colors.white.withOpacity(0.5),
+          backgroundColor: Colors.white.withValues(alpha: 0.5),
           elevation: 0,
           surfaceTintColor: Colors.transparent,
           flexibleSpace: ClipRRect(
@@ -312,7 +312,7 @@ class _VisiMisiPageState extends State<VisiMisiPage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: color, size: 24),
@@ -343,7 +343,7 @@ class _VisiMisiPageState extends State<VisiMisiPage> {
                       width: 6,
                       height: 6,
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.5),
+                        color: color.withValues(alpha: 0.5),
                         shape: BoxShape.circle,
                       ),
                     ),

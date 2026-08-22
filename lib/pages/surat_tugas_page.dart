@@ -429,7 +429,7 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: editNikPendamping,
+                    initialValue: editNikPendamping,
                     isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Dosen Pendamping', border: OutlineInputBorder()),
                     items: dosenOptions.map((d) {
@@ -526,7 +526,7 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
                               setStateModal(() => isUpdating = true);
                               try {
                                 final res = await _service.updateSuratTugas(item.idSurat, updateBody);
-                                if (mounted) {
+                                if (context.mounted) {
                                   Navigator.pop(context);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
@@ -537,7 +537,7 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
                                   _fetchData();
                                 }
                               } catch (e) {
-                                if (mounted) {
+                                if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(e.toString().replaceFirst('Exception: ', '')),
@@ -719,7 +719,7 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
 
                 // Dropdown Dosen Pendamping
                 DropdownButtonFormField<String>(
-                  value: _selectedNikPendamping,
+                  initialValue: _selectedNikPendamping,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Dosen Pendamping',

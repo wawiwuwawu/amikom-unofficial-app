@@ -175,7 +175,7 @@ class _OrganisasiFormSheetState extends State<OrganisasiFormSheet> {
                               border: OutlineInputBorder(),
                             ),
                             isExpanded: true,
-                            value: _selectedOrganisasi,
+                            initialValue: _selectedOrganisasi,
                             items: _options?.organisasi.map((opt) {
                               return DropdownMenuItem(
                                 value: opt.value,
@@ -214,7 +214,7 @@ class _OrganisasiFormSheetState extends State<OrganisasiFormSheet> {
                               border: OutlineInputBorder(),
                             ),
                             isExpanded: true,
-                            value: _selectedJabatan,
+                            initialValue: _selectedJabatan,
                             items: _options?.jabatan.map((opt) {
                               return DropdownMenuItem(
                                 value: opt.value,
@@ -252,7 +252,7 @@ class _OrganisasiFormSheetState extends State<OrganisasiFormSheet> {
                               labelText: 'Tahun',
                               border: OutlineInputBorder(),
                             ),
-                            value: _selectedTahun,
+                            initialValue: _selectedTahun,
                             items: _getTahunList().map((thn) {
                               return DropdownMenuItem(
                                 value: thn,

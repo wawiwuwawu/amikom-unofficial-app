@@ -179,7 +179,7 @@ class _SertifikasiFormSheetState extends State<SertifikasiFormSheet> {
                               border: OutlineInputBorder(),
                             ),
                             isExpanded: true,
-                            value: _selectedJudul,
+                            initialValue: _selectedJudul,
                             items: _options.map((opt) {
                               return DropdownMenuItem(
                                 value: opt.value,
@@ -228,7 +228,7 @@ class _SertifikasiFormSheetState extends State<SertifikasiFormSheet> {
                               labelText: 'Tahun Sertifikasi',
                               border: OutlineInputBorder(),
                             ),
-                            value: _selectedTahun,
+                            initialValue: _selectedTahun,
                             items: _getTahunList().map((thn) {
                               return DropdownMenuItem(
                                 value: thn,

@@ -114,7 +114,7 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Detail Presensi', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white.withOpacity(0.5),
+        backgroundColor: Colors.white.withValues(alpha: 0.5),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         flexibleSpace: ClipRRect(
@@ -243,7 +243,7 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
                       labelText: 'Kritik & Saran (opsional)',
                       labelStyle: const TextStyle(color: Colors.black54),
                       filled: true,
-                      fillColor: Colors.white.withOpacity(0.5),
+                      fillColor: Colors.white.withValues(alpha: 0.5),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide.none,
@@ -317,7 +317,7 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.6),
+              color: Colors.white.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(16),
             ),
             child: DropdownButtonHideUnderline(
@@ -355,7 +355,7 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.6),
+            color: Colors.white.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(16),
           ),
           child: DropdownButtonHideUnderline(

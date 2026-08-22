@@ -120,7 +120,7 @@ class _NotifikasiListPageState extends State<NotifikasiListPage> {
         appBar: AppBar(
           title: const Text('Notifikasi & Pengumuman',
               style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.white.withOpacity(0.5),
+          backgroundColor: Colors.white.withValues(alpha: 0.5),
           leading: widget.onBack != null
               ? IconButton(
                   icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),

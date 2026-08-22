@@ -94,7 +94,7 @@ class _PusatStudiPageState extends State<PusatStudiPage> {
             'Pusat Studi',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          backgroundColor: Colors.white.withOpacity(0.5),
+          backgroundColor: Colors.white.withValues(alpha: 0.5),
           elevation: 0,
           surfaceTintColor: Colors.transparent,
           flexibleSpace: ClipRRect(
@@ -230,7 +230,7 @@ class _PusatStudiPageState extends State<PusatStudiPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isJoined ? Colors.green.withOpacity(0.1) : const Color(0xFF501F66).withOpacity(0.1),
+                      color: isJoined ? Colors.green.withValues(alpha: 0.1) : const Color(0xFF501F66).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -302,7 +302,7 @@ class _PusatStudiPageState extends State<PusatStudiPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
+                      color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(CupertinoIcons.checkmark_seal_fill, color: Colors.green.shade700),

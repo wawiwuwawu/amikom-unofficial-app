@@ -429,7 +429,7 @@ class _PpksPageState extends State<PpksPage> {
                   const SizedBox(height: 12),
 
                   DropdownButtonFormField<String>(
-                    value: _selectedJkKorban,
+                    initialValue: _selectedJkKorban,
                     isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Jenis Kelamin Korban',
@@ -447,7 +447,7 @@ class _PpksPageState extends State<PpksPage> {
                   const SizedBox(height: 12),
 
                   DropdownButtonFormField<String>(
-                    value: _selectedStatusKorban,
+                    initialValue: _selectedStatusKorban,
                     isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Status Korban',
@@ -470,7 +470,7 @@ class _PpksPageState extends State<PpksPage> {
 
           // Disabilitas Korban
           DropdownButtonFormField<String>(
-            value: _selectedDisabilitasKorban,
+            initialValue: _selectedDisabilitasKorban,
             isExpanded: true,
             decoration: const InputDecoration(
               labelText: 'Korban Memiliki Disabilitas?',
@@ -512,7 +512,7 @@ class _PpksPageState extends State<PpksPage> {
                 const SizedBox(height: 12),
 
                 DropdownButtonFormField<String>(
-                  value: _selectedJkTerlapor,
+                  initialValue: _selectedJkTerlapor,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Jenis Kelamin Terlapor',
@@ -530,7 +530,7 @@ class _PpksPageState extends State<PpksPage> {
                 const SizedBox(height: 12),
 
                 DropdownButtonFormField<String>(
-                  value: _selectedStatusTerlapor,
+                  initialValue: _selectedStatusTerlapor,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Status Terlapor',

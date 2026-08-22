@@ -214,7 +214,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
         appBar: AppBar(
           leading: widget.onBack != null ? IconButton(icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)), onPressed: widget.onBack) : null,
           title: const Text('Absensi Mahasiswa', style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.white.withOpacity(0.5),
+          backgroundColor: Colors.white.withValues(alpha: 0.5),
           elevation: 0,
           surfaceTintColor: Colors.transparent,
           flexibleSpace: ClipRRect(
@@ -304,7 +304,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
     return GlassCard(
       padding: const EdgeInsets.all(12),
       gradient: LinearGradient(
-        colors: [Colors.orange.shade50.withOpacity(0.7), Colors.white.withOpacity(0.5)],
+        colors: [Colors.orange.shade50.withValues(alpha: 0.7), Colors.white.withValues(alpha: 0.5)],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
@@ -367,7 +367,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
                   gradient: const LinearGradient(colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)]),
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
-                    BoxShadow(color: const Color(0xFFBBDEFB).withOpacity(0.5), blurRadius: 8, offset: const Offset(0, 4)),
+                    BoxShadow(color: const Color(0xFFBBDEFB).withValues(alpha: 0.5), blurRadius: 8, offset: const Offset(0, 4)),
                   ],
                 ),
                 child: IconButton(
@@ -439,7 +439,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.6),
+        color: Colors.white.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(16),
       ),
       child: DropdownButtonHideUnderline(
@@ -515,7 +515,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
                       borderRadius: BorderRadius.circular(8),
                       child: LinearProgressIndicator(
                         value: item.$2 / 100,
-                        backgroundColor: Colors.white.withOpacity(0.5),
+                        backgroundColor: Colors.white.withValues(alpha: 0.5),
                         color: item.$3,
                         minHeight: 12,
                       ),
@@ -583,7 +583,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.15),
+                  color: statusColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
@@ -606,7 +606,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
                   margin: const EdgeInsets.only(left: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(statusLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: statusColor)),

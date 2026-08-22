@@ -94,7 +94,7 @@ class _TargetIpkSimulatorSheetState extends State<TargetIpkSimulatorSheet> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF501F66).withOpacity(0.1),
+                        color: const Color(0xFF501F66).withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(CupertinoIcons.scope, color: Color(0xFF501F66), size: 22),
@@ -167,7 +167,7 @@ class _TargetIpkSimulatorSheetState extends State<TargetIpkSimulatorSheet> {
                               activeTrackColor: const Color(0xFF501F66),
                               inactiveTrackColor: Colors.grey.shade200,
                               thumbColor: const Color(0xFF501F66),
-                              overlayColor: const Color(0xFF501F66).withOpacity(0.1),
+                              overlayColor: const Color(0xFF501F66).withValues(alpha: 0.1),
                               valueIndicatorShape: const PaddleSliderValueIndicatorShape(),
                               valueIndicatorColor: const Color(0xFF501F66),
                               valueIndicatorTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -312,7 +312,7 @@ class _TargetIpkSimulatorSheetState extends State<TargetIpkSimulatorSheet> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: borderColor.withOpacity(0.5)),
+              border: Border.all(color: borderColor.withValues(alpha: 0.5)),
             ),
             child: Column(
               children: [

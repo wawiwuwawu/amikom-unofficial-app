@@ -130,7 +130,7 @@ class _KhsPageState extends State<KhsPage> {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('KHS (Kartu Hasil Studi)', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white.withOpacity(0.5),
+        backgroundColor: Colors.white.withValues(alpha: 0.5),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
       ),
@@ -222,7 +222,7 @@ class _KhsPageState extends State<KhsPage> {
                 gradient: const LinearGradient(colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)]),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
-                  BoxShadow(color: const Color(0xFFBBDEFB).withOpacity(0.5), blurRadius: 8, offset: const Offset(0, 4)),
+                  BoxShadow(color: const Color(0xFFBBDEFB).withValues(alpha: 0.5), blurRadius: 8, offset: const Offset(0, 4)),
                 ],
               ),
               child: IconButton(
@@ -246,7 +246,7 @@ class _KhsPageState extends State<KhsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.6),
+        color: Colors.white.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(12),
       ),
       child: DropdownButtonHideUnderline(
@@ -274,9 +274,9 @@ class _KhsPageState extends State<KhsPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
+                color: Colors.green.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.green.withOpacity(0.3)),
+                border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: const [
@@ -292,9 +292,9 @@ class _KhsPageState extends State<KhsPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: Colors.blue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: const [
@@ -377,7 +377,7 @@ class _KhsPageState extends State<KhsPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFBBDEFB).withOpacity(0.4),
+                    color: const Color(0xFFBBDEFB).withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -406,9 +406,9 @@ class _KhsPageState extends State<KhsPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: (nilaiColor ?? Colors.grey).withOpacity(0.15),
+                    color: (nilaiColor ?? Colors.grey).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: (nilaiColor ?? Colors.grey).withOpacity(0.5), width: 1.5),
+                    border: Border.all(color: (nilaiColor ?? Colors.grey).withValues(alpha: 0.5), width: 1.5),
                   ),
                   child: Text(
                     item.nilai,
@@ -433,7 +433,7 @@ class _KhsPageState extends State<KhsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.6),
+        color: Colors.white.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(

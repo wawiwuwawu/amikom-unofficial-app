@@ -176,7 +176,7 @@ class _AgendaAkademikPageState extends State<AgendaAkademikPage> {
             'Agenda Akademik',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          backgroundColor: Colors.white.withOpacity(0.5),
+          backgroundColor: Colors.white.withValues(alpha: 0.5),
           elevation: 0,
           surfaceTintColor: Colors.transparent,
           flexibleSpace: ClipRRect(
@@ -349,10 +349,10 @@ class _AgendaAkademikPageState extends State<AgendaAkademikPage> {
         color: isSelected 
             ? const Color(0xFF501F66) 
             : isToday 
-                ? const Color(0xFF501F66).withOpacity(0.1) 
+                ? const Color(0xFF501F66).withValues(alpha: 0.1) 
                 : Colors.white,
         borderRadius: BorderRadius.circular(8), // Kotak dengan sudut membulat
-        border: Border.all(color: isSelected ? const Color(0xFF501F66) : Colors.grey.withOpacity(0.2)),
+        border: Border.all(color: isSelected ? const Color(0xFF501F66) : Colors.grey.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -390,7 +390,7 @@ class _AgendaAkademikPageState extends State<AgendaAkademikPage> {
                       margin: const EdgeInsets.only(bottom: 3, left: 2, right: 2),
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.white.withOpacity(0.4) : _getColorForAgenda(agenda).withOpacity(0.85),
+                        color: isSelected ? Colors.white.withValues(alpha: 0.4) : _getColorForAgenda(agenda).withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -430,7 +430,7 @@ class _AgendaAkademikPageState extends State<AgendaAkademikPage> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF501F66).withOpacity(0.1),
+                    color: const Color(0xFF501F66).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(CupertinoIcons.calendar_today, color: Color(0xFF501F66)),

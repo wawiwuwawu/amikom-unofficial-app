@@ -232,7 +232,7 @@ class _PrestasiFormSheetState extends State<PrestasiFormSheet> {
                             children: [
                               // Dropdown Jenis Prestasi (Wajib)
                               DropdownButtonFormField<String>(
-                                value: _selectedJenisPrestasi,
+                                initialValue: _selectedJenisPrestasi,
                                 decoration: InputDecoration(
                                   labelText: 'Jenis Prestasi *',
                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -277,7 +277,7 @@ class _PrestasiFormSheetState extends State<PrestasiFormSheet> {
                               // Conditional Input: Program Kreativitas Mahasiswa (PKM)
                               if (_selectedJenisPrestasi == 'Program Kreativitas Mahasiswa (PKM)') ...[
                                 DropdownButtonFormField<String>(
-                                  value: _selectedPrestasiPkm,
+                                  initialValue: _selectedPrestasiPkm,
                                   decoration: InputDecoration(
                                     labelText: 'Capaian Prestasi PKM',
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -294,7 +294,7 @@ class _PrestasiFormSheetState extends State<PrestasiFormSheet> {
                                 ),
                                 const SizedBox(height: 16),
                                 DropdownButtonFormField<String>(
-                                  value: _selectedKategoriPkm,
+                                  initialValue: _selectedKategoriPkm,
                                   decoration: InputDecoration(
                                     labelText: 'Kategori PKM',
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -335,7 +335,7 @@ class _PrestasiFormSheetState extends State<PrestasiFormSheet> {
                                   _selectedJenisPrestasi != 'KEJUARAAN LAINNYA' &&
                                   _selectedJenisPrestasi != 'Program Kreativitas Mahasiswa (PKM)') ...[
                                 DropdownButtonFormField<String>(
-                                  value: _selectedPrestasi,
+                                  initialValue: _selectedPrestasi,
                                   decoration: InputDecoration(
                                     labelText: 'Capaian Prestasi / Perolehan',
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -365,7 +365,7 @@ class _PrestasiFormSheetState extends State<PrestasiFormSheet> {
 
                               // Dropdown Tingkatan (Opsional)
                               DropdownButtonFormField<String>(
-                                value: _selectedTingkatan,
+                                initialValue: _selectedTingkatan,
                                 decoration: InputDecoration(
                                   labelText: 'Tingkatan (Opsional)',
                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),

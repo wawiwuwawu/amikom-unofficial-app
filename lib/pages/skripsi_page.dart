@@ -482,7 +482,7 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.15),
+                    color: statusColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -758,7 +758,7 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: item.aktivasi == 1 ? Colors.green.withOpacity(0.15) : Colors.orange.withOpacity(0.15),
+                    color: item.aktivasi == 1 ? Colors.green.withValues(alpha: 0.15) : Colors.orange.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -911,7 +911,7 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isLolos ? Colors.green.withOpacity(0.15) : Colors.orange.withOpacity(0.15),
+                    color: isLolos ? Colors.green.withValues(alpha: 0.15) : Colors.orange.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(

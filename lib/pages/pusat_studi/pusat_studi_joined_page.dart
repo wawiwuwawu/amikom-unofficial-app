@@ -139,7 +139,7 @@ class _PusatStudiJoinedPageState extends State<PusatStudiJoinedPage> {
                             deskripsiController.text,
                             rencanaController.text,
                           );
-                          if (mounted) {
+                          if (context.mounted) {
                             Navigator.pop(context);
                             final msg = res['message'] ?? 'Berhasil mengusulkan tema';
                             final isSuccess = res['success'] != false;
@@ -152,7 +152,7 @@ class _PusatStudiJoinedPageState extends State<PusatStudiJoinedPage> {
                             _loadData();
                           }
                         } catch (e) {
-                          if (mounted) {
+                          if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(e.toString().replaceFirst('Exception: ', '')),
@@ -230,7 +230,7 @@ class _PusatStudiJoinedPageState extends State<PusatStudiJoinedPage> {
                             tema.judulTema,
                             rencanaController.text,
                           );
-                          if (mounted) {
+                          if (context.mounted) {
                             Navigator.pop(context);
                             final msg = res['message'] ?? 'Berhasil memilih tema';
                             final isSuccess = res['success'] != false;
@@ -243,7 +243,7 @@ class _PusatStudiJoinedPageState extends State<PusatStudiJoinedPage> {
                             _loadData();
                           }
                         } catch (e) {
-                          if (mounted) {
+                          if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(e.toString().replaceFirst('Exception: ', '')),

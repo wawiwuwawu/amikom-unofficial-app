@@ -832,7 +832,7 @@ class _SpPageState extends State<SpPage> {
     final isDisabled = matkul?.disabled ?? false;
     final badgeColor = isHighPriority ? Colors.red : Colors.orange;
     final borderColor = isHighPriority ? Colors.red.shade300 : Colors.orange.shade300;
-    final bgColor = isHighPriority ? Colors.red.shade50.withOpacity(0.6) : Colors.orange.shade50.withOpacity(0.6);
+    final bgColor = isHighPriority ? Colors.red.shade50.withValues(alpha: 0.6) : Colors.orange.shade50.withValues(alpha: 0.6);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -867,9 +867,9 @@ class _SpPageState extends State<SpPage> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: badgeColor.withOpacity(0.15),
+                                color: badgeColor.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: badgeColor.withOpacity(0.4)),
+                                border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
                               ),
                               child: Text(
                                 'Nilai: ${item.nilaiSebelumnya}',
@@ -884,7 +884,7 @@ class _SpPageState extends State<SpPage> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF501F66).withOpacity(0.1),
+                                color: const Color(0xFF501F66).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -923,7 +923,7 @@ class _SpPageState extends State<SpPage> {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(

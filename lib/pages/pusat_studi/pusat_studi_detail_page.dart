@@ -82,7 +82,7 @@ class _PusatStudiDetailPageState extends State<PusatStudiDetailPage> {
       backgroundColor: const Color(0xFFFAFCFF),
       appBar: AppBar(
         title: Text(widget.pusatStudi.nama, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        backgroundColor: Colors.white.withOpacity(0.9),
+        backgroundColor: Colors.white.withValues(alpha: 0.9),
         elevation: 0,
         iconTheme: const IconThemeData(color: Color(0xFF501F66)),
       ),
@@ -254,7 +254,7 @@ class _PusatStudiDetailPageState extends State<PusatStudiDetailPage> {
             borderRadius: 12,
             child: ListTile(
               leading: CircleAvatar(
-                backgroundColor: const Color(0xFF501F66).withOpacity(0.1),
+                backgroundColor: const Color(0xFF501F66).withValues(alpha: 0.1),
                 child: Text(dosen.no, style: const TextStyle(color: Color(0xFF501F66))),
               ),
               title: Text(dosen.nama, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
@@ -285,7 +285,7 @@ class _PusatStudiDetailPageState extends State<PusatStudiDetailPage> {
             borderRadius: 12,
             child: ListTile(
               leading: CircleAvatar(
-                backgroundColor: Colors.blue.withOpacity(0.1),
+                backgroundColor: Colors.blue.withValues(alpha: 0.1),
                 child: const Icon(CupertinoIcons.person_fill, color: Colors.blue, size: 20),
               ),
               title: Text(mhs.nama, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
@@ -340,7 +340,7 @@ class _PusatStudiDetailPageState extends State<PusatStudiDetailPage> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF501F66).withOpacity(0.1),
+                        color: const Color(0xFF501F66).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text('Jenis: ${tema.jenisTema}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF501F66))),

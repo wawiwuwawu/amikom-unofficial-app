@@ -85,6 +85,7 @@ class _SertifikasiPageState extends State<SertifikasiPage> {
 
     if (confirm != true) return;
 
+    if (!mounted) return;
     // Tampilkan loading snackbar
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Menghapus data...')),

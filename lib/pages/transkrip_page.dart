@@ -134,7 +134,7 @@ class _TranskripPageState extends State<TranskripPage> {
           'Transkrip Nilai',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.white.withOpacity(0.5),
+        backgroundColor: Colors.white.withValues(alpha: 0.5),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         actions: [
@@ -329,10 +329,10 @@ class _TranskripPageState extends State<TranskripPage> {
       decoration: BoxDecoration(
         gradient: cardBgGradient,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: primaryColor.withOpacity(0.4), width: 1.5),
+        border: Border.all(color: primaryColor.withValues(alpha: 0.4), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: primaryColor.withOpacity(0.08),
+            color: primaryColor.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -457,7 +457,7 @@ class _TranskripPageState extends State<TranskripPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFBBDEFB).withOpacity(0.4),
+                    color: const Color(0xFFBBDEFB).withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -493,10 +493,10 @@ class _TranskripPageState extends State<TranskripPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: (nilaiColor ?? Colors.grey).withOpacity(0.15),
+                    color: (nilaiColor ?? Colors.grey).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: (nilaiColor ?? Colors.grey).withOpacity(0.5),
+                      color: (nilaiColor ?? Colors.grey).withValues(alpha: 0.5),
                       width: 1.5,
                     ),
                   ),
@@ -523,7 +523,7 @@ class _TranskripPageState extends State<TranskripPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.6),
+        color: Colors.white.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
