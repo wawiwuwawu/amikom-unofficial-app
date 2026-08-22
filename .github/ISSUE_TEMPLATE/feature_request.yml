@@ -1,0 +1,36 @@
+name: ✨ Permintaan Fitur
+description: Ide atau permintaan fitur baru untuk aplikasi
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ide bagus! Ceritakan dengan detail supaya bisa dipertimbangkan & direncanakan.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Masalah yang ingin diselesaikan
+      description: Situasi / kebutuhan yang memunculkan ide ini.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Usulan solusi
+      description: Bagaimana fitur ini seharusnya bekerja? Boleh sertakan mockup/sketsa.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatif (opsional)
+      description: Solusi lain yang pernah kamu coba / pikirkan.
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Sebelum submit
+      options:
+        - label: Saya sudah memeriksa issue yang sudah ada (tidak duplikat)
+          required: true
+        - label: Saya bersedia membantu menguji / memberi masukan saat fitur dikembangkan

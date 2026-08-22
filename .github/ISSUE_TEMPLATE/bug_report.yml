@@ -1,0 +1,59 @@
+name: 🐛 Laporan Bug
+description: Laporkan bug/error yang kamu temukan di aplikasi
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Terima kasih sudah melaporkan! Mohon isi selengkap mungkin agar bug bisa cepat direproduksi.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Apa yang terjadi?
+      description: Jelaskan masalahnya secara singkat dan jelas.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Langkah reproduksi
+      description: Langkah-langkah untuk memunculkan bug (1. Buka... 2. Klik... 3. Error muncul).
+      placeholder: |
+        1. Buka halaman KHS
+        2. Pilih semester Ganjil 2025
+        3. Aplikasi crash / muncul error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Yang seharusnya terjadi
+      description: Perilaku yang kamu harapkan.
+  - type: textarea
+    id: actual
+    attributes:
+      label: Yang terjadi
+      description: Perilaku yang sebenarnya muncul (sertakan pesan error / screenshot jika ada).
+  - type: input
+    id: version
+    attributes:
+      label: Versi aplikasi
+      description: Lihat di halaman Tentang atau versi release (misal v1.9.0)
+    validations:
+      required: true
+  - type: dropdown
+    id: device
+    attributes:
+      label: Perangkat
+      options:
+        - Android (fisik)
+        - Android (emulator)
+        - Lainnya
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log (opsional)
+      description: Tempel log error / stacktrace jika ada. Jangan sertakan data pribadi atau kredensial.
