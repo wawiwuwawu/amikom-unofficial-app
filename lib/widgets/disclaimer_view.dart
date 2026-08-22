@@ -61,6 +61,17 @@ class DisclaimerView extends StatelessWidget {
                 'silakan coba kembali di lain waktu.',
           ),
           _section(
+            icon: CupertinoIcons.exclamationmark_triangle_fill,
+            title: 'Operasi Sensitif & Pembayaran',
+            body:
+                'Untuk tindakan yang TIDAK BOLEH SALAH — mengunggah dokumen resmi (skripsi, '
+                'laporan, berkas administrasi) maupun transaksi pembayaran/pembuatan VA — '
+                'sangat disarankan menggunakan portal resmi melalui browser. Kemampuan aplikasi '
+                'pada operasi tersebut tidak dapat dijamin 100%. Sejak awal aplikasi dirilis '
+                'tanpa garansi apa pun; akibat kegagalan atau kesalahan proses pada operasi '
+                'sensitif merupakan risiko dan tanggung jawab pengguna sepenuhnya, bukan pengembang.',
+          ),
+          _section(
             icon: CupertinoIcons.person_crop_circle_badge_exclam,
             title: 'Privasi & Kredensial',
             body:
