@@ -48,7 +48,7 @@ dependencies:
   flutter_html: ^3.0.0
   markdown: ^7.3.1
   file_picker: ^11.0.3
-  table_calendar: ^3.2.0
+  table_calendar: ^3.2.1
   intl: ^0.20.3
   open_filex: ^4.7.0
 
