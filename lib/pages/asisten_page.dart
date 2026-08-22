@@ -154,12 +154,6 @@ class _AsistenPageState extends State<AsistenPage> {
     }
   }
 
-  Color _hexToColor(String code) {
-    if (code.startsWith('#')) code = code.substring(1);
-    if (code.length == 6) code = 'FF$code';
-    return Color(int.tryParse(code, radix: 16) ?? 0xFF501F66);
-  }
-
   @override
   Widget build(BuildContext context) {
     final canPop = Navigator.canPop(context);
@@ -180,7 +174,10 @@ class _AsistenPageState extends State<AsistenPage> {
         appBar: AppBar(
           leading: (widget.onBack != null || canPop)
               ? IconButton(
-                  icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
+                  icon: const Icon(
+                    CupertinoIcons.back,
+                    color: Color(0xFF501F66),
+                  ),
                   onPressed: widget.onBack ?? () => Navigator.pop(context),
                 )
               : null,
@@ -202,8 +199,8 @@ class _AsistenPageState extends State<AsistenPage> {
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _error != null
-                  ? _buildErrorState()
-                  : _buildContent(),
+              ? _buildErrorState()
+              : _buildContent(),
         ),
       ),
     );

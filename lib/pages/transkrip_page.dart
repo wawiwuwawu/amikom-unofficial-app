@@ -36,15 +36,24 @@ class _TranskripPageState extends State<TranskripPage> {
     _load();
   }
 
+  /// Jalankan [future] dan kembalikan `null` jika gagal (untuk data opsional).
+  Future<T?> _safe<T>(Future<T> future) async {
+    try {
+      return await future;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _load() async {
     if (!mounted) return;
     setState(() => _loading = true);
     try {
       final results = await Future.wait([
         _service.getTranskrip(),
-        _service.getCumlaudeEligibility().catchError((_) => null),
-        _service.getProgressKelulusan().catchError((_) => null),
-        _service.getRingkasanSkpi().catchError((_) => null),
+        _safe(_service.getCumlaudeEligibility()),
+        _safe(_service.getProgressKelulusan()),
+        _safe(_service.getRingkasanSkpi()),
       ]);
       if (!mounted) return;
       setState(() {
@@ -70,7 +79,10 @@ class _TranskripPageState extends State<TranskripPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Tersimpan di $path', style: const TextStyle(color: Colors.white)),
+            content: Text(
+              'Tersimpan di $path',
+              style: const TextStyle(color: Colors.white),
+            ),
             backgroundColor: const Color(0xFF501F66),
             behavior: SnackBarBehavior.floating,
           ),
@@ -80,7 +92,10 @@ class _TranskripPageState extends State<TranskripPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', ''), style: const TextStyle(color: Colors.white)),
+            content: Text(
+              e.toString().replaceFirst('Exception: ', ''),
+              style: const TextStyle(color: Colors.white),
+            ),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
           ),
@@ -109,8 +124,16 @@ class _TranskripPageState extends State<TranskripPage> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        leading: widget.onBack != null ? IconButton(icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)), onPressed: widget.onBack) : null,
-        title: const Text('Transkrip Nilai', style: TextStyle(fontWeight: FontWeight.bold)),
+        leading: widget.onBack != null
+            ? IconButton(
+                icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
+                onPressed: widget.onBack,
+              )
+            : null,
+        title: const Text(
+          'Transkrip Nilai',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.white.withOpacity(0.5),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -123,12 +146,19 @@ class _TranskripPageState extends State<TranskripPage> {
             ),
             if (_cumlaudeData != null)
               IconButton(
-                icon: const Icon(CupertinoIcons.rosette, color: Color(0xFFD89E00)),
+                icon: const Icon(
+                  CupertinoIcons.rosette,
+                  color: Color(0xFFD89E00),
+                ),
                 tooltip: 'Evaluasi Cumlaude',
-                onPressed: () => showCumlaudeBottomSheet(context, _cumlaudeData!),
+                onPressed: () =>
+                    showCumlaudeBottomSheet(context, _cumlaudeData!),
               ),
             IconButton(
-              icon: const Icon(CupertinoIcons.chart_bar_alt_fill, color: Color(0xFF501F66)),
+              icon: const Icon(
+                CupertinoIcons.chart_bar_alt_fill,
+                color: Color(0xFF501F66),
+              ),
               tooltip: 'Analitik Tren IPK',
               onPressed: () => showHistoriIpkBottomSheet(context),
             ),
@@ -137,9 +167,15 @@ class _TranskripPageState extends State<TranskripPage> {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF501F66)),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFF501F66),
+                      ),
                     )
-                  : const Icon(CupertinoIcons.cloud_download, color: Color(0xFF501F66)),
+                  : const Icon(
+                      CupertinoIcons.cloud_download,
+                      color: Color(0xFF501F66),
+                    ),
               tooltip: 'Download Transkrip',
               onPressed: _downloading ? null : _download,
             ),
@@ -156,7 +192,10 @@ class _TranskripPageState extends State<TranskripPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFFAFCFF), Color(0xFFE3F2FD)], // Pearl White to Ice Blue
+            colors: [
+              Color(0xFFFAFCFF),
+              Color(0xFFE3F2FD),
+            ], // Pearl White to Ice Blue
           ),
         ),
         child: SafeArea(child: _buildBody()),
@@ -167,9 +206,12 @@ class _TranskripPageState extends State<TranskripPage> {
   Widget _buildBody() {
     if (_loading) {
       return Center(
-        child: const CircularProgressIndicator(color: Color(0xFFBBDEFB)) // Ice Blue
-            .animate()
-            .scale(duration: 400.ms, curve: Curves.easeOutBack),
+        child:
+            const CircularProgressIndicator(
+                  color: Color(0xFFBBDEFB),
+                ) // Ice Blue
+                .animate()
+                .scale(duration: 400.ms, curve: Curves.easeOutBack),
       );
     }
     if (_error != null) {
@@ -177,27 +219,43 @@ class _TranskripPageState extends State<TranskripPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(CupertinoIcons.exclamationmark_circle, size: 64, color: Colors.redAccent)
-                .animate()
-                .shake(),
+            const Icon(
+              CupertinoIcons.exclamationmark_circle,
+              size: 64,
+              color: Colors.redAccent,
+            ).animate().shake(),
             const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black87)),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.black87),
+            ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _load,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFBBDEFB),
                 foregroundColor: const Color(0xFF501F66),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
-              child: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Coba Lagi',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),
       );
     }
     if (_list == null || _list!.isEmpty) {
-      return const Center(child: Text('Tidak ada data transkrip', style: TextStyle(color: Colors.black54)));
+      return const Center(
+        child: Text(
+          'Tidak ada data transkrip',
+          style: TextStyle(color: Colors.black54),
+        ),
+      );
     }
 
     final List<Widget> headerWidgets = [];
@@ -205,16 +263,20 @@ class _TranskripPageState extends State<TranskripPage> {
       headerWidgets.add(_buildCumlaudeHeaderCard(_cumlaudeData!));
     }
     if (_progressKelulusanData != null) {
-      headerWidgets.add(Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: ProgressKelulusanCard(data: _progressKelulusanData!),
-      ));
+      headerWidgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: ProgressKelulusanCard(data: _progressKelulusanData!),
+        ),
+      );
     }
     if (_skpiData != null) {
-      headerWidgets.add(Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: RingkasanSkpiWidget(data: _skpiData!),
-      ));
+      headerWidgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: RingkasanSkpiWidget(data: _skpiData!),
+        ),
+      );
     }
 
     final totalCount = _list!.length + headerWidgets.length;
@@ -223,8 +285,15 @@ class _TranskripPageState extends State<TranskripPage> {
       onRefresh: _load,
       color: const Color(0xFF501F66),
       child: ListView.builder(
-        padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 130),
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          8,
+          16,
+          MediaQuery.of(context).padding.bottom + 130,
+        ),
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         itemCount: totalCount,
         itemBuilder: (_, i) {
           if (i < headerWidgets.length) {
@@ -239,7 +308,9 @@ class _TranskripPageState extends State<TranskripPage> {
 
   Widget _buildCumlaudeHeaderCard(CumlaudeData cumlaude) {
     final isCumlaude = cumlaude.isCumlaudeEligible;
-    final primaryColor = isCumlaude ? const Color(0xFFD89E00) : const Color(0xFF1565C0);
+    final primaryColor = isCumlaude
+        ? const Color(0xFFD89E00)
+        : const Color(0xFF1565C0);
     final cardBgGradient = isCumlaude
         ? const LinearGradient(
             colors: [Color(0xFFFFFDE7), Color(0xFFFFF9C4)],
@@ -273,14 +344,18 @@ class _TranskripPageState extends State<TranskripPage> {
           Row(
             children: [
               Icon(
-                isCumlaude ? CupertinoIcons.rosette : CupertinoIcons.chart_bar_alt_fill,
+                isCumlaude
+                    ? CupertinoIcons.rosette
+                    : CupertinoIcons.chart_bar_alt_fill,
                 color: primaryColor,
                 size: 22,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  isCumlaude ? '🎓 Proyeksi: Cumlaude' : 'Proyeksi: ${cumlaude.predikatSaatIni}',
+                  isCumlaude
+                      ? '🎓 Proyeksi: Cumlaude'
+                      : 'Proyeksi: ${cumlaude.predikatSaatIni}',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
@@ -291,7 +366,10 @@ class _TranskripPageState extends State<TranskripPage> {
               InkWell(
                 onTap: () => showCumlaudeBottomSheet(context, cumlaude),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: primaryColor,
                     borderRadius: BorderRadius.circular(12),
@@ -301,10 +379,18 @@ class _TranskripPageState extends State<TranskripPage> {
                     children: [
                       Text(
                         'Rincian Syarat',
-                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       SizedBox(width: 2),
-                      Icon(CupertinoIcons.chevron_right, color: Colors.white, size: 10),
+                      Icon(
+                        CupertinoIcons.chevron_right,
+                        color: Colors.white,
+                        size: 10,
+                      ),
                     ],
                   ),
                 ),
@@ -315,10 +401,18 @@ class _TranskripPageState extends State<TranskripPage> {
           Text(
             isCumlaude
                 ? 'Seluruh syarat Cumlaude terpenuhi. Pertahankan IPK Anda!'
-                : (cumlaude.analisisSyarat.syaratNilaiMinimum.violatingMatkulCount > 0
-                    ? 'Terdapat ${cumlaude.analisisSyarat.syaratNilaiMinimum.violatingMatkulCount} matakuliah bernilai < B- yang perlu diperbaiki.'
-                    : 'Status predikat kelulusan berdasarkan analisis 4 syarat akademis.'),
-            style: const TextStyle(fontSize: 12, color: Colors.black87, height: 1.3),
+                : (cumlaude
+                              .analisisSyarat
+                              .syaratNilaiMinimum
+                              .violatingMatkulCount >
+                          0
+                      ? 'Terdapat ${cumlaude.analisisSyarat.syaratNilaiMinimum.violatingMatkulCount} matakuliah bernilai < B- yang perlu diperbaiki.'
+                      : 'Status predikat kelulusan berdasarkan analisis 4 syarat akademis.'),
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.black87,
+              height: 1.3,
+            ),
           ),
         ],
       ),
@@ -358,7 +452,10 @@ class _TranskripPageState extends State<TranskripPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFBBDEFB).withOpacity(0.4),
                     borderRadius: BorderRadius.circular(8),
@@ -376,7 +473,11 @@ class _TranskripPageState extends State<TranskripPage> {
                 Expanded(
                   child: Text(
                     item.mkl,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.black87),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: Colors.black87,
+                    ),
                   ),
                 ),
               ],
@@ -387,11 +488,17 @@ class _TranskripPageState extends State<TranskripPage> {
                 _infoChip('SKS', item.sks.toString()),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: (nilaiColor ?? Colors.grey).withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: (nilaiColor ?? Colors.grey).withOpacity(0.5), width: 1.5),
+                    border: Border.all(
+                      color: (nilaiColor ?? Colors.grey).withOpacity(0.5),
+                      width: 1.5,
+                    ),
                   ),
                   child: Text(
                     item.nilai,
@@ -428,7 +535,11 @@ class _TranskripPageState extends State<TranskripPage> {
           ),
           Text(
             value,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Colors.black87),
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: Colors.black87,
+            ),
           ),
         ],
       ),

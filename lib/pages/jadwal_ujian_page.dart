@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:intl/intl.dart';
 import 'package:open_filex/open_filex.dart';
 import '../services/akademik_service.dart';
 import '../models/jadwal_ujian.dart';
@@ -38,7 +37,7 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
     });
     try {
       final res = await _service.getJadwalUjian(_jenisUjian);
-      
+
       // Sort by date logically if we want to ensure order, but API usually returns ordered.
       // We assume API order is good.
       setState(() {
@@ -75,7 +74,10 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -87,15 +89,17 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
     // TANGGAL format: "08-07-2026"
     final parts = jadwal.tanggal.split('-');
     if (parts.length != 3) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Format tanggal tidak valid')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Format tanggal tidak valid')),
+      );
       return;
     }
-    
+
     // YYYYMMDD
     final dateStr = '${parts[2]}${parts[1]}${parts[0]}';
     final startTimeStr = jadwal.jamMulai.replaceAll(':', '');
     final endTimeStr = jadwal.jamSelesai.replaceAll(':', '');
-    
+
     final startDateTimeStr = '${dateStr}T${startTimeStr}Z';
     final endDateTimeStr = '${dateStr}T${endTimeStr}Z';
 
@@ -107,7 +111,7 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
       '&text=${Uri.encodeComponent(title)}'
       '&dates=$startDateTimeStr/$endDateTimeStr'
       '&details=${Uri.encodeComponent(details)}'
-      '&location=${Uri.encodeComponent(jadwal.ruang)}'
+      '&location=${Uri.encodeComponent(jadwal.ruang)}',
     );
 
     try {
@@ -117,7 +121,10 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     }
@@ -142,7 +149,10 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
         appBar: AppBar(
           leading: widget.onBack != null
               ? IconButton(
-                  icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
+                  icon: const Icon(
+                    CupertinoIcons.back,
+                    color: Color(0xFF501F66),
+                  ),
                   onPressed: widget.onBack,
                 )
               : null,
@@ -160,69 +170,100 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
             ),
           ),
         ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Toggle
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: GlassCard(
-                borderRadius: 25,
-                padding: const EdgeInsets.all(4),
-                child: Row(
-                  children: [
-                    Expanded(child: _buildTabButton('UTS', 'uts')),
-                    Expanded(child: _buildTabButton('UAS', 'uas')),
-                  ],
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Toggle
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 8.0,
                 ),
+                child: GlassCard(
+                  borderRadius: 25,
+                  padding: const EdgeInsets.all(4),
+                  child: Row(
+                    children: [
+                      Expanded(child: _buildTabButton('UTS', 'uts')),
+                      Expanded(child: _buildTabButton('UAS', 'uas')),
+                    ],
+                  ),
+                ),
+              ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.1),
+
+              // Content
+              Expanded(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF501F66),
+                        ),
+                      )
+                    : _error.isNotEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              CupertinoIcons.exclamationmark_triangle,
+                              size: 50,
+                              color: Colors.red,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _error,
+                              style: const TextStyle(color: Colors.black54),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _loadData,
+                              child: const Text('Coba Lagi'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _loadData,
+                        color: const Color(0xFF501F66),
+                        child: _jadwalList.isEmpty
+                            ? _buildEmptyState()
+                            : _buildList(),
+                      ),
               ),
-            ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.1),
-            
-            // Content
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)))
-                  : _error.isNotEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(CupertinoIcons.exclamationmark_triangle, size: 50, color: Colors.red),
-                              const SizedBox(height: 16),
-                              Text(_error, style: const TextStyle(color: Colors.black54)),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: _loadData,
-                                child: const Text('Coba Lagi'),
-                              )
-                            ],
+            ],
+          ),
+        ),
+        floatingActionButton: _jadwalList.isNotEmpty && !_isLoading
+            ? Padding(
+                padding: const EdgeInsets.only(
+                  bottom: 140.0,
+                ), // Ekstra padding yang lebih tinggi
+                child: FloatingActionButton.extended(
+                  onPressed: _isDownloading ? null : _downloadKartu,
+                  backgroundColor: const Color(0xFF501F66),
+                  icon: _isDownloading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
                           ),
                         )
-                      : RefreshIndicator(
-                          onRefresh: _loadData,
-                          color: const Color(0xFF501F66),
-                          child: _jadwalList.isEmpty ? _buildEmptyState() : _buildList(),
+                      : const Icon(
+                          CupertinoIcons.printer_fill,
+                          color: Colors.white,
                         ),
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: _jadwalList.isNotEmpty && !_isLoading
-          ? Padding(
-              padding: const EdgeInsets.only(bottom: 140.0), // Ekstra padding yang lebih tinggi
-              child: FloatingActionButton.extended(
-                onPressed: _isDownloading ? null : _downloadKartu,
-                backgroundColor: const Color(0xFF501F66),
-                icon: _isDownloading
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(CupertinoIcons.printer_fill, color: Colors.white),
-                label: Text(
-                  _isDownloading ? 'Mengunduh...' : 'Cetak Kartu Ujian',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              ).animate().fadeIn().scale(),
-            )
-          : null,
+                  label: Text(
+                    _isDownloading ? 'Mengunduh...' : 'Cetak Kartu Ujian',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ).animate().fadeIn().scale(),
+              )
+            : null,
       ),
     );
   }
@@ -273,8 +314,15 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
                   color: Colors.green.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(CupertinoIcons.sparkles, size: 64, color: Colors.green),
-              ).animate().fadeIn().scale().then().shake(hz: 2, duration: 1000.ms),
+                child: const Icon(
+                  CupertinoIcons.sparkles,
+                  size: 64,
+                  color: Colors.green,
+                ),
+              ).animate().fadeIn().scale().then().shake(
+                hz: 2,
+                duration: 1000.ms,
+              ),
               const SizedBox(height: 24),
               const Text(
                 'Belum Waktunya Ujian Nih!',
@@ -311,13 +359,18 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
         left: 16,
         right: 16,
         top: 16,
-        bottom: MediaQuery.of(context).padding.bottom + 200, // padding extra for FAB and Nav
+        bottom:
+            MediaQuery.of(context).padding.bottom +
+            200, // padding extra for FAB and Nav
       ),
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: _jadwalList.length,
       itemBuilder: (context, index) {
         final jadwal = _jadwalList[index];
-        return _buildJadwalCard(jadwal, index).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.1);
+        return _buildJadwalCard(
+          jadwal,
+          index,
+        ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.1);
       },
     );
   }
@@ -347,11 +400,18 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
                     children: [
                       Text(
                         jadwal.tanggal.split('-')[0], // Day part
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF501F66)),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: Color(0xFF501F66),
+                        ),
                       ),
                       Text(
                         jadwal.tanggal.split('-')[1], // Month part
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF501F66)),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF501F66),
+                        ),
                       ),
                     ],
                   ),
@@ -372,7 +432,10 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
                       const SizedBox(height: 4),
                       Text(
                         '${jadwal.kode} • ${jadwal.hari}',
-                        style: const TextStyle(fontSize: 13, color: Colors.black54),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black54,
+                        ),
                       ),
                     ],
                   ),
@@ -389,13 +452,22 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
               child: Row(
                 children: [
                   Expanded(
-                    child: _buildInfoItem(CupertinoIcons.time, '${jadwal.jamMulai.substring(0, 5)} - ${jadwal.jamSelesai.substring(0, 5)}'),
+                    child: _buildInfoItem(
+                      CupertinoIcons.time,
+                      '${jadwal.jamMulai.substring(0, 5)} - ${jadwal.jamSelesai.substring(0, 5)}',
+                    ),
                   ),
                   Expanded(
-                    child: _buildInfoItem(CupertinoIcons.location, jadwal.ruang),
+                    child: _buildInfoItem(
+                      CupertinoIcons.location,
+                      jadwal.ruang,
+                    ),
                   ),
                   Expanded(
-                    child: _buildInfoItem(CupertinoIcons.number_circle, 'Kursi ${jadwal.noKursi}'),
+                    child: _buildInfoItem(
+                      CupertinoIcons.number_circle,
+                      'Kursi ${jadwal.noKursi}',
+                    ),
                   ),
                 ],
               ),
@@ -432,7 +504,11 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
         Text(
           text,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
         ),
       ],
     );

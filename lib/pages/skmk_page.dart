@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../models/skmk.dart';
 import '../services/skmk_service.dart';
 import '../widgets/glass_card.dart';
@@ -68,7 +67,10 @@ class _SkmkPageState extends State<SkmkPage> {
 
     setState(() => _isSubmitting = true);
     try {
-      final res = await _service.submitSkmk(_selectedKeperluan!, _selectedOrtu!);
+      final res = await _service.submitSkmk(
+        _selectedKeperluan!,
+        _selectedOrtu!,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -100,8 +102,16 @@ class _SkmkPageState extends State<SkmkPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Hapus Pengajuan SKMK', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
-        content: Text('Apakah Anda yakin ingin menghapus pengajuan SKMK (${item.keperluan}) ini?'),
+        title: const Text(
+          'Hapus Pengajuan SKMK',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF501F66),
+          ),
+        ),
+        content: Text(
+          'Apakah Anda yakin ingin menghapus pengajuan SKMK (${item.keperluan}) ini?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -141,20 +151,6 @@ class _SkmkPageState extends State<SkmkPage> {
     }
   }
 
-  Future<void> _openWhatsApp(String phone) async {
-    final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
-    final uri = Uri.parse('https://wa.me/$cleanPhone');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tidak dapat membuka WhatsApp')),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -183,38 +179,41 @@ class _SkmkPageState extends State<SkmkPage> {
                 icon: Icon(CupertinoIcons.doc_plaintext),
                 text: 'Form Pengajuan',
               ),
-              Tab(
-                icon: Icon(CupertinoIcons.clock),
-                text: 'Riwayat Pengajuan',
-              ),
+              Tab(icon: Icon(CupertinoIcons.clock), text: 'Riwayat Pengajuan'),
             ],
           ),
         ),
         body: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)))
+            ? const Center(
+                child: CircularProgressIndicator(color: Color(0xFF501F66)),
+              )
             : _error.isNotEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(CupertinoIcons.exclamationmark_triangle, size: 50, color: Colors.red),
-                        const SizedBox(height: 16),
-                        Text(_error, style: const TextStyle(color: Colors.black54)),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _fetchData,
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66)),
-                          child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
-                        ),
-                      ],
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      CupertinoIcons.exclamationmark_triangle,
+                      size: 50,
+                      color: Colors.red,
                     ),
-                  )
-                : TabBarView(
-                    children: [
-                      _buildFormTab(),
-                      _buildRiwayatTab(),
-                    ],
-                  ),
+                    const SizedBox(height: 16),
+                    Text(_error, style: const TextStyle(color: Colors.black54)),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _fetchData,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF501F66),
+                      ),
+                      child: const Text(
+                        'Coba Lagi',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : TabBarView(children: [_buildFormTab(), _buildRiwayatTab()]),
       ),
     );
   }
@@ -241,11 +240,19 @@ class _SkmkPageState extends State<SkmkPage> {
               children: [
                 Row(
                   children: const [
-                    Icon(CupertinoIcons.doc_append, color: Color(0xFF501F66), size: 20),
+                    Icon(
+                      CupertinoIcons.doc_append,
+                      color: Color(0xFF501F66),
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Buat Pengajuan SKMK Baru',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF501F66)),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Color(0xFF501F66),
+                      ),
                     ),
                   ],
                 ),
@@ -256,7 +263,10 @@ class _SkmkPageState extends State<SkmkPage> {
                   decoration: const InputDecoration(
                     labelText: 'Pilih Keperluan',
                     border: OutlineInputBorder(),
-                    prefixIcon: Icon(CupertinoIcons.briefcase, color: Color(0xFF501F66)),
+                    prefixIcon: Icon(
+                      CupertinoIcons.briefcase,
+                      color: Color(0xFF501F66),
+                    ),
                   ),
                   items: keperluanList.map((item) {
                     return DropdownMenuItem<String>(
@@ -279,7 +289,10 @@ class _SkmkPageState extends State<SkmkPage> {
                   decoration: const InputDecoration(
                     labelText: 'Pilih Orang Tua',
                     border: OutlineInputBorder(),
-                    prefixIcon: Icon(CupertinoIcons.person_2, color: Color(0xFF501F66)),
+                    prefixIcon: Icon(
+                      CupertinoIcons.person_2,
+                      color: Color(0xFF501F66),
+                    ),
                   ),
                   items: ortuList.map((item) {
                     return DropdownMenuItem<String>(
@@ -303,18 +316,31 @@ class _SkmkPageState extends State<SkmkPage> {
                     onPressed: _isSubmitting ? null : _submitForm,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF501F66),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     icon: _isSubmitting
                         ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
                           )
-                        : const Icon(CupertinoIcons.paperplane_fill, color: Colors.white, size: 18),
+                        : const Icon(
+                            CupertinoIcons.paperplane_fill,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                     label: const Text(
                       'Ajukan SKMK',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 ),
@@ -332,30 +358,60 @@ class _SkmkPageState extends State<SkmkPage> {
               children: [
                 Row(
                   children: const [
-                    Icon(CupertinoIcons.info_circle_fill, color: Color(0xFF1976D2), size: 20),
+                    Icon(
+                      CupertinoIcons.info_circle_fill,
+                      color: Color(0xFF1976D2),
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Syarat & Catatan Penting',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF501F66)),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Color(0xFF501F66),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 if (data.persyaratanInfo.isNotEmpty) ...[
-                  const Text('Layanan SKMK TIDAK DIPROSES untuk:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  const Text(
+                    'Layanan SKMK TIDAK DIPROSES untuk:',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  ...data.persyaratanInfo.map((info) => Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('• ', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                            Expanded(
-                              child: Text(info, style: const TextStyle(fontSize: 12, color: Colors.black54, height: 1.4)),
+                  ...data.persyaratanInfo.map(
+                    (info) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '• ',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
                             ),
-                          ],
-                        ),
-                      )),
+                          ),
+                          Expanded(
+                            child: Text(
+                              info,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.black54,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                 ],
                 if (data.kontakBaa.isNotEmpty) ...[
@@ -364,15 +420,33 @@ class _SkmkPageState extends State<SkmkPage> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(CupertinoIcons.chat_bubble_2_fill, color: Colors.green, size: 18),
+                      const Icon(
+                        CupertinoIcons.chat_bubble_2_fill,
+                        color: Colors.green,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Kontak Loket BAA:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87)),
+                            const Text(
+                              'Kontak Loket BAA:',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
                             const SizedBox(height: 4),
-                            Text(data.kontakBaa, style: const TextStyle(fontSize: 12, color: Colors.black54, height: 1.4)),
+                            Text(
+                              data.kontakBaa,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.black54,
+                                height: 1.4,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -400,9 +474,16 @@ class _SkmkPageState extends State<SkmkPage> {
             Center(
               child: Column(
                 children: [
-                  Icon(CupertinoIcons.doc_text_search, size: 60, color: Colors.grey),
+                  Icon(
+                    CupertinoIcons.doc_text_search,
+                    size: 60,
+                    color: Colors.grey,
+                  ),
                   SizedBox(height: 12),
-                  Text('Belum ada riwayat pengajuan SKMK', style: TextStyle(color: Colors.black54)),
+                  Text(
+                    'Belum ada riwayat pengajuan SKMK',
+                    style: TextStyle(color: Colors.black54),
+                  ),
                 ],
               ),
             ),
@@ -465,11 +546,18 @@ class _SkmkPageState extends State<SkmkPage> {
                       Expanded(
                         child: Text(
                           item.keperluan,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF501F66)),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: Color(0xFF501F66),
+                          ),
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: badgeBg,
                           borderRadius: BorderRadius.circular(20),
@@ -481,7 +569,11 @@ class _SkmkPageState extends State<SkmkPage> {
                             const SizedBox(width: 4),
                             Text(
                               item.status,
-                              style: TextStyle(color: badgeText, fontSize: 11, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                color: badgeText,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),
@@ -507,12 +599,28 @@ class _SkmkPageState extends State<SkmkPage> {
                       children: [
                         OutlinedButton.icon(
                           onPressed: () => _showDeleteConfirmation(item),
-                          icon: const Icon(CupertinoIcons.trash, color: Colors.red, size: 16),
-                          label: const Text('Hapus Pengajuan', style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold)),
+                          icon: const Icon(
+                            CupertinoIcons.trash,
+                            color: Colors.red,
+                            size: 16,
+                          ),
+                          label: const Text(
+                            'Hapus Pengajuan',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: Colors.red),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
                           ),
                         ),
                       ],
@@ -532,10 +640,20 @@ class _SkmkPageState extends State<SkmkPage> {
       children: [
         SizedBox(
           width: 110,
-          child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
         ),
         Expanded(
-          child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87)),
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
         ),
       ],
     );

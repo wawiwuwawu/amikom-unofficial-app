@@ -9,7 +9,6 @@ import 'berita_list_page.dart';
 import 'dashboard_page.dart';
 import 'khs_page.dart';
 import 'pengumuman_list_page.dart';
-import 'placeholder_page.dart';
 import 'transkrip_page.dart';
 import 'panduan_list_page.dart';
 import 'jadwal_page.dart';
@@ -85,7 +84,9 @@ class _MainPageState extends State<MainPage> {
         appBarTitle = 'Jadwal Perkuliahan';
         break;
       case 2:
-        currentWidget = TranskripPage(onBack: () => setState(() => _currentIndex = 0));
+        currentWidget = TranskripPage(
+          onBack: () => setState(() => _currentIndex = 0),
+        );
         break;
       case 3:
         currentWidget = _buildMenuGridPage();
@@ -99,7 +100,7 @@ class _MainPageState extends State<MainPage> {
     }
 
     return Scaffold(
-      extendBody: true, 
+      extendBody: true,
       appBar: showMainAppBar
           ? AppBar(
               title: Text(
@@ -109,7 +110,10 @@ class _MainPageState extends State<MainPage> {
               backgroundColor: Colors.white.withOpacity(0.5),
               leading: _currentIndex != 0
                   ? IconButton(
-                      icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
+                      icon: const Icon(
+                        CupertinoIcons.back,
+                        color: Color(0xFF501F66),
+                      ),
                       onPressed: () => setState(() => _currentIndex = 0),
                     )
                   : null,
@@ -126,7 +130,10 @@ class _MainPageState extends State<MainPage> {
                   icon: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      const Icon(CupertinoIcons.bell_fill, color: Color(0xFF501F66)),
+                      const Icon(
+                        CupertinoIcons.bell_fill,
+                        color: Color(0xFF501F66),
+                      ),
                       if (_unreadNotifCount > 0)
                         Positioned(
                           right: -2,
@@ -138,7 +145,9 @@ class _MainPageState extends State<MainPage> {
                               shape: BoxShape.circle,
                             ),
                             child: Text(
-                              _unreadNotifCount > 9 ? '9+' : _unreadNotifCount.toString(),
+                              _unreadNotifCount > 9
+                                  ? '9+'
+                                  : _unreadNotifCount.toString(),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 9,
@@ -153,7 +162,9 @@ class _MainPageState extends State<MainPage> {
                     await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => NotifikasiListPage(onBack: () => Navigator.pop(context)),
+                        builder: (_) => NotifikasiListPage(
+                          onBack: () => Navigator.pop(context),
+                        ),
                       ),
                     );
                     _checkUnreadNotif();
@@ -184,7 +195,7 @@ class _MainPageState extends State<MainPage> {
 
   Widget _buildFloatingAction() {
     return Container(
-      margin: const EdgeInsets.only(top: 32), 
+      margin: const EdgeInsets.only(top: 32),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         boxShadow: [
@@ -195,52 +206,65 @@ class _MainPageState extends State<MainPage> {
           ),
         ],
       ),
-      child: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AbsensiPage(onBack: () => Navigator.pop(context)),
-            ),
-          );
-        },
-        backgroundColor: const Color(0xFFBBDEFB), // Ice Blue Deep
-        elevation: 0,
-        shape: const CircleBorder(),
-        child: const Icon(CupertinoIcons.qrcode_viewfinder, color: Color(0xFF501F66), size: 32), 
-      ).animate(onPlay: (controller) => controller.repeat(reverse: true))
-       .scaleXY(end: 1.05, duration: 1500.ms, curve: Curves.easeInOut), 
+      child:
+          FloatingActionButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          AbsensiPage(onBack: () => Navigator.pop(context)),
+                    ),
+                  );
+                },
+                backgroundColor: const Color(0xFFBBDEFB), // Ice Blue Deep
+                elevation: 0,
+                shape: const CircleBorder(),
+                child: const Icon(
+                  CupertinoIcons.qrcode_viewfinder,
+                  color: Color(0xFF501F66),
+                  size: 32,
+                ),
+              )
+              .animate(onPlay: (controller) => controller.repeat(reverse: true))
+              .scaleXY(end: 1.05, duration: 1500.ms, curve: Curves.easeInOut),
     );
   }
 
   Widget _buildBottomNav() {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-        child: GlassCard(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          borderRadius: 32,
-          opacity: 0.75,
-          blur: 24,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _navItem(0, CupertinoIcons.square_grid_2x2_fill, 'Home'),
-              _navItem(1, CupertinoIcons.calendar, 'Jadwal'),
-              const SizedBox(width: 48), // Space for FAB
-              _navItem(2, CupertinoIcons.doc_text_fill, 'Nilai'),
-              _navItem(3, CupertinoIcons.bars, 'Menu'),
-            ],
+      child:
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+            child: GlassCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              borderRadius: 32,
+              opacity: 0.75,
+              blur: 24,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _navItem(0, CupertinoIcons.square_grid_2x2_fill, 'Home'),
+                  _navItem(1, CupertinoIcons.calendar, 'Jadwal'),
+                  const SizedBox(width: 48), // Space for FAB
+                  _navItem(2, CupertinoIcons.doc_text_fill, 'Nilai'),
+                  _navItem(3, CupertinoIcons.bars, 'Menu'),
+                ],
+              ),
+            ),
+          ).animate().slideY(
+            begin: 1,
+            end: 0,
+            duration: 500.ms,
+            curve: Curves.easeOutExpo,
           ),
-        ),
-      ).animate().slideY(begin: 1, end: 0, duration: 500.ms, curve: Curves.easeOutExpo),
     );
   }
 
   Widget _navItem(int index, IconData icon, String label) {
     final selected = _currentIndex == index;
     final color = selected ? const Color(0xFF501F66) : Colors.grey.shade500;
-    
+
     return InkWell(
       onTap: () => setState(() => _currentIndex = index),
       splashColor: Colors.transparent,
@@ -252,11 +276,7 @@ class _MainPageState extends State<MainPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon, 
-              size: selected ? 28 : 24, 
-              color: color,
-            ),
+            Icon(icon, size: selected ? 28 : 24, color: color),
             const SizedBox(height: 4),
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
@@ -283,7 +303,10 @@ class _MainPageState extends State<MainPage> {
             DrawerHeader(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)], // Ice Blue gradient
+                  colors: [
+                    Color(0xFFE3F2FD),
+                    Color(0xFFBBDEFB),
+                  ], // Ice Blue gradient
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -292,7 +315,11 @@ class _MainPageState extends State<MainPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: const [
-                  Icon(CupertinoIcons.book_fill, size: 48, color: Color(0xFF501F66)),
+                  Icon(
+                    CupertinoIcons.book_fill,
+                    size: 48,
+                    color: Color(0xFF501F66),
+                  ),
                   SizedBox(height: 8),
                   Text(
                     'Ini Amikom?',
@@ -307,18 +334,28 @@ class _MainPageState extends State<MainPage> {
             ),
             _drawerItem(0, CupertinoIcons.square_grid_2x2_fill, 'Dashboard'),
             ListTile(
-              leading: const Icon(CupertinoIcons.bell_fill, color: Color(0xFF501F66)),
+              leading: const Icon(
+                CupertinoIcons.bell_fill,
+                color: Color(0xFF501F66),
+              ),
               title: const Text('Notifikasi & Pengumuman'),
               trailing: _unreadNotifCount > 0
                   ? Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.red,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         '$_unreadNotifCount baru',
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     )
                   : null,
@@ -326,7 +363,11 @@ class _MainPageState extends State<MainPage> {
                 Navigator.pop(context);
                 await Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => NotifikasiListPage(onBack: () => Navigator.pop(context))),
+                  MaterialPageRoute(
+                    builder: (_) => NotifikasiListPage(
+                      onBack: () => Navigator.pop(context),
+                    ),
+                  ),
                 );
                 _checkUnreadNotif();
               },
@@ -339,7 +380,10 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Berita Kampus'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const BeritaListPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const BeritaListPage()),
+                );
               },
             ),
             ListTile(
@@ -347,7 +391,10 @@ class _MainPageState extends State<MainPage> {
               title: const Text('KHS'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const KhsPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const KhsPage()),
+                );
               },
             ),
             ListTile(
@@ -355,7 +402,10 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Pengumuman Akademik'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const PengumumanListPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PengumumanListPage()),
+                );
               },
             ),
             ListTile(
@@ -363,7 +413,10 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Panduan Akademik'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const PanduanListPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PanduanListPage()),
+                );
               },
             ),
             ListTile(
@@ -371,7 +424,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Keuangan & Pembayaran'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => KeuanganPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        KeuanganPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -379,7 +438,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('KRS'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => KrsMainPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        KrsMainPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -387,7 +452,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Semester Pendek (SP)'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => SpPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        SpPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -395,7 +466,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Surat Masih Kuliah (SKMK)'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => SkmkPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        SkmkPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -403,7 +480,14 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Izin Penelitian 🔬'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => IzinPenelitianPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => IzinPenelitianPage(
+                      onBack: () => Navigator.pop(context),
+                    ),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -411,7 +495,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Surat Tugas 📝'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => SuratTugasPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        SuratTugasPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -419,7 +509,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('PKL & Tugas Mandiri 🏢'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => PklPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        PklPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -427,7 +523,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Skripsi & Tugas Akhir 🎓'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => SkripsiPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        SkripsiPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -435,7 +537,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Ujian Susulan 📝'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => UjianSusulanPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        UjianSusulanPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -443,7 +551,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Satgas PPKS 🛡️'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => PpksPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        PpksPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -451,7 +565,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Asisten Praktikum'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => AsistenPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        AsistenPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -459,7 +579,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Jadwal Seminar 🎓'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => SeminarPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        SeminarPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -467,7 +593,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('MBKM Internal'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => MbkmPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        MbkmPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -475,7 +607,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Visi & Misi Prodi'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => VisiMisiPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        VisiMisiPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -483,7 +621,14 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Visi & Misi Institusi'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => VisiMisiInstitusiPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => VisiMisiInstitusiPage(
+                      onBack: () => Navigator.pop(context),
+                    ),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -491,7 +636,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Tata Krama Mahasiswa'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => TataKramaPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        TataKramaPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -499,7 +650,14 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Agenda Akademik'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => AgendaAkademikPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AgendaAkademikPage(
+                      onBack: () => Navigator.pop(context),
+                    ),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -507,7 +665,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Jadwal Ujian'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => JadwalUjianPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        JadwalUjianPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -515,7 +679,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Pusat Studi'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => PusatStudiPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        PusatStudiPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -523,7 +693,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Sertifikasi Kompetensi'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => SertifikasiPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        SertifikasiPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -531,7 +707,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Organisasi Mahasiswa'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => OrganisasiPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        OrganisasiPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -539,7 +721,13 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Prestasi Mahasiswa'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => PrestasiPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        PrestasiPage(onBack: () => Navigator.pop(context)),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -547,15 +735,31 @@ class _MainPageState extends State<MainPage> {
               title: const Text('Seminar & Workshop'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => SeminarWorkshopPage(onBack: () => Navigator.pop(context))));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SeminarWorkshopPage(
+                      onBack: () => Navigator.pop(context),
+                    ),
+                  ),
+                );
               },
             ),
             const Divider(),
             _drawerItem(3, CupertinoIcons.ellipsis, 'Lainnya'),
             const Divider(),
             ListTile(
-              leading: const Icon(CupertinoIcons.square_arrow_right, color: Colors.redAccent),
-              title: const Text('Logout', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+              leading: const Icon(
+                CupertinoIcons.square_arrow_right,
+                color: Colors.redAccent,
+              ),
+              title: const Text(
+                'Logout',
+                style: TextStyle(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               onTap: () async {
                 await ApiClient.instance.fullLogout();
                 if (!context.mounted) return;
@@ -571,7 +775,10 @@ class _MainPageState extends State<MainPage> {
   Widget _drawerItem(int index, IconData icon, String title) {
     final selected = _currentIndex == index;
     return ListTile(
-      leading: Icon(icon, color: selected ? const Color(0xFF501F66) : Colors.grey.shade600),
+      leading: Icon(
+        icon,
+        color: selected ? const Color(0xFF501F66) : Colors.grey.shade600,
+      ),
       title: Text(
         title,
         style: TextStyle(
@@ -592,60 +799,243 @@ class _MainPageState extends State<MainPage> {
 
   Widget _buildMenuGridPage() {
     final List<Map<String, dynamic>> akademikGroup = [
-      {'title': 'KRS Online', 'icon': CupertinoIcons.doc_text_search, 'color': const Color(0xFF1976D2), 'page': (BuildContext ctx) => KrsMainPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'Semester Pendek', 'icon': CupertinoIcons.layers_alt_fill, 'color': const Color(0xFFE65100), 'page': (BuildContext ctx) => SpPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'KHS', 'icon': CupertinoIcons.rosette, 'color': const Color(0xFF7B1FA2), 'page': (BuildContext ctx) => const KhsPage()},
-      {'title': 'Skripsi & TA', 'icon': CupertinoIcons.book_circle_fill, 'color': const Color(0xFF501F66), 'page': (BuildContext ctx) => SkripsiPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'Jadwal Ujian', 'icon': CupertinoIcons.check_mark_circled, 'color': const Color(0xFF388E3C), 'page': (BuildContext ctx) => JadwalUjianPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'Agenda Akademik', 'icon': CupertinoIcons.calendar, 'color': const Color(0xFF0097A7), 'page': (BuildContext ctx) => AgendaAkademikPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'Keuangan', 'icon': CupertinoIcons.creditcard_fill, 'color': const Color(0xFFC2185B), 'page': (BuildContext ctx) => KeuanganPage(onBack: () => Navigator.pop(ctx))},
+      {
+        'title': 'KRS Online',
+        'icon': CupertinoIcons.doc_text_search,
+        'color': const Color(0xFF1976D2),
+        'page': (BuildContext ctx) =>
+            KrsMainPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'Semester Pendek',
+        'icon': CupertinoIcons.layers_alt_fill,
+        'color': const Color(0xFFE65100),
+        'page': (BuildContext ctx) => SpPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'KHS',
+        'icon': CupertinoIcons.rosette,
+        'color': const Color(0xFF7B1FA2),
+        'page': (BuildContext ctx) => const KhsPage(),
+      },
+      {
+        'title': 'Skripsi & TA',
+        'icon': CupertinoIcons.book_circle_fill,
+        'color': const Color(0xFF501F66),
+        'page': (BuildContext ctx) =>
+            SkripsiPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'Jadwal Ujian',
+        'icon': CupertinoIcons.check_mark_circled,
+        'color': const Color(0xFF388E3C),
+        'page': (BuildContext ctx) =>
+            JadwalUjianPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'Agenda Akademik',
+        'icon': CupertinoIcons.calendar,
+        'color': const Color(0xFF0097A7),
+        'page': (BuildContext ctx) =>
+            AgendaAkademikPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'Keuangan',
+        'icon': CupertinoIcons.creditcard_fill,
+        'color': const Color(0xFFC2185B),
+        'page': (BuildContext ctx) =>
+            KeuanganPage(onBack: () => Navigator.pop(ctx)),
+      },
     ];
 
     final List<Map<String, dynamic>> suratGroup = [
-      {'title': 'SKMK', 'icon': CupertinoIcons.doc_plaintext, 'color': const Color(0xFF0288D1), 'page': (BuildContext ctx) => SkmkPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'Izin Penelitian', 'icon': CupertinoIcons.search_circle_fill, 'color': const Color(0xFFF57C00), 'page': (BuildContext ctx) => IzinPenelitianPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'Surat Tugas', 'icon': CupertinoIcons.doc_on_clipboard_fill, 'color': const Color(0xFF5D4037), 'page': (BuildContext ctx) => SuratTugasPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'PKL & Mandiri', 'icon': CupertinoIcons.briefcase_fill, 'color': const Color(0xFF303F9F), 'page': (BuildContext ctx) => PklPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'Ujian Susulan', 'icon': CupertinoIcons.calendar_badge_minus, 'color': const Color(0xFFD32F2F), 'page': (BuildContext ctx) => UjianSusulanPage(onBack: () => Navigator.pop(ctx))},
+      {
+        'title': 'SKMK',
+        'icon': CupertinoIcons.doc_plaintext,
+        'color': const Color(0xFF0288D1),
+        'page': (BuildContext ctx) =>
+            SkmkPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'Izin Penelitian',
+        'icon': CupertinoIcons.search_circle_fill,
+        'color': const Color(0xFFF57C00),
+        'page': (BuildContext ctx) =>
+            IzinPenelitianPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'Surat Tugas',
+        'icon': CupertinoIcons.doc_on_clipboard_fill,
+        'color': const Color(0xFF5D4037),
+        'page': (BuildContext ctx) =>
+            SuratTugasPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'PKL & Mandiri',
+        'icon': CupertinoIcons.briefcase_fill,
+        'color': const Color(0xFF303F9F),
+        'page': (BuildContext ctx) => PklPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'Ujian Susulan',
+        'icon': CupertinoIcons.calendar_badge_minus,
+        'color': const Color(0xFFD32F2F),
+        'page': (BuildContext ctx) =>
+            UjianSusulanPage(onBack: () => Navigator.pop(ctx)),
+      },
     ];
 
     final List<Map<String, dynamic>> kemahasiswaanGroup = [
-      {'title': 'Satgas PPKS', 'icon': CupertinoIcons.shield_fill, 'color': const Color(0xFFD32F2F), 'page': (BuildContext ctx) => PpksPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'Asisten Praktikum', 'icon': CupertinoIcons.briefcase, 'color': const Color(0xFF7B1FA2), 'page': (BuildContext ctx) => AsistenPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'Jadwal Seminar', 'icon': CupertinoIcons.person_3_fill, 'color': const Color(0xFF1976D2), 'page': (BuildContext ctx) => SeminarPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'MBKM Internal', 'icon': CupertinoIcons.building_2_fill, 'color': const Color(0xFF388E3C), 'page': (BuildContext ctx) => MbkmPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'Pusat Studi', 'icon': CupertinoIcons.building_2_fill, 'color': const Color(0xFF00796B), 'page': (BuildContext ctx) => PusatStudiPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'Sertifikasi', 'icon': CupertinoIcons.doc_checkmark_fill, 'color': const Color(0xFFE64A19), 'page': (BuildContext ctx) => SertifikasiPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'Organisasi', 'icon': CupertinoIcons.person_3_fill, 'color': const Color(0xFF5D4037), 'page': (BuildContext ctx) => OrganisasiPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'Prestasi', 'icon': CupertinoIcons.star_fill, 'color': const Color(0xFFFBC02D), 'page': (BuildContext ctx) => PrestasiPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'Seminar Workshop', 'icon': CupertinoIcons.rectangle_grid_2x2_fill, 'color': const Color(0xFF512DA8), 'page': (BuildContext ctx) => SeminarWorkshopPage(onBack: () => Navigator.pop(ctx))},
+      {
+        'title': 'Satgas PPKS',
+        'icon': CupertinoIcons.shield_fill,
+        'color': const Color(0xFFD32F2F),
+        'page': (BuildContext ctx) =>
+            PpksPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'Asisten Praktikum',
+        'icon': CupertinoIcons.briefcase,
+        'color': const Color(0xFF7B1FA2),
+        'page': (BuildContext ctx) =>
+            AsistenPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'Jadwal Seminar',
+        'icon': CupertinoIcons.person_3_fill,
+        'color': const Color(0xFF1976D2),
+        'page': (BuildContext ctx) =>
+            SeminarPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'MBKM Internal',
+        'icon': CupertinoIcons.building_2_fill,
+        'color': const Color(0xFF388E3C),
+        'page': (BuildContext ctx) =>
+            MbkmPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'Pusat Studi',
+        'icon': CupertinoIcons.building_2_fill,
+        'color': const Color(0xFF00796B),
+        'page': (BuildContext ctx) =>
+            PusatStudiPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'Sertifikasi',
+        'icon': CupertinoIcons.doc_checkmark_fill,
+        'color': const Color(0xFFE64A19),
+        'page': (BuildContext ctx) =>
+            SertifikasiPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'Organisasi',
+        'icon': CupertinoIcons.person_3_fill,
+        'color': const Color(0xFF5D4037),
+        'page': (BuildContext ctx) =>
+            OrganisasiPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'Prestasi',
+        'icon': CupertinoIcons.star_fill,
+        'color': const Color(0xFFFBC02D),
+        'page': (BuildContext ctx) =>
+            PrestasiPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'Seminar Workshop',
+        'icon': CupertinoIcons.rectangle_grid_2x2_fill,
+        'color': const Color(0xFF512DA8),
+        'page': (BuildContext ctx) =>
+            SeminarWorkshopPage(onBack: () => Navigator.pop(ctx)),
+      },
     ];
 
     final List<Map<String, dynamic>> informasiGroup = [
-      {'title': 'Berita Kampus', 'icon': CupertinoIcons.news_solid, 'color': const Color(0xFF1976D2), 'page': (BuildContext ctx) => const BeritaListPage()},
-      {'title': 'Pengumuman', 'icon': CupertinoIcons.speaker_2_fill, 'color': const Color(0xFFE65100), 'page': (BuildContext ctx) => const PengumumanListPage()},
-      {'title': 'Panduan Akademik', 'icon': CupertinoIcons.book, 'color': const Color(0xFF388E3C), 'page': (BuildContext ctx) => const PanduanListPage()},
-      {'title': 'Visi Misi Prodi', 'icon': CupertinoIcons.eye_fill, 'color': const Color(0xFF7B1FA2), 'page': (BuildContext ctx) => VisiMisiPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'Visi Misi Institusi', 'icon': CupertinoIcons.building_2_fill, 'color': const Color(0xFF00796B), 'page': (BuildContext ctx) => VisiMisiInstitusiPage(onBack: () => Navigator.pop(ctx))},
-      {'title': 'Tata Krama', 'icon': CupertinoIcons.person_2_alt, 'color': const Color(0xFF455A64), 'page': (BuildContext ctx) => TataKramaPage(onBack: () => Navigator.pop(ctx))},
+      {
+        'title': 'Berita Kampus',
+        'icon': CupertinoIcons.news_solid,
+        'color': const Color(0xFF1976D2),
+        'page': (BuildContext ctx) => const BeritaListPage(),
+      },
+      {
+        'title': 'Pengumuman',
+        'icon': CupertinoIcons.speaker_2_fill,
+        'color': const Color(0xFFE65100),
+        'page': (BuildContext ctx) => const PengumumanListPage(),
+      },
+      {
+        'title': 'Panduan Akademik',
+        'icon': CupertinoIcons.book,
+        'color': const Color(0xFF388E3C),
+        'page': (BuildContext ctx) => const PanduanListPage(),
+      },
+      {
+        'title': 'Visi Misi Prodi',
+        'icon': CupertinoIcons.eye_fill,
+        'color': const Color(0xFF7B1FA2),
+        'page': (BuildContext ctx) =>
+            VisiMisiPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'Visi Misi Institusi',
+        'icon': CupertinoIcons.building_2_fill,
+        'color': const Color(0xFF00796B),
+        'page': (BuildContext ctx) =>
+            VisiMisiInstitusiPage(onBack: () => Navigator.pop(ctx)),
+      },
+      {
+        'title': 'Tata Krama',
+        'icon': CupertinoIcons.person_2_alt,
+        'color': const Color(0xFF455A64),
+        'page': (BuildContext ctx) =>
+            TataKramaPage(onBack: () => Navigator.pop(ctx)),
+      },
     ];
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 130),
-      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        MediaQuery.of(context).padding.bottom + 130,
+      ),
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       children: [
-        _buildMenuCategorySection('Layanan Akademik', CupertinoIcons.square_grid_2x2_fill, akademikGroup),
+        _buildMenuCategorySection(
+          'Layanan Akademik',
+          CupertinoIcons.square_grid_2x2_fill,
+          akademikGroup,
+        ),
         const SizedBox(height: 20),
-        _buildMenuCategorySection('Layanan Surat & Mandiri', CupertinoIcons.doc_on_doc_fill, suratGroup),
+        _buildMenuCategorySection(
+          'Layanan Surat & Mandiri',
+          CupertinoIcons.doc_on_doc_fill,
+          suratGroup,
+        ),
         const SizedBox(height: 20),
-        _buildMenuCategorySection('Kemahasiswaan & Karir', CupertinoIcons.person_3_fill, kemahasiswaanGroup),
+        _buildMenuCategorySection(
+          'Kemahasiswaan & Karir',
+          CupertinoIcons.person_3_fill,
+          kemahasiswaanGroup,
+        ),
         const SizedBox(height: 20),
-        _buildMenuCategorySection('Informasi & Kampus', CupertinoIcons.info_circle_fill, informasiGroup),
+        _buildMenuCategorySection(
+          'Informasi & Kampus',
+          CupertinoIcons.info_circle_fill,
+          informasiGroup,
+        ),
       ],
     );
   }
 
-  Widget _buildMenuCategorySection(String title, IconData icon, List<Map<String, dynamic>> items) {
+  Widget _buildMenuCategorySection(
+    String title,
+    IconData icon,
+    List<Map<String, dynamic>> items,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -655,7 +1045,11 @@ class _MainPageState extends State<MainPage> {
             const SizedBox(width: 8),
             Text(
               title,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF501F66)),
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF501F66),
+              ),
             ),
           ],
         ),
@@ -683,7 +1077,10 @@ class _MainPageState extends State<MainPage> {
                   Navigator.push(context, MaterialPageRoute(builder: builder));
                 },
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 12,
+                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -693,7 +1090,11 @@ class _MainPageState extends State<MainPage> {
                           color: itemColor.withOpacity(0.12),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(item['icon'] as IconData, color: itemColor, size: 24),
+                        child: Icon(
+                          item['icon'] as IconData,
+                          color: itemColor,
+                          size: 24,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
