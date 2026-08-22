@@ -25,8 +25,8 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
     try {
       final res = await AuthService().login(
-        _nimController.text, 
-        _passwordController.text
+        _nimController.text.trim(), 
+        _passwordController.text.trim()
       );
       
       await ApiClient.instance.setTokens(res.token, res.refreshToken);

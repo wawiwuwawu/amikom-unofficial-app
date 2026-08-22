@@ -36,6 +36,7 @@ import 'surat_tugas_page.dart';
 import 'pkl_page.dart';
 import 'ujian_susulan_page.dart';
 import 'ppks_page.dart';
+import 'skripsi_page.dart';
 import '../services/notifikasi_service.dart';
 
 class MainPage extends StatefulWidget {
@@ -422,6 +423,14 @@ class _MainPageState extends State<MainPage> {
               },
             ),
             ListTile(
+              leading: const Icon(CupertinoIcons.book_circle_fill),
+              title: const Text('Skripsi & Tugas Akhir 🎓'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => SkripsiPage(onBack: () => Navigator.pop(context))));
+              },
+            ),
+            ListTile(
               leading: const Icon(CupertinoIcons.calendar_badge_minus),
               title: const Text('Ujian Susulan 📝'),
               onTap: () {
@@ -586,6 +595,7 @@ class _MainPageState extends State<MainPage> {
       {'title': 'KRS Online', 'icon': CupertinoIcons.doc_text_search, 'color': const Color(0xFF1976D2), 'page': (BuildContext ctx) => KrsMainPage(onBack: () => Navigator.pop(ctx))},
       {'title': 'Semester Pendek', 'icon': CupertinoIcons.layers_alt_fill, 'color': const Color(0xFFE65100), 'page': (BuildContext ctx) => SpPage(onBack: () => Navigator.pop(ctx))},
       {'title': 'KHS', 'icon': CupertinoIcons.rosette, 'color': const Color(0xFF7B1FA2), 'page': (BuildContext ctx) => const KhsPage()},
+      {'title': 'Skripsi & TA', 'icon': CupertinoIcons.book_circle_fill, 'color': const Color(0xFF501F66), 'page': (BuildContext ctx) => SkripsiPage(onBack: () => Navigator.pop(ctx))},
       {'title': 'Jadwal Ujian', 'icon': CupertinoIcons.check_mark_circled, 'color': const Color(0xFF388E3C), 'page': (BuildContext ctx) => JadwalUjianPage(onBack: () => Navigator.pop(ctx))},
       {'title': 'Agenda Akademik', 'icon': CupertinoIcons.calendar, 'color': const Color(0xFF0097A7), 'page': (BuildContext ctx) => AgendaAkademikPage(onBack: () => Navigator.pop(ctx))},
       {'title': 'Keuangan', 'icon': CupertinoIcons.creditcard_fill, 'color': const Color(0xFFC2185B), 'page': (BuildContext ctx) => KeuanganPage(onBack: () => Navigator.pop(ctx))},
