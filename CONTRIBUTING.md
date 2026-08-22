@@ -6,8 +6,9 @@ Repo ini terbuka untuk siapa saja: lapor bug, request fitur, perbaiki typo, samp
 ## 💬 Komunikasi
 
 - **GitHub Discussions**: [https://github.com/wawiwuwawu/amikom-unofficial-app/discussions](https://github.com/wawiwuwawu/amikom-unofficial-app/discussions) — tempat utama diskusi & koordinasi.
-  Di sini kamu bisa tanya-tanya, minta **API Key khusus development**, dan nemu teman ngoding.
+  Di sini kamu bisa tanya-tanya dan nemu teman ngoding.
 - **Discord** (chat real-time): [https://discord.gg/VNrPhWQCWf](https://discord.gg/VNrPhWQCWf)
+- 🔑 **API Key khusus development**: gabung server Discord di atas, lalu **DM langsung maintainer (@wawiwuwawu)** secara pribadi. Jangan pernah meminta atau membagikan API key di channel publik / issue / discussion.
 - **GitHub Issues**: gunakan template yang sudah disediakan untuk laporan bug & permintaan fitur.
 
 ## 🚀 Mulai Berkontribusi

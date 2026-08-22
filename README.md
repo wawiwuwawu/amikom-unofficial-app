@@ -104,7 +104,7 @@ Repositori ini **hanya berisi aplikasi klien (Flutter)**. Endpoint API portal ak
 kompatibel, lalu set `API_BASE_URL`-nya di `.env`.
 
 > Kontributor boleh meminta **API Key khusus development** untuk mencoba aplikasi
-> dengan data uji (lihat [Kontribusi](CONTRIBUTING.md)).
+> dengan data uji: gabung [Discord](https://discord.gg/VNrPhWQCWf) lalu **DM maintainer (@wawiwuwawu) secara pribadi** — jangan minta di channel publik (lihat [Kontribusi](CONTRIBUTING.md)).
 
 ## 🤝 Kontribusi
 
