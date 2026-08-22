@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
-  - name: 💬 Komunitas Discord
-    url: https://discord.gg/INVITE_LINK
-    about: Diskusi santai, tanya-jawab, dan koordinasi kontributor — ganti INVITE_LINK dengan invite Discord kamu.
+  - name: 💬 Tanya Jawab & Diskusi
+    url: https://github.com/wawiwuwawu/amikom-unofficial-app/discussions
+    about: Diskusi santai, Q&A, ide fitur, dan koordinasi kontributor.

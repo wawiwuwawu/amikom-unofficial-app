@@ -110,7 +110,7 @@ kompatibel, lalu set `API_BASE_URL`-nya di `.env`.
 Repo ini terbuka untuk kontribusi siapa pun — dari lapor bug sampai nambah modul baru.
 Cara lengkapnya ada di [CONTRIBUTING.md](CONTRIBUTING.md).
 
-- 💬 **Discord komunitas**: https://discord.gg/INVITE_LINK *(ganti dengan invite Discord-mu)*
+- 💬 **Diskusi & Q&A**: https://github.com/wawiwuwawu/amikom-unofficial-app/discussions
 - 🐛 Lapor bug: gunakan template *Bug Report* di tab Issues
 - ✨ Request fitur: gunakan template *Feature Request* di tab Issues
 

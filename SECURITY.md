@@ -18,7 +18,9 @@ Cara yang benar:
 1. **GitHub Private Security Advisory** (paling disarankan):
    buka `Security` → `Report a vulnerability` di repo ini, atau langsung lewat
    [https://github.com/wawiwuwawu/amikom-unofficial-app/security/advisories/new](https://github.com/wawiwuwawu/amikom-unofficial-app/security/advisories/new)
-2. Alternatif: hubungi maintainer secara privat (DM Discord — lihat [CONTRIBUTING](CONTRIBUTING.md)).
+2. Alternatif: hubungi maintainer via profil GitHub
+   ([wawiwuwawu](https://github.com/wawiwuwawu)) untuk koordinasi privat awal.
+   ⚠️ Jangan gunakan Discussions/Issues publik untuk laporan kerentanan.
 
 Sertakan sebanyak mungkin:
 

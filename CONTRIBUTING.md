@@ -5,9 +5,8 @@ Repo ini terbuka untuk siapa saja: lapor bug, request fitur, perbaiki typo, samp
 
 ## 💬 Komunikasi
 
-- **Discord**: [https://discord.gg/INVITE_LINK](https://discord.gg/INVITE_LINK) — tempat utama diskusi & koordinasi.
+- **GitHub Discussions**: [https://github.com/wawiwuwawu/amikom-unofficial-app/discussions](https://github.com/wawiwuwawu/amikom-unofficial-app/discussions) — tempat utama diskusi & koordinasi.
   Di sini kamu bisa tanya-tanya, minta **API Key khusus development**, dan nemu teman ngoding.
-  *(Ganti INVITE_LINK dengan invite Discord milikmu.)*
 - **GitHub Issues**: gunakan template yang sudah disediakan untuk laporan bug & permintaan fitur.
 
 ## 🚀 Mulai Berkontribusi
