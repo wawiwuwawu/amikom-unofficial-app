@@ -12,6 +12,7 @@
   <a href="https://github.com/wawiwuwawu/amikom-unofficial-app/actions/workflows/ci.yml"><img src="https://github.com/wawiwuwawu/amikom-unofficial-app/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
   <a href="https://github.com/wawiwuwawu/amikom-unofficial-app/releases/latest"><img src="https://img.shields.io/badge/Platform-Android-3DDC84?logo=android" alt="Platform: Android"></a>
   <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.11%2B-02569B?logo=flutter&logoColor=white" alt="Flutter"></a>
+  <a href="https://discord.gg/VNrPhWQCWf"><img src="https://img.shields.io/badge/Discord-Join%20Us-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
 </p>
 
@@ -111,6 +112,7 @@ Repo ini terbuka untuk kontribusi siapa pun — dari lapor bug sampai nambah mod
 Cara lengkapnya ada di [CONTRIBUTING.md](CONTRIBUTING.md).
 
 - 💬 **Diskusi & Q&A**: https://github.com/wawiwuwawu/amikom-unofficial-app/discussions
+- 💬 **Discord** (chat real-time): https://discord.gg/VNrPhWQCWf
 - 🐛 Lapor bug: gunakan template *Bug Report* di tab Issues
 - ✨ Request fitur: gunakan template *Feature Request* di tab Issues
 
