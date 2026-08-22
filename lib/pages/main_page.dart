@@ -750,6 +750,18 @@ class _MainPageState extends State<MainPage> {
             const Divider(),
             ListTile(
               leading: const Icon(
+                CupertinoIcons.exclamationmark_shield,
+                color: Color(0xFF501F66),
+              ),
+              title: const Text('Penafian & Ketentuan'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/penafian');
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(
                 CupertinoIcons.square_arrow_right,
                 color: Colors.redAccent,
               ),

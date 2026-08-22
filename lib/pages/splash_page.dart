@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_client.dart';
 
 class SplashPage extends StatefulWidget {
@@ -26,10 +27,13 @@ class _SplashPageState extends State<SplashPage> {
     });
 
     try {
-      final health = await ApiClient.instance.dio.get('/health', options: Options(
-        sendTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
-      ));
+      final health = await ApiClient.instance.dio.get(
+        '/health',
+        options: Options(
+          sendTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      );
       if (health.data['status'] != 'ok') {
         if (mounted) {
           setState(() {
@@ -49,6 +53,22 @@ class _SplashPageState extends State<SplashPage> {
 
     await ApiClient.instance.restoreSession();
 
+    // Gerbang penafian: wajib disetujui sekali sebelum masuk aplikasi.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final agreed = prefs.getBool('disclaimer_accepted_v1') ?? false;
+      if (!agreed) {
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/disclaimer');
+        return;
+      }
+    } catch (_) {
+      // Gagal baca prefs -> tetap arahkan ke gerbang (paling aman).
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/disclaimer');
+      return;
+    }
+
     if (ApiClient.instance.token == null ||
         ApiClient.instance.refreshToken == null) {
       // Tidak ada token tersimpan — langsung ke halaman login
@@ -61,8 +81,7 @@ class _SplashPageState extends State<SplashPage> {
       _goToMain();
     } catch (_) {
       // Token mungkin expired — coba refresh (tanpa password)
-      final renewed =
-          await ApiClient.instance.ensureSessionOrSilentLogin();
+      final renewed = await ApiClient.instance.ensureSessionOrSilentLogin();
       if (renewed) {
         _goToMain();
       } else {
@@ -108,7 +127,11 @@ class _SplashPageState extends State<SplashPage> {
                   color: Colors.white.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(CupertinoIcons.book_fill, size: 64, color: Color(0xFF501F66)),
+                child: const Icon(
+                  CupertinoIcons.book_fill,
+                  size: 64,
+                  color: Color(0xFF501F66),
+                ),
               ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
               const SizedBox(height: 24),
               const Text(
@@ -136,7 +159,10 @@ class _SplashPageState extends State<SplashPage> {
                     Text(
                       _serverError!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
