@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/login_response.dart';
+import '../models/dashboard.dart';
 import 'navigation_service.dart';
 
 const _maxRetries = 2;
@@ -333,6 +334,36 @@ class ApiClient {
         throw Exception(e.response?.data?['message'] ?? 'Login gagal');
       }
       throw Exception('Tidak dapat terhubung ke server');
+    }
+  }
+
+  // ponytail: centralized error handler to prevent raw null/English network messages
+  static Exception handleError(dynamic e, [String fallback = 'Terjadi kesalahan']) {
+    if (e is DioException) {
+      final serverMsg = e.response?.data?['message'];
+      if (serverMsg != null && serverMsg.toString().trim().isNotEmpty) {
+        return Exception(serverMsg.toString().trim());
+      }
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return Exception('Koneksi ke server batas waktu habis');
+      }
+      if (e.type == DioExceptionType.connectionError) {
+        return Exception('Tidak dapat terhubung ke server');
+      }
+      return Exception(fallback);
+    }
+    return Exception(e?.toString() ?? fallback);
+  }
+
+  // ponytail: direct dashboard method on ApiClient instead of redundant DashboardService wrapper
+  Future<Dashboard> getDashboard() async {
+    try {
+      final response = await dio.get('/api/v1/dashboard');
+      return Dashboard.fromJson(response.data);
+    } catch (e) {
+      throw handleError(e, 'Tidak dapat terhubung ke server');
     }
   }
 }

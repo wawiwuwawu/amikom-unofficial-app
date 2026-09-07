@@ -15,8 +15,8 @@ class PusatStudiService {
         return data.map((e) => PusatStudi.fromJson(e)).toList();
       }
       throw Exception('Gagal memuat daftar pusat studi');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat daftar pusat studi');
     }
   }
 
@@ -28,8 +28,8 @@ class PusatStudiService {
         return data.map((e) => PusatStudi.fromJson(e)).toList();
       }
       throw Exception('Gagal memuat pusat studi yang diikuti');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat pusat studi yang diikuti');
     }
   }
 
@@ -40,8 +40,8 @@ class PusatStudiService {
         return response.data;
       }
       throw Exception('Gagal bergabung dengan pusat studi');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal bergabung dengan pusat studi');
     }
   }
 
@@ -52,8 +52,8 @@ class PusatStudiService {
         return PusatStudiDetail.fromJson(response.data['data'] ?? {});
       }
       throw Exception('Gagal memuat detail pusat studi');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat detail pusat studi');
     }
   }
 
@@ -65,8 +65,8 @@ class PusatStudiService {
         return data.map((e) => JoinedDetailTema.fromJson(e)).toList();
       }
       throw Exception('Gagal memuat detail tema pusat studi');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat detail tema pusat studi');
     }
   }
 
@@ -77,8 +77,8 @@ class PusatStudiService {
         return PusatStudiJoinedPageData.fromJson(response.data['data']);
       }
       return null;
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat halaman pusat studi');
     }
   }
 
@@ -92,8 +92,8 @@ class PusatStudiService {
         return response.data;
       }
       throw Exception(response.data['message'] ?? 'Gagal membatalkan ajuan');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal membatalkan ajuan');
     }
   }
 
@@ -111,8 +111,8 @@ class PusatStudiService {
         return response.data;
       }
       throw Exception('Gagal mengusulkan tema');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal mengusulkan tema');
     }
   }
 
@@ -130,8 +130,8 @@ class PusatStudiService {
         return response.data;
       }
       throw Exception('Gagal memilih tema');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memilih tema');
     }
   }
 }

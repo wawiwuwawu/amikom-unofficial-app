@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'skpi_file_picker.dart';
 import '../models/organisasi.dart';
 import '../services/organisasi_service.dart';
-import 'glass_card.dart';
 
 class OrganisasiFormSheet extends StatefulWidget {
   final VoidCallback onSuccess;
@@ -66,15 +65,6 @@ class _OrganisasiFormSheetState extends State<OrganisasiFormSheet> {
     }
   }
 
-  Future<void> _pickFile() async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-    );
-    if (result != null && result.files.isNotEmpty) {
-      setState(() => _selectedFile = result.files.first);
-    }
-  }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -264,33 +254,11 @@ class _OrganisasiFormSheetState extends State<OrganisasiFormSheet> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Pemilih File PDF
-                          InkWell(
-                            onTap: _pickFile,
-                            borderRadius: BorderRadius.circular(12),
-                            child: GlassCard(
-                              padding: const EdgeInsets.all(16),
-                              borderRadius: 12,
-                              child: Row(
-                                children: [
-                                  const Icon(CupertinoIcons.doc_text_fill, color: Color(0xFF501F66)),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      _selectedFile != null ? _selectedFile!.name : 'Pilih dokumen pengesahan (PDF)',
-                                      style: TextStyle(
-                                        color: _selectedFile != null ? Colors.black87 : Colors.black54,
-                                        fontWeight: _selectedFile != null ? FontWeight.bold : FontWeight.normal,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  if (_selectedFile == null)
-                                    const Icon(CupertinoIcons.paperclip, color: Colors.black54),
-                                ],
-                              ),
-                            ),
+                          SkpiFilePicker(
+                            selectedFile: _selectedFile,
+                            label: 'Dokumen Pengesahan (PDF)*',
+                            allowedExtensions: const ['pdf'],
+                            onFileSelected: (file) => setState(() => _selectedFile = file),
                           ),
                           const SizedBox(height: 32),
 

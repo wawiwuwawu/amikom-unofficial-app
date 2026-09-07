@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../widgets/glass_card.dart';
+import '../widgets/info_section_card.dart';
 
 class VisiMisiInstitusiPage extends StatelessWidget {
   final VoidCallback? onBack;
@@ -57,7 +57,7 @@ class VisiMisiInstitusiPage extends StatelessWidget {
           children: [
             _buildHeader().animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0),
             const SizedBox(height: 24),
-            _buildSectionCard(
+            const InfoSectionCard(
               title: 'Visi',
               icon: CupertinoIcons.eye_fill,
               color: Colors.blue,
@@ -66,7 +66,7 @@ class VisiMisiInstitusiPage extends StatelessWidget {
               ],
             ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1, end: 0),
             const SizedBox(height: 16),
-            _buildSectionCard(
+            const InfoSectionCard(
               title: 'Misi',
               icon: CupertinoIcons.rocket_fill,
               color: Colors.orange,
@@ -101,78 +101,4 @@ class VisiMisiInstitusiPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionCard({
-    required String title,
-    required IconData icon,
-    required Color color,
-    required List<String> content,
-  }) {
-    return GlassCard(
-      padding: const EdgeInsets.all(20),
-      borderRadius: 20,
-      opacity: 0.8,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF501F66),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ...content.asMap().entries.map((entry) {
-            final text = entry.value;
-            final isList = content.length > 1;
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (isList) ...[
-                    Container(
-                      margin: const EdgeInsets.only(top: 6, right: 12),
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.5),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ],
-                  Expanded(
-                    child: Text(
-                      text,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black87,
-                        height: 1.5,
-                      ),
-                      textAlign: isList ? TextAlign.left : TextAlign.justify,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
 }

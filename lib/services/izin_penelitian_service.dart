@@ -14,8 +14,8 @@ class IzinPenelitianService {
         return IzinPenelitianData.fromJson(response.data['data']);
       }
       throw Exception('Gagal memuat data Izin Penelitian');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat data Izin Penelitian');
     }
   }
 
@@ -29,8 +29,8 @@ class IzinPenelitianService {
         return response.data;
       }
       throw Exception(response.data['message'] ?? 'Gagal menambahkan pengajuan izin penelitian');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal menambahkan pengajuan izin penelitian');
     }
   }
 
@@ -41,8 +41,8 @@ class IzinPenelitianService {
         return response.data ?? {'success': true, 'message': 'Pengajuan Berhasil Dihapus'};
       }
       throw Exception(response.data?['message'] ?? 'Gagal menghapus pengajuan izin penelitian');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal menghapus pengajuan izin penelitian');
     }
   }
 }

@@ -14,8 +14,8 @@ class SuratTugasService {
         return SuratTugasData.fromJson(response.data['data']);
       }
       throw Exception('Gagal memuat data Surat Tugas');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat data Surat Tugas');
     }
   }
 
@@ -43,8 +43,8 @@ class SuratTugasService {
         return data.map((e) => SuratTugasMember.fromJson(e)).toList();
       }
       return [];
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat anggota surat tugas');
     }
   }
 
@@ -58,8 +58,8 @@ class SuratTugasService {
         return response.data;
       }
       throw Exception(response.data['message'] ?? 'Gagal mengajukan Surat Tugas');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal mengajukan Surat Tugas');
     }
   }
 
@@ -73,8 +73,8 @@ class SuratTugasService {
         return response.data;
       }
       throw Exception(response.data['message'] ?? 'Gagal mengedit Surat Tugas');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal mengedit Surat Tugas');
     }
   }
 
@@ -85,8 +85,8 @@ class SuratTugasService {
         return response.data ?? {'success': true, 'message': 'Data surat tugas berhasil dihapus'};
       }
       throw Exception(response.data?['message'] ?? 'Gagal menghapus Surat Tugas');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal menghapus Surat Tugas');
     }
   }
 }

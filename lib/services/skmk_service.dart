@@ -14,8 +14,8 @@ class SkmkService {
         return SkmkData.fromJson(response.data['data']);
       }
       throw Exception('Gagal memuat data pengajuan SKMK');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat data pengajuan SKMK');
     }
   }
 
@@ -32,8 +32,8 @@ class SkmkService {
         return response.data;
       }
       throw Exception(response.data['message'] ?? 'Gagal menambahkan pengajuan SKMK');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal menambahkan pengajuan SKMK');
     }
   }
 
@@ -44,8 +44,8 @@ class SkmkService {
         return response.data ?? {'success': true, 'message': 'Pengajuan Berhasil Dihapus'};
       }
       throw Exception(response.data?['message'] ?? 'Gagal menghapus pengajuan SKMK');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal menghapus pengajuan SKMK');
     }
   }
 }

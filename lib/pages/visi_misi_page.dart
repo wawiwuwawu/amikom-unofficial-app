@@ -2,9 +2,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../services/dashboard_service.dart';
+import '../services/api_client.dart';
+import '../widgets/info_section_card.dart';
 import '../models/dashboard.dart';
-import '../widgets/glass_card.dart';
 
 class VisiMisiPage extends StatefulWidget {
   final VoidCallback? onBack;
@@ -15,7 +15,6 @@ class VisiMisiPage extends StatefulWidget {
 }
 
 class _VisiMisiPageState extends State<VisiMisiPage> {
-  final _service = DashboardService();
   Dashboard? _data;
   bool _loading = true;
   String? _error;
@@ -30,7 +29,7 @@ class _VisiMisiPageState extends State<VisiMisiPage> {
     if (!mounted) return;
     setState(() => _loading = true);
     try {
-      final data = await _service.getDashboard();
+      final data = await ApiClient.instance.getDashboard();
       if (!mounted) return;
       setState(() {
         _data = data;
@@ -232,32 +231,32 @@ class _VisiMisiPageState extends State<VisiMisiPage> {
           prodiData['nama'],
         ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0),
         const SizedBox(height: 24),
-        _buildSectionCard(
+        InfoSectionCard(
           title: 'Visi',
           icon: CupertinoIcons.eye_fill,
           color: Colors.blue,
           content: [prodiData['visi']],
         ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1, end: 0),
         const SizedBox(height: 16),
-        _buildSectionCard(
+        InfoSectionCard(
           title: 'Misi',
           icon: CupertinoIcons.rocket_fill,
           color: Colors.orange,
-          content: prodiData['misi'],
+          content: List<String>.from(prodiData['misi']),
         ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
         const SizedBox(height: 16),
-        _buildSectionCard(
+        InfoSectionCard(
           title: 'Tujuan',
           icon: CupertinoIcons.flag_fill,
           color: Colors.red,
-          content: prodiData['tujuan'],
+          content: List<String>.from(prodiData['tujuan']),
         ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1, end: 0),
         const SizedBox(height: 16),
-        _buildSectionCard(
+        InfoSectionCard(
           title: 'Strategi',
           icon: CupertinoIcons.chart_bar_alt_fill,
           color: Colors.green,
-          content: prodiData['strategi'],
+          content: List<String>.from(prodiData['strategi']),
         ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0),
       ],
     );
@@ -294,77 +293,4 @@ class _VisiMisiPageState extends State<VisiMisiPage> {
     );
   }
 
-  Widget _buildSectionCard({
-    required String title,
-    required IconData icon,
-    required Color color,
-    required List<String> content,
-  }) {
-    return GlassCard(
-      padding: const EdgeInsets.all(20),
-      borderRadius: 20,
-      opacity: 0.8,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF501F66),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ...content.map((text) {
-            final isList = content.length > 1;
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (isList) ...[
-                    Container(
-                      margin: const EdgeInsets.only(top: 6, right: 12),
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.5),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ],
-                  Expanded(
-                    child: Text(
-                      text,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black87,
-                        height: 1.5,
-                      ),
-                      textAlign: isList ? TextAlign.left : TextAlign.justify,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
 }

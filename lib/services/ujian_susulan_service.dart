@@ -14,8 +14,8 @@ class UjianSusulanService {
         return UjianSusulanData.fromJson(response.data['data']);
       }
       throw Exception('Gagal memuat data Ujian Susulan UTS');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat data Ujian Susulan UTS');
     }
   }
 
@@ -26,8 +26,8 @@ class UjianSusulanService {
         return UjianSusulanData.fromJson(response.data['data']);
       }
       throw Exception('Gagal memuat data Ujian Susulan UAS');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat data Ujian Susulan UAS');
     }
   }
 }

@@ -14,8 +14,8 @@ class PklService {
         return PklData.fromJson(response.data['data']);
       }
       throw Exception('Gagal memuat data pendaftaran PKL');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat data pendaftaran PKL');
     }
   }
 
@@ -32,8 +32,8 @@ class PklService {
         return response.data;
       }
       throw Exception(response.data['message'] ?? 'Gagal menambahkan pendaftaran PKL');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal menambahkan pendaftaran PKL');
     }
   }
 
@@ -51,10 +51,8 @@ class PklService {
       );
 
       return savePath;
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
     } catch (e) {
-      throw Exception(e.toString());
+      throw ApiClient.handleError(e, 'Gagal mengunduh formulir PKL');
     }
   }
 
@@ -65,8 +63,8 @@ class PklService {
         return response.data ?? {'success': true, 'message': 'Pendaftaran PKL berhasil dihapus'};
       }
       throw Exception(response.data?['message'] ?? 'Gagal menghapus pendaftaran PKL');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal menghapus pendaftaran PKL');
     }
   }
 }

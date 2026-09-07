@@ -6,7 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/asisten.dart';
 import '../services/asisten_service.dart';
-import '../services/dashboard_service.dart';
+import '../services/api_client.dart';
 import '../widgets/glass_card.dart';
 
 class AsistenPage extends StatefulWidget {
@@ -54,7 +54,7 @@ class _AsistenPageState extends State<AsistenPage> {
 
       String fetchedFoto = '';
       try {
-        final dash = await DashboardService().getDashboard();
+        final dash = await ApiClient.instance.getDashboard();
         fetchedFoto = dash.profile.fotoUrl;
       } catch (_) {}
 

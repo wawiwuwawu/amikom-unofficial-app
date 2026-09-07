@@ -14,8 +14,8 @@ class PpksService {
         return PpksData.fromJson(response.data['data']);
       }
       throw Exception('Gagal memuat formulir pengaduan PPKS');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat formulir pengaduan PPKS');
     }
   }
 
@@ -29,8 +29,8 @@ class PpksService {
         return response.data;
       }
       throw Exception(response.data['message'] ?? 'Gagal mengirim pengaduan PPKS');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal mengirim pengaduan PPKS');
     }
   }
 }

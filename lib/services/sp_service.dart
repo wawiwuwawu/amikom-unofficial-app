@@ -14,8 +14,8 @@ class SpService {
         return SpAvailableData.fromJson(response.data['data']);
       }
       throw Exception('Gagal memuat daftar matakuliah SP yang tersedia');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat daftar matakuliah SP yang tersedia');
     }
   }
 
@@ -26,8 +26,8 @@ class SpService {
         return SpTakenData.fromJson(response.data['data']);
       }
       throw Exception('Gagal memuat matakuliah SP yang sudah diambil');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat matakuliah SP yang sudah diambil');
     }
   }
 
@@ -67,8 +67,8 @@ class SpService {
         return response.data;
       }
       throw Exception(response.data['message'] ?? 'Gagal mengajukan matakuliah SP');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal mengajukan matakuliah SP');
     }
   }
 
@@ -79,8 +79,8 @@ class SpService {
         return response.data ?? {'success': true, 'message': 'Data mata kuliah SP berhasil dihapus'};
       }
       throw Exception(response.data?['message'] ?? 'Gagal menghapus matakuliah SP');
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? e.message);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal menghapus matakuliah SP');
     }
   }
 }

@@ -4,8 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../models/dashboard.dart';
 import '../models/agenda_terpadu.dart';
 import '../models/sp.dart';
-import '../services/dashboard_service.dart';
-import '../services/agenda_service.dart';
+import '../services/api_client.dart';
+import '../services/akademik_service.dart';
 import '../services/sp_service.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/histori_ipk_sheet.dart';
@@ -22,8 +22,7 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  final _service = DashboardService();
-  final _agendaService = AgendaService();
+  final _akademikService = AkademikService();
   final _spService = SpService();
 
   Dashboard? _data;
@@ -51,8 +50,8 @@ class _DashboardPageState extends State<DashboardPage> {
     setState(() => _loading = true);
     try {
       final results = await Future.wait([
-        _service.getDashboard(),
-        _agendaService.getAgendaTerpadu().catchError((_) => AgendaTerpaduData(totalAgenda: 0, agenda: {})),
+        ApiClient.instance.getDashboard(),
+        _akademikService.getAgendaTerpadu().catchError((_) => AgendaTerpaduData(totalAgenda: 0, agenda: {})),
         _spService.getRekomendasi().catchError((_) => SpRekomendasiData(
           hasRekomendasi: false,
           warningMessage: '',

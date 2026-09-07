@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'api_client.dart';
 import '../models/agenda.dart';
 import '../models/jadwal_ujian.dart';
+import '../models/agenda_terpadu.dart';
 
 class AkademikService {
   final _dio = ApiClient.instance.dio;
@@ -15,6 +16,19 @@ class AkademikService {
       return data.map((e) => Agenda.fromJson(e)).toList();
     } catch (e) {
       throw _handleError(e);
+    }
+  }
+
+  // ponytail: centralized agenda terpadu alongside akademik agenda endpoints
+  Future<AgendaTerpaduData> getAgendaTerpadu() async {
+    try {
+      final response = await _dio.get('/api/v1/agenda/terpadu');
+      if (response.statusCode == 200 && response.data['data'] != null) {
+        return AgendaTerpaduData.fromJson(response.data['data']);
+      }
+      throw Exception('Gagal memuat agenda terpadu');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat agenda terpadu');
     }
   }
 

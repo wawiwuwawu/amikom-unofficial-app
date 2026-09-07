@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:share_plus/share_plus.dart';
-import '../services/agenda_service.dart';
+import '../services/akademik_service.dart';
 import '../services/krs_service.dart';
 import '../models/agenda_terpadu.dart';
 import '../widgets/glass_card.dart';
@@ -16,7 +16,7 @@ class JadwalPage extends StatefulWidget {
 }
 
 class _JadwalPageState extends State<JadwalPage> {
-  final _agendaService = AgendaService();
+  final _akademikService = AkademikService();
   final _krsService = KrsService();
 
   bool _loading = true;
@@ -37,7 +37,7 @@ class _JadwalPageState extends State<JadwalPage> {
     if (!mounted) return;
     setState(() => _loading = true);
     try {
-      final res = await _agendaService.getAgendaTerpadu();
+      final res = await _akademikService.getAgendaTerpadu();
       if (mounted) {
         setState(() {
           _agendaData = res;
