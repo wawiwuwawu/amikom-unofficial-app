@@ -1,7 +1,4 @@
-import 'dart:io';
-
 import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'api_client.dart';
 import '../models/prestasi.dart';
 
@@ -77,20 +74,10 @@ class PrestasiService {
     }
   }
 
-  Future<String> _downloadDir() async {
-    if (Platform.isAndroid) {
-      final download = Directory('/storage/emulated/0/Download');
-      if (await download.exists()) {
-        return download.path;
-      }
-    }
-    final dir = await getApplicationDocumentsDirectory();
-    return dir.path;
-  }
-
   Future<String> downloadFile(int id, String namaFile) async {
     try {
-      final dir = await _downloadDir();
+      // ponytail: centralized download dir via ApiClient
+      final dir = await ApiClient.getDownloadDir();
       final savePath = '$dir/$namaFile';
       await _dio.download(
         '/api/v1/prestasi-mahasiswa/$id/file',

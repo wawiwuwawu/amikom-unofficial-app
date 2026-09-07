@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'api_client.dart';
 import '../models/agenda.dart';
 import '../models/jadwal_ujian.dart';
@@ -35,8 +34,7 @@ class AkademikService {
 
   Future<String> downloadKartuUjian(String jenis, {Function(int, int)? onReceiveProgress}) async {
     try {
-      final dir = await _downloadDir();
-      
+      final dir = await ApiClient.getDownloadDir();
       final response = await _dio.get(
         '/api/v1/akademik/jadwal-ujian/download',
         queryParameters: {'jenis': jenis},
@@ -68,16 +66,6 @@ class AkademikService {
     }
   }
 
-  Future<String> _downloadDir() async {
-    if (Platform.isAndroid) {
-      final download = Directory('/storage/emulated/0/Download');
-      if (await download.exists()) {
-        return download.path;
-      }
-    }
-    final dir = await getApplicationDocumentsDirectory();
-    return dir.path;
-  }
 
   Exception _handleError(dynamic e) {
     if (e is DioException && e.response != null) {

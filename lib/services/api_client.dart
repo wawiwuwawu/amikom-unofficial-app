@@ -5,6 +5,8 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
+import '../models/login_response.dart';
 import 'navigation_service.dart';
 
 const _maxRetries = 2;
@@ -304,5 +306,33 @@ class ApiClient {
   /// Full logout: clear tokens (password tidak pernah disimpan)
   Future<void> fullLogout() async {
     await clearTokens();
+  }
+
+  /// ponytail: centralized download directory helper to avoid 12 duplicate copies
+  static Future<String> getDownloadDir() async {
+    if (Platform.isAndroid) {
+      final download = Directory('/storage/emulated/0/Download');
+      if (await download.exists()) {
+        return download.path;
+      }
+    }
+    final dir = await getApplicationDocumentsDirectory();
+    return dir.path;
+  }
+
+  // ponytail: direct login method on ApiClient instead of redundant AuthService wrapper
+  Future<LoginResponse> login(String pengguna, String passw) async {
+    try {
+      final response = await dio.post(
+        '/api/v1/auth/login',
+        data: {'pengguna': pengguna, 'passw': passw},
+      );
+      return LoginResponse.fromJson(response.data);
+    } on DioException catch (e) {
+      if (e.response != null) {
+        throw Exception(e.response?.data?['message'] ?? 'Login gagal');
+      }
+      throw Exception('Tidak dapat terhubung ke server');
+    }
   }
 }

@@ -375,378 +375,37 @@ class _MainPageState extends State<MainPage> {
             _drawerItem(1, CupertinoIcons.calendar, 'Jadwal Perkuliahan'),
             _drawerItem(2, CupertinoIcons.doc_text_fill, 'Transkrip Nilai'),
             const Divider(),
-            ListTile(
-              leading: const Icon(CupertinoIcons.news_solid),
-              title: const Text('Berita Kampus'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const BeritaListPage()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.rosette),
-              title: const Text('KHS'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const KhsPage()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.speaker_2_fill),
-              title: const Text('Pengumuman Akademik'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PengumumanListPage()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.book),
-              title: const Text('Panduan Akademik'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PanduanListPage()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.creditcard_fill),
-              title: const Text('Keuangan & Pembayaran'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        KeuanganPage(onBack: () => Navigator.pop(context)),
+            // ponytail: unified categories avoiding 370 lines of duplicated ListTiles
+            ..._getMenuCategories().entries.expand((entry) => [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 6),
+                child: Text(
+                  entry.key,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade600,
                   ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.doc_text_search),
-              title: const Text('KRS'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        KrsMainPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.layers_alt_fill),
-              title: const Text('Semester Pendek (SP)'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        SpPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.doc_plaintext),
-              title: const Text('Surat Masih Kuliah (SKMK)'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        SkmkPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.search_circle_fill),
-              title: const Text('Izin Penelitian 🔬'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => IzinPenelitianPage(
-                      onBack: () => Navigator.pop(context),
+                ),
+              ),
+              ...entry.value.map((item) => ListTile(
+                leading: Icon(
+                  item['icon'] as IconData,
+                  color: item['color'] as Color? ?? const Color(0xFF501F66),
+                ),
+                title: Text(item['title'] as String),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: item['page'] as WidgetBuilder,
                     ),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.doc_on_clipboard_fill),
-              title: const Text('Surat Tugas 📝'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        SuratTugasPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.briefcase_fill),
-              title: const Text('PKL & Tugas Mandiri 🏢'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        PklPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.book_circle_fill),
-              title: const Text('Skripsi & Tugas Akhir 🎓'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        SkripsiPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.calendar_badge_minus),
-              title: const Text('Ujian Susulan 📝'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        UjianSusulanPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.shield_fill),
-              title: const Text('Satgas PPKS 🛡️'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        PpksPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.briefcase),
-              title: const Text('Asisten Praktikum'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        AsistenPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.person_3_fill),
-              title: const Text('Jadwal Seminar 🎓'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        SeminarPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.building_2_fill),
-              title: const Text('MBKM Internal'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        MbkmPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.eye_fill),
-              title: const Text('Visi & Misi Prodi'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        VisiMisiPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.building_2_fill),
-              title: const Text('Visi & Misi Institusi'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => VisiMisiInstitusiPage(
-                      onBack: () => Navigator.pop(context),
-                    ),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.person_2_alt),
-              title: const Text('Tata Krama Mahasiswa'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        TataKramaPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.calendar),
-              title: const Text('Agenda Akademik'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AgendaAkademikPage(
-                      onBack: () => Navigator.pop(context),
-                    ),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.check_mark_circled),
-              title: const Text('Jadwal Ujian'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        JadwalUjianPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.building_2_fill),
-              title: const Text('Pusat Studi'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        PusatStudiPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.doc_checkmark_fill),
-              title: const Text('Sertifikasi Kompetensi'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        SertifikasiPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.person_3_fill),
-              title: const Text('Organisasi Mahasiswa'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        OrganisasiPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.star_fill),
-              title: const Text('Prestasi Mahasiswa'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        PrestasiPage(onBack: () => Navigator.pop(context)),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.rectangle_grid_2x2_fill),
-              title: const Text('Seminar & Workshop'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => SeminarWorkshopPage(
-                      onBack: () => Navigator.pop(context),
-                    ),
-                  ),
-                );
-              },
-            ),
-            const Divider(),
-            _drawerItem(3, CupertinoIcons.ellipsis, 'Lainnya'),
+                  );
+                },
+              )),
+            ]),
             const Divider(),
             ListTile(
               leading: const Icon(
@@ -809,201 +468,210 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
+  Map<String, List<Map<String, dynamic>>> _getMenuCategories() {
+    return {
+      'Layanan Akademik': [
+        {
+          'title': 'KRS Online',
+          'icon': CupertinoIcons.doc_text_search,
+          'color': const Color(0xFF1976D2),
+          'page': (BuildContext ctx) =>
+              KrsMainPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Semester Pendek',
+          'icon': CupertinoIcons.layers_alt_fill,
+          'color': const Color(0xFFE65100),
+          'page': (BuildContext ctx) => SpPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'KHS',
+          'icon': CupertinoIcons.rosette,
+          'color': const Color(0xFF7B1FA2),
+          'page': (BuildContext ctx) => const KhsPage(),
+        },
+        {
+          'title': 'Skripsi & TA',
+          'icon': CupertinoIcons.book_circle_fill,
+          'color': const Color(0xFF501F66),
+          'page': (BuildContext ctx) =>
+              SkripsiPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Jadwal Ujian',
+          'icon': CupertinoIcons.check_mark_circled,
+          'color': const Color(0xFF388E3C),
+          'page': (BuildContext ctx) =>
+              JadwalUjianPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Agenda Akademik',
+          'icon': CupertinoIcons.calendar,
+          'color': const Color(0xFF0097A7),
+          'page': (BuildContext ctx) =>
+              AgendaAkademikPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Keuangan',
+          'icon': CupertinoIcons.creditcard_fill,
+          'color': const Color(0xFFC2185B),
+          'page': (BuildContext ctx) =>
+              KeuanganPage(onBack: () => Navigator.pop(ctx)),
+        },
+      ],
+      'Layanan Surat & Mandiri': [
+        {
+          'title': 'SKMK',
+          'icon': CupertinoIcons.doc_plaintext,
+          'color': const Color(0xFF0288D1),
+          'page': (BuildContext ctx) =>
+              SkmkPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Izin Penelitian',
+          'icon': CupertinoIcons.search_circle_fill,
+          'color': const Color(0xFFF57C00),
+          'page': (BuildContext ctx) =>
+              IzinPenelitianPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Surat Tugas',
+          'icon': CupertinoIcons.doc_on_clipboard_fill,
+          'color': const Color(0xFF5D4037),
+          'page': (BuildContext ctx) =>
+              SuratTugasPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'PKL & Mandiri',
+          'icon': CupertinoIcons.briefcase_fill,
+          'color': const Color(0xFF303F9F),
+          'page': (BuildContext ctx) => PklPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Ujian Susulan',
+          'icon': CupertinoIcons.calendar_badge_minus,
+          'color': const Color(0xFFD32F2F),
+          'page': (BuildContext ctx) =>
+              UjianSusulanPage(onBack: () => Navigator.pop(ctx)),
+        },
+      ],
+      'Kemahasiswaan & Karir': [
+        {
+          'title': 'Satgas PPKS',
+          'icon': CupertinoIcons.shield_fill,
+          'color': const Color(0xFFD32F2F),
+          'page': (BuildContext ctx) =>
+              PpksPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Asisten Praktikum',
+          'icon': CupertinoIcons.briefcase,
+          'color': const Color(0xFF7B1FA2),
+          'page': (BuildContext ctx) =>
+              AsistenPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Jadwal Seminar',
+          'icon': CupertinoIcons.person_3_fill,
+          'color': const Color(0xFF1976D2),
+          'page': (BuildContext ctx) =>
+              SeminarPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'MBKM Internal',
+          'icon': CupertinoIcons.building_2_fill,
+          'color': const Color(0xFF388E3C),
+          'page': (BuildContext ctx) =>
+              MbkmPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Pusat Studi',
+          'icon': CupertinoIcons.building_2_fill,
+          'color': const Color(0xFF00796B),
+          'page': (BuildContext ctx) =>
+              PusatStudiPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Sertifikasi',
+          'icon': CupertinoIcons.doc_checkmark_fill,
+          'color': const Color(0xFFE64A19),
+          'page': (BuildContext ctx) =>
+              SertifikasiPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Organisasi',
+          'icon': CupertinoIcons.person_3_fill,
+          'color': const Color(0xFF5D4037),
+          'page': (BuildContext ctx) =>
+              OrganisasiPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Prestasi',
+          'icon': CupertinoIcons.star_fill,
+          'color': const Color(0xFFFBC02D),
+          'page': (BuildContext ctx) =>
+              PrestasiPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Seminar Workshop',
+          'icon': CupertinoIcons.rectangle_grid_2x2_fill,
+          'color': const Color(0xFF512DA8),
+          'page': (BuildContext ctx) =>
+              SeminarWorkshopPage(onBack: () => Navigator.pop(ctx)),
+        },
+      ],
+      'Informasi & Kampus': [
+        {
+          'title': 'Berita Kampus',
+          'icon': CupertinoIcons.news_solid,
+          'color': const Color(0xFF1976D2),
+          'page': (BuildContext ctx) => const BeritaListPage(),
+        },
+        {
+          'title': 'Pengumuman',
+          'icon': CupertinoIcons.speaker_2_fill,
+          'color': const Color(0xFFE65100),
+          'page': (BuildContext ctx) => const PengumumanListPage(),
+        },
+        {
+          'title': 'Panduan Akademik',
+          'icon': CupertinoIcons.book,
+          'color': const Color(0xFF388E3C),
+          'page': (BuildContext ctx) => const PanduanListPage(),
+        },
+        {
+          'title': 'Visi Misi Prodi',
+          'icon': CupertinoIcons.eye_fill,
+          'color': const Color(0xFF7B1FA2),
+          'page': (BuildContext ctx) =>
+              VisiMisiPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Visi Misi Institusi',
+          'icon': CupertinoIcons.building_2_fill,
+          'color': const Color(0xFF00796B),
+          'page': (BuildContext ctx) =>
+              VisiMisiInstitusiPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Tata Krama',
+          'icon': CupertinoIcons.person_2_alt,
+          'color': const Color(0xFF455A64),
+          'page': (BuildContext ctx) =>
+              TataKramaPage(onBack: () => Navigator.pop(ctx)),
+        },
+      ],
+    };
+  }
+
   Widget _buildMenuGridPage() {
-    final List<Map<String, dynamic>> akademikGroup = [
-      {
-        'title': 'KRS Online',
-        'icon': CupertinoIcons.doc_text_search,
-        'color': const Color(0xFF1976D2),
-        'page': (BuildContext ctx) =>
-            KrsMainPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'Semester Pendek',
-        'icon': CupertinoIcons.layers_alt_fill,
-        'color': const Color(0xFFE65100),
-        'page': (BuildContext ctx) => SpPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'KHS',
-        'icon': CupertinoIcons.rosette,
-        'color': const Color(0xFF7B1FA2),
-        'page': (BuildContext ctx) => const KhsPage(),
-      },
-      {
-        'title': 'Skripsi & TA',
-        'icon': CupertinoIcons.book_circle_fill,
-        'color': const Color(0xFF501F66),
-        'page': (BuildContext ctx) =>
-            SkripsiPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'Jadwal Ujian',
-        'icon': CupertinoIcons.check_mark_circled,
-        'color': const Color(0xFF388E3C),
-        'page': (BuildContext ctx) =>
-            JadwalUjianPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'Agenda Akademik',
-        'icon': CupertinoIcons.calendar,
-        'color': const Color(0xFF0097A7),
-        'page': (BuildContext ctx) =>
-            AgendaAkademikPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'Keuangan',
-        'icon': CupertinoIcons.creditcard_fill,
-        'color': const Color(0xFFC2185B),
-        'page': (BuildContext ctx) =>
-            KeuanganPage(onBack: () => Navigator.pop(ctx)),
-      },
-    ];
-
-    final List<Map<String, dynamic>> suratGroup = [
-      {
-        'title': 'SKMK',
-        'icon': CupertinoIcons.doc_plaintext,
-        'color': const Color(0xFF0288D1),
-        'page': (BuildContext ctx) =>
-            SkmkPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'Izin Penelitian',
-        'icon': CupertinoIcons.search_circle_fill,
-        'color': const Color(0xFFF57C00),
-        'page': (BuildContext ctx) =>
-            IzinPenelitianPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'Surat Tugas',
-        'icon': CupertinoIcons.doc_on_clipboard_fill,
-        'color': const Color(0xFF5D4037),
-        'page': (BuildContext ctx) =>
-            SuratTugasPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'PKL & Mandiri',
-        'icon': CupertinoIcons.briefcase_fill,
-        'color': const Color(0xFF303F9F),
-        'page': (BuildContext ctx) => PklPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'Ujian Susulan',
-        'icon': CupertinoIcons.calendar_badge_minus,
-        'color': const Color(0xFFD32F2F),
-        'page': (BuildContext ctx) =>
-            UjianSusulanPage(onBack: () => Navigator.pop(ctx)),
-      },
-    ];
-
-    final List<Map<String, dynamic>> kemahasiswaanGroup = [
-      {
-        'title': 'Satgas PPKS',
-        'icon': CupertinoIcons.shield_fill,
-        'color': const Color(0xFFD32F2F),
-        'page': (BuildContext ctx) =>
-            PpksPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'Asisten Praktikum',
-        'icon': CupertinoIcons.briefcase,
-        'color': const Color(0xFF7B1FA2),
-        'page': (BuildContext ctx) =>
-            AsistenPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'Jadwal Seminar',
-        'icon': CupertinoIcons.person_3_fill,
-        'color': const Color(0xFF1976D2),
-        'page': (BuildContext ctx) =>
-            SeminarPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'MBKM Internal',
-        'icon': CupertinoIcons.building_2_fill,
-        'color': const Color(0xFF388E3C),
-        'page': (BuildContext ctx) =>
-            MbkmPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'Pusat Studi',
-        'icon': CupertinoIcons.building_2_fill,
-        'color': const Color(0xFF00796B),
-        'page': (BuildContext ctx) =>
-            PusatStudiPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'Sertifikasi',
-        'icon': CupertinoIcons.doc_checkmark_fill,
-        'color': const Color(0xFFE64A19),
-        'page': (BuildContext ctx) =>
-            SertifikasiPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'Organisasi',
-        'icon': CupertinoIcons.person_3_fill,
-        'color': const Color(0xFF5D4037),
-        'page': (BuildContext ctx) =>
-            OrganisasiPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'Prestasi',
-        'icon': CupertinoIcons.star_fill,
-        'color': const Color(0xFFFBC02D),
-        'page': (BuildContext ctx) =>
-            PrestasiPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'Seminar Workshop',
-        'icon': CupertinoIcons.rectangle_grid_2x2_fill,
-        'color': const Color(0xFF512DA8),
-        'page': (BuildContext ctx) =>
-            SeminarWorkshopPage(onBack: () => Navigator.pop(ctx)),
-      },
-    ];
-
-    final List<Map<String, dynamic>> informasiGroup = [
-      {
-        'title': 'Berita Kampus',
-        'icon': CupertinoIcons.news_solid,
-        'color': const Color(0xFF1976D2),
-        'page': (BuildContext ctx) => const BeritaListPage(),
-      },
-      {
-        'title': 'Pengumuman',
-        'icon': CupertinoIcons.speaker_2_fill,
-        'color': const Color(0xFFE65100),
-        'page': (BuildContext ctx) => const PengumumanListPage(),
-      },
-      {
-        'title': 'Panduan Akademik',
-        'icon': CupertinoIcons.book,
-        'color': const Color(0xFF388E3C),
-        'page': (BuildContext ctx) => const PanduanListPage(),
-      },
-      {
-        'title': 'Visi Misi Prodi',
-        'icon': CupertinoIcons.eye_fill,
-        'color': const Color(0xFF7B1FA2),
-        'page': (BuildContext ctx) =>
-            VisiMisiPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'Visi Misi Institusi',
-        'icon': CupertinoIcons.building_2_fill,
-        'color': const Color(0xFF00796B),
-        'page': (BuildContext ctx) =>
-            VisiMisiInstitusiPage(onBack: () => Navigator.pop(ctx)),
-      },
-      {
-        'title': 'Tata Krama',
-        'icon': CupertinoIcons.person_2_alt,
-        'color': const Color(0xFF455A64),
-        'page': (BuildContext ctx) =>
-            TataKramaPage(onBack: () => Navigator.pop(ctx)),
-      },
-    ];
+    final categories = _getMenuCategories();
+    const categoryIcons = {
+      'Layanan Akademik': CupertinoIcons.square_grid_2x2_fill,
+      'Layanan Surat & Mandiri': CupertinoIcons.doc_on_doc_fill,
+      'Kemahasiswaan & Karir': CupertinoIcons.person_3_fill,
+      'Informasi & Kampus': CupertinoIcons.info_circle_fill,
+    };
 
     return ListView(
       padding: EdgeInsets.fromLTRB(
@@ -1016,29 +684,14 @@ class _MainPageState extends State<MainPage> {
         parent: AlwaysScrollableScrollPhysics(),
       ),
       children: [
-        _buildMenuCategorySection(
-          'Layanan Akademik',
-          CupertinoIcons.square_grid_2x2_fill,
-          akademikGroup,
-        ),
-        const SizedBox(height: 20),
-        _buildMenuCategorySection(
-          'Layanan Surat & Mandiri',
-          CupertinoIcons.doc_on_doc_fill,
-          suratGroup,
-        ),
-        const SizedBox(height: 20),
-        _buildMenuCategorySection(
-          'Kemahasiswaan & Karir',
-          CupertinoIcons.person_3_fill,
-          kemahasiswaanGroup,
-        ),
-        const SizedBox(height: 20),
-        _buildMenuCategorySection(
-          'Informasi & Kampus',
-          CupertinoIcons.info_circle_fill,
-          informasiGroup,
-        ),
+        for (final entry in categories.entries) ...[
+          _buildMenuCategorySection(
+            entry.key,
+            categoryIcons[entry.key] ?? CupertinoIcons.square_grid_2x2_fill,
+            entry.value,
+          ),
+          const SizedBox(height: 20),
+        ],
       ],
     );
   }

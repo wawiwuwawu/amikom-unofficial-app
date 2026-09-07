@@ -13,7 +13,6 @@ import 'pages/pkl_page.dart';
 import 'pages/ujian_susulan_page.dart';
 import 'pages/ppks_page.dart';
 import 'pages/skripsi_page.dart';
-import 'pages/disclaimer_gate_page.dart';
 import 'pages/penafian_page.dart';
 import 'services/navigation_service.dart';
 
@@ -44,7 +43,6 @@ class MyApp extends StatelessWidget {
       initialRoute: '/splash',
       routes: {
         '/splash': (_) => const SplashPage(),
-        '/disclaimer': (_) => const DisclaimerGatePage(),
         '/login': (_) => const LoginPage(),
         '/main': (_) => const MainPage(),
         '/keuangan': (_) => const KeuanganPage(),

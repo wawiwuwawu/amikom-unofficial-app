@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'api_client.dart';
 import '../models/panduan.dart';
 
@@ -23,20 +22,10 @@ class PanduanService {
     }
   }
 
-  Future<String> _downloadDir() async {
-    if (Platform.isAndroid) {
-      final download = Directory('/storage/emulated/0/Download');
-      if (await download.exists()) {
-        return download.path;
-      }
-    }
-    final dir = await getApplicationDocumentsDirectory();
-    return dir.path;
-  }
-
   Future<String> downloadPanduan(String link, String filename, Function(int, int)? onReceiveProgress) async {
     try {
-      final dir = await _downloadDir();
+      // ponytail: centralized download dir via ApiClient
+      final dir = await ApiClient.getDownloadDir();
       
       final response = await _dio.get(
         '/api/v1/panduan/download/$link',

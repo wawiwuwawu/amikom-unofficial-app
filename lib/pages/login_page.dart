@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_client.dart';
-import '../services/auth_service.dart';
 import '../widgets/glass_card.dart';
 
 class LoginPage extends StatefulWidget {
@@ -19,18 +19,46 @@ class _LoginPageState extends State<LoginPage> {
   bool _loading = false;
   bool _obscureText = true;
 
+  bool _agreedToDisclaimer = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDisclaimerAgreement();
+  }
+
+  Future<void> _loadDisclaimerAgreement() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final agreed = prefs.getBool('disclaimer_accepted_v1') ?? false;
+      if (mounted) setState(() => _agreedToDisclaimer = agreed);
+    } catch (_) {}
+  }
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_agreedToDisclaimer) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Harap setujui Penafian & Ketentuan terlebih dahulu'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
     
     setState(() => _loading = true);
     try {
-      final res = await AuthService().login(
+      final res = await ApiClient.instance.login(
         _nimController.text.trim(), 
         _passwordController.text.trim()
       );
       
       await ApiClient.instance.setTokens(res.token, res.refreshToken);
       ApiClient.instance.setUserInfo(res.nim, '');
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('disclaimer_accepted_v1', true);
+      } catch (_) {}
 
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/main');
@@ -154,7 +182,51 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 16),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: Checkbox(
+                                  value: _agreedToDisclaimer,
+                                  activeColor: const Color(0xFF501F66),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  onChanged: (val) {
+                                    setState(() => _agreedToDisclaimer = val ?? false);
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    const Text(
+                                      'Saya menyetujui ',
+                                      style: TextStyle(fontSize: 13, color: Colors.black87),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () => Navigator.pushNamed(context, '/penafian'),
+                                      child: const Text(
+                                        'Penafian & Ketentuan',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Color(0xFF501F66),
+                                          fontWeight: FontWeight.bold,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
                           SizedBox(
                             height: 56,
                             child: ElevatedButton(

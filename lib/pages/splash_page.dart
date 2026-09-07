@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_client.dart';
 
 class SplashPage extends StatefulWidget {
@@ -53,21 +52,6 @@ class _SplashPageState extends State<SplashPage> {
 
     await ApiClient.instance.restoreSession();
 
-    // Gerbang penafian: wajib disetujui sekali sebelum masuk aplikasi.
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final agreed = prefs.getBool('disclaimer_accepted_v1') ?? false;
-      if (!agreed) {
-        if (!mounted) return;
-        Navigator.pushReplacementNamed(context, '/disclaimer');
-        return;
-      }
-    } catch (_) {
-      // Gagal baca prefs -> tetap arahkan ke gerbang (paling aman).
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/disclaimer');
-      return;
-    }
 
     if (ApiClient.instance.token == null ||
         ApiClient.instance.refreshToken == null) {

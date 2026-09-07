@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_html/flutter_html.dart';
-import 'package:markdown/markdown.dart' as md;
 import '../models/mbkm.dart';
 import '../services/mbkm_service.dart';
 import '../widgets/glass_card.dart';
@@ -113,13 +112,8 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
 
     setState(() => _isSubmitting = true);
     
-    // Convert Markdown to HTML
-    // E.g. # Title -> <h1>Title</h1>
-    // Newlines will be converted to <p> or <br> correctly by markdown package.
-    final htmlContent = md.markdownToHtml(
-      _inputController.text, 
-      extensionSet: md.ExtensionSet.gitHubWeb,
-    );
+    // ponytail: lightweight native markdown-to-HTML converter without 700KB package:markdown
+    final htmlContent = _convertMarkdownToHtml(_inputController.text.trim());
 
     try {
       await _service.tambahBimbingan(widget.mbkm.id, htmlContent);
@@ -139,6 +133,58 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  /// ponytail: native conversion for the 4 composer toolbar tokens (**bold**, #, ##, -)
+  String _convertMarkdownToHtml(String input) {
+    String escaped = input
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
+
+    escaped = escaped.replaceAllMapped(
+      RegExp(r'\*\*(.+?)\*\*'),
+      (match) => '<strong>${match.group(1)}</strong>',
+    );
+
+    final lines = escaped.split(RegExp(r'\r?\n'));
+    final result = <String>[];
+    bool inList = false;
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.startsWith('## ')) {
+        if (inList) {
+          result.add('</ul>');
+          inList = false;
+        }
+        result.add('<h2>${trimmed.substring(3)}</h2>');
+      } else if (trimmed.startsWith('# ')) {
+        if (inList) {
+          result.add('</ul>');
+          inList = false;
+        }
+        result.add('<h1>${trimmed.substring(2)}</h1>');
+      } else if (trimmed.startsWith('- ')) {
+        if (!inList) {
+          result.add('<ul>');
+          inList = true;
+        }
+        result.add('<li>${trimmed.substring(2)}</li>');
+      } else {
+        if (inList) {
+          result.add('</ul>');
+          inList = false;
+        }
+        if (trimmed.isNotEmpty) {
+          result.add('<p>$trimmed</p>');
+        }
+      }
+    }
+    if (inList) {
+      result.add('</ul>');
+    }
+    return result.join();
   }
 
   void _insertMarkdown(String prefix, String suffix) {

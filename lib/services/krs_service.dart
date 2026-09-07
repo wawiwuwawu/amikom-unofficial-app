@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'api_client.dart';
 import '../models/krs.dart';
 
@@ -103,7 +102,8 @@ class KrsService {
 
   Future<String> downloadKrs(Function(int, int)? onReceiveProgress) async {
     try {
-      final dir = await _downloadDir();
+      // ponytail: centralized download dir via ApiClient
+      final dir = await ApiClient.getDownloadDir();
       
       final response = await _dio.get(
         '/api/v1/krs/download',
@@ -135,17 +135,6 @@ class KrsService {
     } catch (e) {
       throw _handleError(e);
     }
-  }
-
-  Future<String> _downloadDir() async {
-    if (Platform.isAndroid) {
-      final download = Directory('/storage/emulated/0/Download');
-      if (await download.exists()) {
-        return download.path;
-      }
-    }
-    final dir = await getApplicationDocumentsDirectory();
-    return dir.path;
   }
 
   Exception _handleError(dynamic e) {

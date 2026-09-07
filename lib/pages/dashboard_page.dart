@@ -117,7 +117,7 @@ class _DashboardPageState extends State<DashboardPage> {
       onRefresh: _load,
       color: const Color(0xFF501F66),
       child: ListView(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 120),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 130),
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         children: [
           _buildGreeting(d.profile).animate().fadeIn(duration: 500.ms).slideX(begin: -0.1, end: 0),
