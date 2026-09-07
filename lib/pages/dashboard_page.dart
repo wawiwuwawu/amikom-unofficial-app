@@ -12,6 +12,8 @@ import '../widgets/histori_ipk_sheet.dart';
 import 'absensi_page.dart';
 import 'jadwal_page.dart';
 import 'sp_page.dart';
+import 'khs_page.dart';
+import 'keuangan_page.dart';
 
 class DashboardPage extends StatefulWidget {
   final int refreshTrigger;
@@ -119,38 +121,39 @@ class _DashboardPageState extends State<DashboardPage> {
         padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 130),
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         children: [
-          _buildGreeting(d.profile).animate().fadeIn(duration: 500.ms).slideX(begin: -0.1, end: 0),
+          _buildGreeting(d.profile).animate().fadeIn(duration: 400.ms).slideX(begin: -0.05, end: 0),
           const SizedBox(height: 16),
-          _buildProfileCard(d.profile).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1, end: 0),
-          const SizedBox(height: 24),
+          _buildNextAgendaCard().animate().fadeIn(delay: 100.ms).slideY(begin: 0.05, end: 0),
+          const SizedBox(height: 16),
+          _buildQuickActions().animate().fadeIn(delay: 150.ms).slideY(begin: 0.05, end: 0),
+          const SizedBox(height: 16),
+          _buildProfileCard(d.profile).animate().fadeIn(delay: 200.ms).slideY(begin: 0.05, end: 0),
+          const SizedBox(height: 16),
           if (_spRekomendasiData != null && _spRekomendasiData!.hasRekomendasi) ...[
-            _buildSpRekomendasiBanner(_spRekomendasiData!).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1, end: 0),
-            const SizedBox(height: 24),
+            _buildSpRekomendasiBanner(_spRekomendasiData!).animate().fadeIn(delay: 220.ms).slideY(begin: 0.05, end: 0),
+            const SizedBox(height: 16),
           ],
-          _buildQuickPresensiBanner().animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
-          const SizedBox(height: 16),
-          _buildNextAgendaCard().animate().fadeIn(delay: 250.ms).slideY(begin: 0.1, end: 0),
-          const SizedBox(height: 24),
-          _buildInfoPenting(d).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1, end: 0),
+          _buildInfoPenting(d).animate().fadeIn(delay: 250.ms).slideY(begin: 0.05, end: 0),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: _buildStatCard(
-                  'IPK',
+                  'IPK Kumulatif',
                   d.statistik.ipk.toStringAsFixed(2),
                   CupertinoIcons.rosette,
-                  subtitle: 'Grafik Analitik >',
+                  subtitle: 'Grafik Tren >',
                   onTap: () => showHistoriIpkBottomSheet(context),
-                ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0),
+                ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.05, end: 0),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
-                  'Total SKS',
-                  d.statistik.totalSks.toString(),
+                  'Progres SKS',
+                  '${d.statistik.totalSks} SKS',
                   CupertinoIcons.book_fill,
-                ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1, end: 0),
+                  subtitle: 'Target: 144 SKS',
+                ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.05, end: 0),
               ),
             ],
           ),
@@ -186,74 +189,85 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildQuickPresensiBanner() {
-    return GlassCard(
-      padding: EdgeInsets.zero,
-      opacity: 0.8,
-      gradient: const LinearGradient(
-        colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)], // Ice Blue gradient
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      child: InkWell(
-        onTap: () {
-          // Tell user to tap the main FAB instead, or we can use Navigator.push if they really want,
-          // but since they didn't like the weird presensi routing, we'll route it manually if possible.
-          // Since we are inside Dashboard which is inside MainPage, we can't easily change the parent's state without a callback.
-          // For now, let's just push it, or we can use the FAB. Let's just push AbsensiPage for this banner.
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AbsensiPage()),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF501F66).withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(CupertinoIcons.qrcode_viewfinder, color: Color(0xFF501F66), size: 32),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Jangan Lupa Presensi!',
-                      style: TextStyle(
-                        color: Color(0xFF501F66),
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+  Widget _buildQuickActions() {
+    final actions = [
+      {
+        'label': 'Presensi',
+        'icon': CupertinoIcons.qrcode_viewfinder,
+        'page': const AbsensiPage(),
+      },
+      {
+        'label': 'Jadwal',
+        'icon': CupertinoIcons.calendar,
+        'page': const JadwalPage(),
+      },
+      {
+        'label': 'Nilai / KHS',
+        'icon': CupertinoIcons.doc_text_fill,
+        'page': const KhsPage(),
+      },
+      {
+        'label': 'Tagihan VA',
+        'icon': CupertinoIcons.creditcard_fill,
+        'page': const KeuanganPage(),
+      },
+    ];
+
+    return Row(
+      children: actions.map((act) {
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: GlassCard(
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+              borderRadius: 16,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => act['page'] as Widget),
+                );
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF501F66).withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
                     ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Ketuk di sini untuk scan QR kelasmu sekarang.',
-                      style: TextStyle(
-                        color: Colors.black54,
-                        fontSize: 12,
-                      ),
+                    child: Icon(
+                      act['icon'] as IconData,
+                      size: 20,
+                      color: const Color(0xFF501F66),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    act['label'] as String,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF501F66),
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-              const Icon(CupertinoIcons.chevron_right, color: Color(0xFF501F66)),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      }).toList(),
     );
   }
 
   Widget _buildInfoPenting(Dashboard d) {
     if (d.status.status != 'Aktif' || d.status.status.isEmpty) {
       return _buildAlert(
-          CupertinoIcons.exclamationmark_triangle, 'Pembayaran pending', Colors.orange);
+          CupertinoIcons.exclamationmark_triangle, 'Pembayaran tertunda', Colors.orange);
     }
     return const SizedBox.shrink();
   }
@@ -460,6 +474,27 @@ class _DashboardPageState extends State<DashboardPage> {
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
               ],
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AbsensiPage()),
+                    );
+                  },
+                  icon: const Icon(CupertinoIcons.qrcode_viewfinder, size: 18),
+                  label: const Text('Presensi Sekarang', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF501F66),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
             ] else ...[
               const Text(
                 'Tidak ada jadwal perkuliahan atau ujian aktif untuk saat ini.',

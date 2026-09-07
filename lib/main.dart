@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
       title: 'Ini Amikom?',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorSchemeSeed: const Color(0xFFBBDEFB), // Ice Blue
+        colorSchemeSeed: const Color(0xFF501F66), // Amikom Deep Purple
         useMaterial3: true,
         textTheme: GoogleFonts.interTextTheme(),
         scaffoldBackgroundColor: const Color(0xFFFAFCFF), // Pearl White

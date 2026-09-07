@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -19,6 +18,7 @@ import 'mbkm_page.dart';
 import 'visi_misi_page.dart';
 import 'visi_misi_institusi_page.dart';
 import 'tata_krama_page.dart';
+import 'penafian_page.dart';
 import 'agenda_akademik_page.dart';
 import 'jadwal_ujian_page.dart';
 import 'pusat_studi/pusat_studi_page.dart';
@@ -119,10 +119,15 @@ class _MainPageState extends State<MainPage> {
                   : null,
               elevation: 0,
               surfaceTintColor: Colors.transparent,
-              flexibleSpace: ClipRRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(color: Colors.transparent),
+              flexibleSpace: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.92),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Colors.grey.withValues(alpha: 0.15),
+                      width: 1,
+                    ),
+                  ),
                 ),
               ),
               actions: [
@@ -194,70 +199,69 @@ class _MainPageState extends State<MainPage> {
   }
 
   Widget _buildFloatingAction() {
-    return Container(
-      margin: const EdgeInsets.only(top: 32),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF501F66).withValues(alpha: 0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    return RepaintBoundary(
+      child: Container(
+        margin: const EdgeInsets.only(top: 32),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF501F66).withValues(alpha: 0.25),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    AbsensiPage(onBack: () => Navigator.pop(context)),
+              ),
+            );
+          },
+          backgroundColor: const Color(0xFFBBDEFB), // Ice Blue Deep
+          elevation: 0,
+          shape: const CircleBorder(),
+          child: const Icon(
+            CupertinoIcons.qrcode_viewfinder,
+            color: Color(0xFF501F66),
+            size: 32,
           ),
-        ],
+        ).animate().scaleXY(duration: 400.ms, curve: Curves.easeOutBack),
       ),
-      child:
-          FloatingActionButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          AbsensiPage(onBack: () => Navigator.pop(context)),
-                    ),
-                  );
-                },
-                backgroundColor: const Color(0xFFBBDEFB), // Ice Blue Deep
-                elevation: 0,
-                shape: const CircleBorder(),
-                child: const Icon(
-                  CupertinoIcons.qrcode_viewfinder,
-                  color: Color(0xFF501F66),
-                  size: 32,
-                ),
-              )
-              .animate(onPlay: (controller) => controller.repeat(reverse: true))
-              .scaleXY(end: 1.05, duration: 1500.ms, curve: Curves.easeInOut),
     );
   }
 
   Widget _buildBottomNav() {
-    return SafeArea(
-      child:
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-            child: GlassCard(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              borderRadius: 32,
-              opacity: 0.75,
-              blur: 24,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _navItem(0, CupertinoIcons.square_grid_2x2_fill, 'Home'),
-                  _navItem(1, CupertinoIcons.calendar, 'Jadwal'),
-                  const SizedBox(width: 48), // Space for FAB
-                  _navItem(2, CupertinoIcons.doc_text_fill, 'Nilai'),
-                  _navItem(3, CupertinoIcons.bars, 'Menu'),
-                ],
-              ),
+    return RepaintBoundary(
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+          child: GlassCard(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            borderRadius: 32,
+            opacity: 0.88,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _navItem(0, CupertinoIcons.square_grid_2x2_fill, 'Beranda'),
+                _navItem(1, CupertinoIcons.calendar, 'Jadwal'),
+                const SizedBox(width: 48), // Space for FAB
+                _navItem(2, CupertinoIcons.doc_text_fill, 'Nilai'),
+                _navItem(3, CupertinoIcons.bars, 'Menu'),
+              ],
             ),
-          ).animate().slideY(
-            begin: 1,
-            end: 0,
-            duration: 500.ms,
-            curve: Curves.easeOutExpo,
           ),
+        ).animate().slideY(
+          begin: 1,
+          end: 0,
+          duration: 500.ms,
+          curve: Curves.easeOutExpo,
+        ),
+      ),
     );
   }
 
@@ -332,7 +336,7 @@ class _MainPageState extends State<MainPage> {
                 ],
               ),
             ),
-            _drawerItem(0, CupertinoIcons.square_grid_2x2_fill, 'Dashboard'),
+            _drawerItem(0, CupertinoIcons.square_grid_2x2_fill, 'Beranda'),
             ListTile(
               leading: const Icon(
                 CupertinoIcons.bell_fill,
@@ -406,26 +410,13 @@ class _MainPageState extends State<MainPage> {
                 },
               )),
             ]),
-            const Divider(),
-            ListTile(
-              leading: const Icon(
-                CupertinoIcons.exclamationmark_shield,
-                color: Color(0xFF501F66),
-              ),
-              title: const Text('Penafian & Ketentuan'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/penafian');
-              },
-            ),
-            const Divider(),
             ListTile(
               leading: const Icon(
                 CupertinoIcons.square_arrow_right,
                 color: Colors.redAccent,
               ),
               title: const Text(
-                'Logout',
+                'Keluar',
                 style: TextStyle(
                   color: Colors.redAccent,
                   fontWeight: FontWeight.bold,
@@ -470,11 +461,11 @@ class _MainPageState extends State<MainPage> {
 
   Map<String, List<Map<String, dynamic>>> _getMenuCategories() {
     return {
-      'Layanan Akademik': [
+      'Perkuliahan & Akademik': [
         {
           'title': 'KRS Online',
           'icon': CupertinoIcons.doc_text_search,
-          'color': const Color(0xFF1976D2),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) =>
               KrsMainPage(onBack: () => Navigator.pop(ctx)),
         },
@@ -487,7 +478,7 @@ class _MainPageState extends State<MainPage> {
         {
           'title': 'KHS',
           'icon': CupertinoIcons.rosette,
-          'color': const Color(0xFF7B1FA2),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) => const KhsPage(),
         },
         {
@@ -500,51 +491,44 @@ class _MainPageState extends State<MainPage> {
         {
           'title': 'Jadwal Ujian',
           'icon': CupertinoIcons.check_mark_circled,
-          'color': const Color(0xFF388E3C),
+          'color': const Color(0xFF2E7D32),
           'page': (BuildContext ctx) =>
               JadwalUjianPage(onBack: () => Navigator.pop(ctx)),
         },
         {
           'title': 'Agenda Akademik',
           'icon': CupertinoIcons.calendar,
-          'color': const Color(0xFF0097A7),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) =>
               AgendaAkademikPage(onBack: () => Navigator.pop(ctx)),
         },
-        {
-          'title': 'Keuangan',
-          'icon': CupertinoIcons.creditcard_fill,
-          'color': const Color(0xFFC2185B),
-          'page': (BuildContext ctx) =>
-              KeuanganPage(onBack: () => Navigator.pop(ctx)),
-        },
       ],
-      'Layanan Surat & Mandiri': [
+      'Persuratan & Mandiri': [
         {
           'title': 'SKMK',
           'icon': CupertinoIcons.doc_plaintext,
-          'color': const Color(0xFF0288D1),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) =>
               SkmkPage(onBack: () => Navigator.pop(ctx)),
         },
         {
           'title': 'Izin Penelitian',
           'icon': CupertinoIcons.search_circle_fill,
-          'color': const Color(0xFFF57C00),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) =>
               IzinPenelitianPage(onBack: () => Navigator.pop(ctx)),
         },
         {
           'title': 'Surat Tugas',
           'icon': CupertinoIcons.doc_on_clipboard_fill,
-          'color': const Color(0xFF5D4037),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) =>
               SuratTugasPage(onBack: () => Navigator.pop(ctx)),
         },
         {
           'title': 'PKL & Mandiri',
           'icon': CupertinoIcons.briefcase_fill,
-          'color': const Color(0xFF303F9F),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) => PklPage(onBack: () => Navigator.pop(ctx)),
         },
         {
@@ -555,7 +539,14 @@ class _MainPageState extends State<MainPage> {
               UjianSusulanPage(onBack: () => Navigator.pop(ctx)),
         },
       ],
-      'Kemahasiswaan & Karir': [
+      'Kemahasiswaan & Keuangan': [
+        {
+          'title': 'Tagihan VA',
+          'icon': CupertinoIcons.creditcard_fill,
+          'color': const Color(0xFF2E7D32),
+          'page': (BuildContext ctx) =>
+              KeuanganPage(onBack: () => Navigator.pop(ctx)),
+        },
         {
           'title': 'Satgas PPKS',
           'icon': CupertinoIcons.shield_fill,
@@ -566,42 +557,42 @@ class _MainPageState extends State<MainPage> {
         {
           'title': 'Asisten Praktikum',
           'icon': CupertinoIcons.briefcase,
-          'color': const Color(0xFF7B1FA2),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) =>
               AsistenPage(onBack: () => Navigator.pop(ctx)),
         },
         {
           'title': 'Jadwal Seminar',
           'icon': CupertinoIcons.person_3_fill,
-          'color': const Color(0xFF1976D2),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) =>
               SeminarPage(onBack: () => Navigator.pop(ctx)),
         },
         {
           'title': 'MBKM Internal',
           'icon': CupertinoIcons.building_2_fill,
-          'color': const Color(0xFF388E3C),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) =>
               MbkmPage(onBack: () => Navigator.pop(ctx)),
         },
         {
           'title': 'Pusat Studi',
           'icon': CupertinoIcons.building_2_fill,
-          'color': const Color(0xFF00796B),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) =>
               PusatStudiPage(onBack: () => Navigator.pop(ctx)),
         },
         {
           'title': 'Sertifikasi',
           'icon': CupertinoIcons.doc_checkmark_fill,
-          'color': const Color(0xFFE64A19),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) =>
               SertifikasiPage(onBack: () => Navigator.pop(ctx)),
         },
         {
           'title': 'Organisasi',
           'icon': CupertinoIcons.person_3_fill,
-          'color': const Color(0xFF5D4037),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) =>
               OrganisasiPage(onBack: () => Navigator.pop(ctx)),
         },
@@ -615,16 +606,16 @@ class _MainPageState extends State<MainPage> {
         {
           'title': 'Seminar Workshop',
           'icon': CupertinoIcons.rectangle_grid_2x2_fill,
-          'color': const Color(0xFF512DA8),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) =>
               SeminarWorkshopPage(onBack: () => Navigator.pop(ctx)),
         },
       ],
-      'Informasi & Kampus': [
+      'Informasi & Dokumen Kampus': [
         {
           'title': 'Berita Kampus',
           'icon': CupertinoIcons.news_solid,
-          'color': const Color(0xFF1976D2),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) => const BeritaListPage(),
         },
         {
@@ -636,29 +627,35 @@ class _MainPageState extends State<MainPage> {
         {
           'title': 'Panduan Akademik',
           'icon': CupertinoIcons.book,
-          'color': const Color(0xFF388E3C),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) => const PanduanListPage(),
         },
         {
           'title': 'Visi Misi Prodi',
           'icon': CupertinoIcons.eye_fill,
-          'color': const Color(0xFF7B1FA2),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) =>
               VisiMisiPage(onBack: () => Navigator.pop(ctx)),
         },
         {
           'title': 'Visi Misi Institusi',
           'icon': CupertinoIcons.building_2_fill,
-          'color': const Color(0xFF00796B),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) =>
               VisiMisiInstitusiPage(onBack: () => Navigator.pop(ctx)),
         },
         {
           'title': 'Tata Krama',
           'icon': CupertinoIcons.person_2_alt,
-          'color': const Color(0xFF455A64),
+          'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) =>
               TataKramaPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Penafian',
+          'icon': CupertinoIcons.exclamationmark_shield,
+          'color': const Color(0xFF501F66),
+          'page': (BuildContext ctx) => const PenafianPage(),
         },
       ],
     };
@@ -667,10 +664,10 @@ class _MainPageState extends State<MainPage> {
   Widget _buildMenuGridPage() {
     final categories = _getMenuCategories();
     const categoryIcons = {
-      'Layanan Akademik': CupertinoIcons.square_grid_2x2_fill,
-      'Layanan Surat & Mandiri': CupertinoIcons.doc_on_doc_fill,
-      'Kemahasiswaan & Karir': CupertinoIcons.person_3_fill,
-      'Informasi & Kampus': CupertinoIcons.info_circle_fill,
+      'Perkuliahan & Akademik': CupertinoIcons.book_fill,
+      'Persuratan & Mandiri': CupertinoIcons.doc_on_clipboard_fill,
+      'Kemahasiswaan & Keuangan': CupertinoIcons.person_3_fill,
+      'Informasi & Dokumen Kampus': CupertinoIcons.info_circle_fill,
     };
 
     return ListView(
@@ -752,7 +749,7 @@ class _MainPageState extends State<MainPage> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: itemColor.withValues(alpha: 0.12),
+                          color: itemColor.withValues(alpha: 0.08),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
