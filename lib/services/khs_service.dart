@@ -8,7 +8,7 @@ class KhsService {
   Future<Map<String, dynamic>> getOptions() async {
     try {
       final response = await _dio.get('/api/v1/khs');
-      return response.data;
+      return ApiClient.unwrapData<Map<String, dynamic>>(response.data);
     } on DioException catch (e) {
       if (e.response != null) {
         final msg = e.response?.data?['message'];
@@ -26,7 +26,9 @@ class KhsService {
         '/api/v1/khs/detail',
         data: {'thn': thn, 'smt': smt},
       );
-      return KhsDetailResponse.fromJson(response.data);
+      return KhsDetailResponse.fromJson(
+        ApiClient.unwrapData<Map<String, dynamic>>(response.data),
+      );
     } on DioException catch (e) {
       if (e.response != null) {
         final msg = e.response?.data?['message'];

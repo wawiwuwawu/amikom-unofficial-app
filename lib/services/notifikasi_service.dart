@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import '../models/notifikasi.dart';
@@ -11,16 +10,15 @@ class NotifikasiService {
   Future<List<NotifikasiItem>> getNotifikasi() async {
     try {
       final response = await _dio.get('/api/v1/notifikasi');
-      final data = response.data['data'] as List?;
-      return data?.map((e) => NotifikasiItem.fromJson(e)).toList() ?? [];
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is List) {
+        return data
+            .map((e) => NotifikasiItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
-      throw Exception(e.message ?? 'Gagal memuat notifikasi');
+      return [];
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat notifikasi');
     }
   }
 
@@ -28,10 +26,12 @@ class NotifikasiService {
     try {
       final endpoint = '/api/v1/notifikasi/$id';
       final response = await _dio.get(endpoint);
-      final raw = response.data;
+      final raw = ApiClient.unwrapData<dynamic>(response.data);
 
       Map<String, dynamic> jsonMap = {};
-      if (raw is Map) {
+      if (raw is Map<String, dynamic>) {
+        jsonMap = raw;
+      } else if (raw is Map) {
         jsonMap = Map<String, dynamic>.from(raw);
       } else if (raw is List && raw.isNotEmpty && raw.first is Map) {
         jsonMap = Map<String, dynamic>.from(raw.first);
@@ -61,14 +61,8 @@ class NotifikasiService {
       }
 
       return detail;
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat detail notifikasi');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat detail notifikasi');
     }
   }
 

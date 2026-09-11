@@ -40,13 +40,15 @@ class _KhsPageState extends State<KhsPage> {
     try {
       final res = await _service.getOptions();
       if (!mounted) return;
+      final rawTahun = res['tahun_akademik'] ?? (res['data'] is Map ? res['data']['tahun_akademik'] : null);
+      final rawSemester = res['semester'] ?? (res['data'] is Map ? res['data']['semester'] : null);
       setState(() {
-        _tahunList = (res['tahun_akademik'] as List)
-            .map((e) => KhsOption.fromJson(e))
-            .toList();
-        _semesterList = (res['semester'] as List)
-            .map((e) => KhsOption.fromJson(e))
-            .toList();
+        _tahunList = (rawTahun is List)
+            ? rawTahun.map((e) => KhsOption.fromJson(e)).toList()
+            : <KhsOption>[];
+        _semesterList = (rawSemester is List)
+            ? rawSemester.map((e) => KhsOption.fromJson(e)).toList()
+            : <KhsOption>[];
         _error = null;
       });
     } catch (e) {

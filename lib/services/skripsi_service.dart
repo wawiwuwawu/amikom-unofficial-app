@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import '../models/api_response.dart';
 import '../models/skripsi.dart';
 import 'api_client.dart';
 
@@ -10,12 +11,15 @@ class SkripsiService {
   Future<SkripsiMainData> getMainInfo() async {
     try {
       final response = await _dio.get('/api/v1/skripsi');
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        return SkripsiMainData.fromJson(response.data['data']);
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is Map<String, dynamic>) {
+        return SkripsiMainData.fromJson(data);
+      } else if (data is Map) {
+        return SkripsiMainData.fromJson(Map<String, dynamic>.from(data));
       }
       throw Exception('Gagal memuat informasi utama skripsi');
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal memuat informasi utama skripsi');
     }
   }
 
@@ -23,35 +27,60 @@ class SkripsiService {
   Future<List<SkripsiProposalItem>> getProposals() async {
     try {
       final response = await _dio.get('/api/v1/skripsi/proposal');
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        final list = response.data['data'] as List;
-        return list.map((e) => SkripsiProposalItem.fromJson(e)).toList();
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is List) {
+        return data
+            .map((e) => SkripsiProposalItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
       return [];
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal memuat data proposal skripsi');
     }
   }
 
-  Future<Map<String, dynamic>> submitProposalBaru({
-    required String tipe,
+  Future<MutationResult> submitProposalBaru({
     required String judul,
-    required String idReviewer,
-    required String idTema,
+    required File filePdf,
+    void Function(int sent, int total)? onSendProgress,
   }) async {
     try {
+      String filename;
+      try {
+        filename = filePdf.uri.pathSegments.isNotEmpty
+            ? filePdf.uri.pathSegments.last
+            : filePdf.path.split(Platform.isWindows ? r'\' : '/').last;
+      } catch (_) {
+        filename = filePdf.path.split(Platform.isWindows ? r'\' : '/').last;
+      }
+      if (RegExp(r'''[&"'<>]''').hasMatch(filename)) {
+        throw Exception('Nama file tidak boleh memuat karakter khusus (&, ", \', <, >)');
+      }
+
+      final fileSize = await filePdf.length();
+      if (fileSize > 3 * 1024 * 1024) {
+        throw Exception('Ukuran file maksimal 3 MB');
+      }
+
+      final formData = FormData.fromMap({
+        'judul': judul.trim(),
+        'file': await MultipartFile.fromFile(
+          filePdf.path,
+          filename: filename,
+        ),
+      });
+
       final response = await _dio.post(
         '/api/v1/skripsi/proposal',
-        data: {
-          'tipe': tipe,
-          'judul': judul,
-          'id_reviewer': idReviewer,
-          'id_tema': idTema,
-        },
+        data: formData,
+        onSendProgress: onSendProgress,
       );
-      return response.data ?? {'success': true, 'message': 'Proposal berhasil diajukan'};
+      return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e);
+      if (e is DioException) {
+        throw ApiClient.handleError(e, 'Gagal mengajukan proposal');
+      }
+      rethrow;
     }
   }
 
@@ -67,9 +96,10 @@ class SkripsiService {
           'id_proposal': idProposal,
         },
       );
-      return response.data ?? {'success': true, 'message': 'Proposal ulang berhasil diajukan'};
+      final mutation = ApiClient.unwrapMutation(response.data);
+      return mutation.rawRoot ?? {'success': mutation.success, 'message': mutation.message};
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal mengajukan proposal ulang');
     }
   }
 
@@ -83,9 +113,10 @@ class SkripsiService {
           'id_proposal': idProposal,
         },
       );
-      return response.data ?? {'success': true, 'message': 'Tema ulang berhasil diajukan ke Pusat Studi'};
+      final mutation = ApiClient.unwrapMutation(response.data);
+      return mutation.rawRoot ?? {'success': mutation.success, 'message': mutation.message};
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal mengajukan tema ulang');
     }
   }
 
@@ -93,9 +124,11 @@ class SkripsiService {
   Future<List<SkripsiBimbinganItem>> getBimbinganList() async {
     try {
       final response = await _dio.get('/api/v1/skripsi/bimbingan');
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        final list = response.data['data'] as List;
-        return list.map((e) => SkripsiBimbinganItem.fromJson(e)).toList();
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is List) {
+        return data
+            .map((e) => SkripsiBimbinganItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
     } catch (_) {
       // Fallback strategy to main info
@@ -125,9 +158,10 @@ class SkripsiService {
           'keterangan': keterangan,
         },
       );
-      return response.data ?? {'success': true, 'message': 'Catatan bimbingan berhasil disimpan'};
+      final mutation = ApiClient.unwrapMutation(response.data);
+      return mutation.rawRoot ?? {'success': mutation.success, 'message': mutation.message};
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal menyimpan catatan bimbingan');
     }
   }
 
@@ -137,10 +171,10 @@ class SkripsiService {
         '/api/v1/skripsi/bimbingan/detail',
         data: {'id': id},
       );
-      final data = response.data['data'] ?? response.data;
-      return SkripsiBimbinganItem.fromJson(data);
+      return SkripsiBimbinganItem.fromJson(
+          ApiClient.unwrapData<Map<String, dynamic>>(response.data));
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal memuat detail bimbingan');
     }
   }
 
@@ -160,9 +194,10 @@ class SkripsiService {
           'keterangan': keterangan,
         },
       );
-      return response.data ?? {'success': true, 'message': 'Catatan bimbingan berhasil diperbarui'};
+      final mutation = ApiClient.unwrapMutation(response.data);
+      return mutation.rawRoot ?? {'success': mutation.success, 'message': mutation.message};
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal memperbarui catatan bimbingan');
     }
   }
 
@@ -181,7 +216,7 @@ class SkripsiService {
 
       return savePath;
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal mengunduh kartu bimbingan');
     }
   }
 
@@ -189,13 +224,15 @@ class SkripsiService {
   Future<List<SkripsiPendaftaranItem>> getPendaftaranList() async {
     try {
       final response = await _dio.get('/api/v1/skripsi/pendaftaran');
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        final list = response.data['data'] as List;
-        return list.map((e) => SkripsiPendaftaranItem.fromJson(e)).toList();
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is List) {
+        return data
+            .map((e) => SkripsiPendaftaranItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
       return [];
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal memuat data pendaftaran skripsi');
     }
   }
 
@@ -211,18 +248,20 @@ class SkripsiService {
           'ukuran_toga': ukuranToga,
         },
       );
-      return response.data ?? {'success': true, 'message': 'Pendaftaran ujian skripsi berhasil diajukan'};
+      final mutation = ApiClient.unwrapMutation(response.data);
+      return mutation.rawRoot ?? {'success': mutation.success, 'message': mutation.message};
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal mengajukan pendaftaran ujian skripsi');
     }
   }
 
   Future<Map<String, dynamic>> deletePendaftaranUjian(String id) async {
     try {
       final response = await _dio.delete('/api/v1/skripsi/pendaftaran/$id');
-      return response.data ?? {'success': true, 'message': 'Pengajuan ujian skripsi berhasil dibatalkan'};
+      final mutation = ApiClient.unwrapMutation(response.data);
+      return mutation.rawRoot ?? {'success': mutation.success, 'message': mutation.message};
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal membatalkan pengajuan ujian skripsi');
     }
   }
 
@@ -241,7 +280,7 @@ class SkripsiService {
 
       return savePath;
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal mengunduh formulir pendaftaran');
     }
   }
 
@@ -249,13 +288,15 @@ class SkripsiService {
   Future<List<SkripsiPlagiarismeItem>> getPlagiarismeList() async {
     try {
       final response = await _dio.get('/api/v1/skripsi/plagiarisme');
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        final list = response.data['data'] as List;
-        return list.map((e) => SkripsiPlagiarismeItem.fromJson(e)).toList();
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is List) {
+        return data
+            .map((e) => SkripsiPlagiarismeItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
       return [];
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal memuat data plagiarisme');
     }
   }
 
@@ -273,18 +314,20 @@ class SkripsiService {
         '/api/v1/skripsi/plagiarisme/upload',
         data: formData,
       );
-      return response.data ?? {'success': true, 'message': 'Dokumen plagiarisme berhasil diunggah'};
+      final mutation = ApiClient.unwrapMutation(response.data);
+      return mutation.rawRoot ?? {'success': mutation.success, 'message': mutation.message};
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal mengunggah dokumen plagiarisme');
     }
   }
 
   Future<Map<String, dynamic>> deletePlagiarisme(String id) async {
     try {
       final response = await _dio.delete('/api/v1/skripsi/plagiarisme/$id');
-      return response.data ?? {'success': true, 'message': 'Dokumen plagiarisme berhasil dihapus'};
+      final mutation = ApiClient.unwrapMutation(response.data);
+      return mutation.rawRoot ?? {'success': mutation.success, 'message': mutation.message};
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal menghapus dokumen plagiarisme');
     }
   }
 
@@ -303,9 +346,10 @@ class SkripsiService {
           'npm': nim,
         },
       );
-      return response.data ?? {'success': true, 'message': 'Judul skripsi berhasil diperbarui'};
+      final mutation = ApiClient.unwrapMutation(response.data);
+      return mutation.rawRoot ?? {'success': mutation.success, 'message': mutation.message};
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal memperbarui judul skripsi');
     }
   }
 
@@ -321,20 +365,10 @@ class SkripsiService {
           'link_file': linkFile,
         },
       );
-      return response.data ?? {'success': true, 'message': 'Link berkas berhasil disimpan'};
+      final mutation = ApiClient.unwrapMutation(response.data);
+      return mutation.rawRoot ?? {'success': mutation.success, 'message': mutation.message};
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal menyimpan link berkas');
     }
-  }
-
-  Exception _handleError(dynamic e) {
-    if (e is DioException && e.response != null) {
-      final msg = e.response?.data?['message'];
-      if (msg != null && msg.toString().isNotEmpty) {
-        return Exception(msg);
-      }
-      return Exception(e.message ?? 'Terjadi kesalahan pada layanan Skripsi');
-    }
-    return Exception(e.toString());
   }
 }

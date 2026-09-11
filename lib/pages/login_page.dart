@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dio/dio.dart';
 import '../services/api_client.dart';
 import '../widgets/glass_card.dart';
 
@@ -18,9 +20,9 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
   bool _obscureText = true;
-
   bool _agreedToDisclaimer = false;
-
+  int _retryCountdown = 0;
+  Timer? _countdownTimer;
   @override
   void initState() {
     super.initState();
@@ -34,7 +36,64 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) setState(() => _agreedToDisclaimer = agreed);
     } catch (_) {}
   }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    _nimController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _startRetryCountdown(int seconds) {
+    _countdownTimer?.cancel();
+    if (mounted) {
+      setState(() => _retryCountdown = seconds);
+    } else {
+      _retryCountdown = seconds;
+    }
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_retryCountdown <= 1) {
+        timer.cancel();
+        setState(() => _retryCountdown = 0);
+      } else {
+        setState(() => _retryCountdown--);
+      }
+    });
+  }
+
+  int _parseRetryAfter(DioException e) {
+    final headerVal = e.response?.headers.value('retry-after');
+    if (headerVal != null) {
+      final parsed = int.tryParse(headerVal.trim());
+      if (parsed != null && parsed > 0) return parsed;
+    }
+    final data = e.response?.data;
+    if (data is Map) {
+      final retrySec = data['retry_after'] ?? data['retryAfter'] ?? data['retry_in'];
+      if (retrySec is int && retrySec > 0) return retrySec;
+      if (retrySec != null) {
+        final parsed = int.tryParse(retrySec.toString().trim());
+        if (parsed != null && parsed > 0) return parsed;
+      }
+    }
+    return 60;
+  }
   Future<void> _login() async {
+    if (_retryCountdown > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Silakan tunggu $_retryCountdown detik sebelum mencoba kembali.'),
+          backgroundColor: Colors.orange.shade800,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
     if (!_agreedToDisclaimer) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -60,17 +119,62 @@ class _LoginPageState extends State<LoginPage> {
         await prefs.setBool('disclaimer_accepted_v1', true);
       } catch (_) {}
 
+      _countdownTimer?.cancel();
+      _retryCountdown = 0;
+
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/main');
+    } on DioException catch (e) {
+      if (!mounted) return;
+      if (e.response?.statusCode == 429) {
+        final waitSeconds = _parseRetryAfter(e);
+        _startRetryCountdown(waitSeconds);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Terlalu banyak percobaan login. Silakan tunggu $waitSeconds detik sebelum mencoba kembali.',
+              style: const TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.orange.shade800,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        final String serverMsg = (e.response?.data is Map && e.response?.data['message'] != null)
+            ? (e.response?.data['message']?.toString() ?? 'Terjadi kesalahan saat login')
+            : (e.message ?? 'Terjadi kesalahan saat login');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(serverMsg, style: const TextStyle(color: Colors.white)),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', ''), style: const TextStyle(color: Colors.white)),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      final errStr = e.toString().replaceFirst('Exception: ', '');
+      if (errStr.contains('429') || errStr.toLowerCase().contains('terlalu banyak')) {
+        _startRetryCountdown(60);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Terlalu banyak percobaan login. Silakan tunggu 60 detik sebelum mencoba kembali.',
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errStr, style: const TextStyle(color: Colors.white)),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -230,10 +334,12 @@ class _LoginPageState extends State<LoginPage> {
                           SizedBox(
                             height: 56,
                             child: ElevatedButton(
-                              onPressed: _loading ? null : _login,
+                              onPressed: (_loading || _retryCountdown > 0) ? null : _login,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFBBDEFB), // Ice Blue
                                 foregroundColor: const Color(0xFF501F66), // Amikom Purple text
+                                disabledBackgroundColor: Colors.grey.shade300,
+                                disabledForegroundColor: Colors.grey.shade600,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
@@ -248,7 +354,15 @@ class _LoginPageState extends State<LoginPage> {
                                         color: Color(0xFF501F66),
                                       ),
                                     )
-                                  : const Text('Login', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                  : Text(
+                                      _retryCountdown > 0
+                                          ? 'Coba lagi dalam $_retryCountdown detik'
+                                          : 'Login',
+                                      style: TextStyle(
+                                        fontSize: _retryCountdown > 0 ? 15 : 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                             ),
                           ),
                         ],

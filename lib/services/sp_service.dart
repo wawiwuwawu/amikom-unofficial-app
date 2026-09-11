@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../models/api_response.dart';
 import '../models/sp.dart';
 import 'api_client.dart';
 
@@ -10,77 +11,71 @@ class SpService {
   Future<SpAvailableData> getAvailable() async {
     try {
       final response = await _dio.get('/api/v1/sp/available');
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        return SpAvailableData.fromJson(response.data['data']);
-      }
-      throw Exception('Gagal memuat daftar matakuliah SP yang tersedia');
+      final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
+      return SpAvailableData.fromJson(data);
     } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat daftar matakuliah SP yang tersedia');
+      throw _handleError(e, 'Gagal memuat daftar matakuliah SP yang tersedia');
     }
   }
 
   Future<SpTakenData> getTaken() async {
     try {
       final response = await _dio.get('/api/v1/sp/taken');
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        return SpTakenData.fromJson(response.data['data']);
-      }
-      throw Exception('Gagal memuat matakuliah SP yang sudah diambil');
+      final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
+      return SpTakenData.fromJson(data);
     } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat matakuliah SP yang sudah diambil');
+      throw _handleError(e, 'Gagal memuat matakuliah SP yang sudah diambil');
     }
   }
 
   Future<SpRekomendasiData> getRekomendasi() async {
     try {
       final response = await _dio.get('/api/v1/sp/rekomendasi');
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        return SpRekomendasiData.fromJson(response.data['data']);
+      final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
+      return SpRekomendasiData.fromJson(data);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return SpRekomendasiData(
+          hasRekomendasi: false,
+          warningMessage: '',
+          totalRekomendasi: 0,
+          totalSks: 0,
+          kategoriSangatDianjurkan: [],
+          kategoriOpsionalSksBesar: [],
+        );
       }
-      return SpRekomendasiData(
-        hasRekomendasi: false,
-        warningMessage: '',
-        totalRekomendasi: 0,
-        totalSks: 0,
-        kategoriSangatDianjurkan: [],
-        kategoriOpsionalSksBesar: [],
-      );
-    } on DioException catch (_) {
-      return SpRekomendasiData(
-        hasRekomendasi: false,
-        warningMessage: '',
-        totalRekomendasi: 0,
-        totalSks: 0,
-        kategoriSangatDianjurkan: [],
-        kategoriOpsionalSksBesar: [],
-      );
+      throw _handleError(e, 'Gagal memuat rekomendasi SP');
+    } catch (e) {
+      throw _handleError(e, 'Gagal memuat rekomendasi SP');
     }
   }
 
-  Future<Map<String, dynamic>> submitSp(List<String> kodeList) async {
+  Future<MutationResult> submitSp(List<String> kodeList) async {
     try {
       final response = await _dio.post(
         '/api/v1/sp/submit',
         data: {'kode': kodeList},
       );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data;
-      }
-      throw Exception(response.data['message'] ?? 'Gagal mengajukan matakuliah SP');
+      return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal mengajukan matakuliah SP');
+      throw _handleError(e, 'Gagal mengajukan matakuliah SP');
     }
   }
 
-  Future<Map<String, dynamic>> deleteSp(String idKrs) async {
+  Future<MutationResult> deleteSp(String idKrs) async {
     try {
       final response = await _dio.delete('/api/v1/sp/$idKrs');
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        return response.data ?? {'success': true, 'message': 'Data mata kuliah SP berhasil dihapus'};
-      }
-      throw Exception(response.data?['message'] ?? 'Gagal menghapus matakuliah SP');
+      return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal menghapus matakuliah SP');
+      throw _handleError(e, 'Gagal menghapus matakuliah SP');
     }
+  }
+
+  Exception _handleError(dynamic e, [String fallback = 'Terjadi kesalahan pada layanan SP']) {
+    if (e is DioException) {
+      return ApiClient.handleError(e, fallback);
+    }
+    if (e is Exception) return e;
+    return Exception(e?.toString() ?? fallback);
   }
 }

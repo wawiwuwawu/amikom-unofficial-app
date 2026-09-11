@@ -81,11 +81,14 @@ class AsistenInfo {
   });
 
   factory AsistenInfo.fromJson(Map<String, dynamic> json) {
+    final map = (json['mahasiswa'] != null || json['stats'] != null)
+        ? json
+        : (json['data'] is Map<String, dynamic> ? json['data'] as Map<String, dynamic> : json);
     return AsistenInfo(
-      mahasiswa: AsistenMahasiswa.fromJson(json['mahasiswa'] ?? {}),
-      stats: AsistenStats.fromJson(json['stats'] ?? {}),
-      aturan: AsistenAturan.fromJson(json['aturan'] ?? {}),
-      bisaAjukanBebasKP: json['bisaAjukanBebasKP'] ?? false,
+      mahasiswa: AsistenMahasiswa.fromJson(map['mahasiswa'] ?? {}),
+      stats: AsistenStats.fromJson(map['stats'] ?? {}),
+      aturan: AsistenAturan.fromJson(map['aturan'] ?? {}),
+      bisaAjukanBebasKP: map['bisaAjukanBebasKP'] ?? false,
     );
   }
 }
@@ -213,7 +216,9 @@ class AsistenLaporan {
   });
 
   factory AsistenLaporan.fromJson(Map<String, dynamic> json) {
-    var dataObj = json['data'] ?? {};
+    final dataObj = (json['labels'] != null || json['datasets'] != null)
+        ? json
+        : (json['data'] is Map<String, dynamic> ? json['data'] as Map<String, dynamic> : json);
     var rawLabels = dataObj['labels'] as List? ?? [];
     var rawDatasets = dataObj['datasets'] as List? ?? [];
     return AsistenLaporan(

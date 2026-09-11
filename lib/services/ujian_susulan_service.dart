@@ -10,24 +10,28 @@ class UjianSusulanService {
   Future<UjianSusulanData> getUtsData() async {
     try {
       final response = await _dio.get('/api/v1/ujian-susulan/uts');
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        return UjianSusulanData.fromJson(response.data['data']);
-      }
-      throw Exception('Gagal memuat data Ujian Susulan UTS');
+      final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
+      return UjianSusulanData.fromJson(data);
     } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat data Ujian Susulan UTS');
+      throw _handleError(e, 'Gagal memuat data Ujian Susulan UTS');
     }
   }
 
   Future<UjianSusulanData> getUasData() async {
     try {
       final response = await _dio.get('/api/v1/ujian-susulan/uas');
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        return UjianSusulanData.fromJson(response.data['data']);
-      }
-      throw Exception('Gagal memuat data Ujian Susulan UAS');
+      final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
+      return UjianSusulanData.fromJson(data);
     } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat data Ujian Susulan UAS');
+      throw _handleError(e, 'Gagal memuat data Ujian Susulan UAS');
     }
+  }
+
+  Exception _handleError(dynamic e, [String fallback = 'Terjadi kesalahan pada layanan Ujian Susulan']) {
+    if (e is DioException) {
+      return ApiClient.handleError(e, fallback);
+    }
+    if (e is Exception) return e;
+    return Exception(e?.toString() ?? fallback);
   }
 }

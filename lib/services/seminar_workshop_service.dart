@@ -8,69 +8,54 @@ class SeminarWorkshopService {
   Future<List<SeminarWorkshopItem>> getSeminarWorkshop() async {
     try {
       final response = await _dio.get('/api/v1/seminar-workshop');
-      final data = response.data['data'] as List?;
-      return data?.map((e) => SeminarWorkshopItem.fromJson(e)).toList() ?? [];
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is List) {
+        return data
+            .map((e) => SeminarWorkshopItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
-      throw Exception(e.message ?? 'Gagal memuat data Seminar & Workshop');
+      return [];
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat data Seminar & Workshop');
     }
   }
 
   Future<SeminarWorkshopOptionsData> getOptions() async {
     try {
       final response = await _dio.get('/api/v1/seminar-workshop/options');
-      final data = response.data['data'] as Map<String, dynamic>?;
-      if (data == null) {
-        throw Exception('Data opsi seminar & workshop kosong');
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is Map<String, dynamic>) {
+        return SeminarWorkshopOptionsData.fromJson(data);
+      } else if (data is Map) {
+        return SeminarWorkshopOptionsData.fromJson(Map<String, dynamic>.from(data));
       }
-      return SeminarWorkshopOptionsData.fromJson(data);
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat pilihan Seminar & Workshop');
+      throw Exception('Data opsi seminar & workshop kosong');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat pilihan Seminar & Workshop');
     }
   }
 
   Future<void> tambahSeminarWorkshop(FormData data) async {
     try {
-      await _dio.post(
+      final response = await _dio.post(
         '/api/v1/seminar-workshop',
         data: data,
         options: Options(
           contentType: 'multipart/form-data',
         ),
       );
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal menambahkan Seminar & Workshop');
+      ApiClient.unwrapMutation(response.data);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal menambahkan Seminar & Workshop');
     }
   }
 
   Future<void> hapusSeminarWorkshop(int id) async {
     try {
-      await _dio.delete('/api/v1/seminar-workshop/$id');
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal menghapus Seminar & Workshop');
+      final response = await _dio.delete('/api/v1/seminar-workshop/$id');
+      ApiClient.unwrapMutation(response.data);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal menghapus Seminar & Workshop');
     }
   }
 
@@ -84,14 +69,8 @@ class SeminarWorkshopService {
         savePath,
       );
       return savePath;
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal mengunduh file sertifikat');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal mengunduh file sertifikat');
     }
   }
 }

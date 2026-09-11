@@ -36,6 +36,7 @@ import 'pkl_page.dart';
 import 'ujian_susulan_page.dart';
 import 'ppks_page.dart';
 import 'skripsi_page.dart';
+import 'nilai_rincian_page.dart';
 import '../services/notifikasi_service.dart';
 
 class MainPage extends StatefulWidget {
@@ -480,6 +481,13 @@ class _MainPageState extends State<MainPage> {
           'icon': CupertinoIcons.rosette,
           'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) => const KhsPage(),
+        },
+        {
+          'title': 'Rincian Nilai',
+          'icon': CupertinoIcons.chart_bar_alt_fill,
+          'color': const Color(0xFF501F66),
+          'page': (BuildContext ctx) =>
+              NilaiRincianPage(onBack: () => Navigator.pop(ctx)),
         },
         {
           'title': 'Skripsi & TA',

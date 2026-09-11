@@ -244,12 +244,17 @@ class KeuanganVaResult {
   });
 
   factory KeuanganVaResult.fromJson(Map<String, dynamic> json) {
-    var list = json['items'] as List? ?? [];
+    final payload = (json['data'] is Map<String, dynamic>)
+        ? json['data'] as Map<String, dynamic>
+        : json;
+    var list = payload['items'] as List? ?? json['items'] as List? ?? [];
     return KeuanganVaResult(
-      message: json['message'] ?? '',
-      channelBank: json['channel_bank'] ?? '',
-      va: json['va'] ?? '',
-      totalNominal: (json['total_nominal'] as num?)?.toInt() ?? 0,
+      message: json['message']?.toString() ?? payload['message']?.toString() ?? '',
+      channelBank: payload['channel_bank']?.toString() ?? json['channel_bank']?.toString() ?? '',
+      va: payload['va']?.toString() ?? json['va']?.toString() ?? '',
+      totalNominal: (payload['total_nominal'] as num?)?.toInt() ??
+          (json['total_nominal'] as num?)?.toInt() ??
+          0,
       items: list.map((e) => KeuanganVaItem.fromJson(e)).toList(),
     );
   }

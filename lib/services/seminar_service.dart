@@ -8,34 +8,31 @@ class SeminarService {
   Future<List<Seminar>> getJadwalKP() async {
     try {
       final response = await _client.dio.get('/api/v1/seminar/kp');
-      if (response.data is List) {
-        return (response.data as List).map((e) => Seminar.fromJson(e)).toList();
-      }
-      return [];
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        throw Exception('Data jadwal KP tidak ditemukan.');
-      }
-      throw Exception(e.message ?? 'Gagal mengambil jadwal KP');
+      final list = ApiClient.unwrapData<List>(response.data);
+      return list.map((e) => Seminar.fromJson(e)).toList();
     } catch (e) {
-      throw Exception('Terjadi kesalahan: $e');
+      throw _handleError(e, 'Gagal mengambil jadwal KP');
     }
   }
 
   Future<List<Seminar>> getJadwalSkripsi() async {
     try {
       final response = await _client.dio.get('/api/v1/seminar/skripsi');
-      if (response.data is List) {
-        return (response.data as List).map((e) => Seminar.fromJson(e)).toList();
-      }
-      return [];
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        throw Exception('Data jadwal Skripsi tidak ditemukan.');
-      }
-      throw Exception(e.message ?? 'Gagal mengambil jadwal Skripsi');
+      final list = ApiClient.unwrapData<List>(response.data);
+      return list.map((e) => Seminar.fromJson(e)).toList();
     } catch (e) {
-      throw Exception('Terjadi kesalahan: $e');
+      throw _handleError(e, 'Gagal mengambil jadwal Skripsi');
     }
+  }
+
+  Exception _handleError(dynamic e, [String fallback = 'Terjadi kesalahan']) {
+    if (e is DioException) {
+      if (e.response?.statusCode == 404) {
+        return Exception('Data jadwal tidak ditemukan.');
+      }
+      return ApiClient.handleError(e, fallback);
+    }
+    if (e is Exception) return e;
+    return Exception(e?.toString() ?? fallback);
   }
 }

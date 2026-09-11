@@ -8,66 +8,58 @@ class SertifikasiService {
   Future<List<SertifikasiItem>> getSertifikasi() async {
     try {
       final response = await _dio.get('/api/v1/sertifikasi-kompetensi');
-      final data = response.data['data'] as List?;
-      return data?.map((e) => SertifikasiItem.fromJson(e)).toList() ?? [];
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is List) {
+        return data
+            .map((e) => SertifikasiItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
-      throw Exception(e.message ?? 'Gagal memuat data Sertifikasi Kompetensi');
+      return [];
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat data Sertifikasi Kompetensi');
     }
   }
 
   Future<List<SertifikasiOption>> getOptions() async {
     try {
       final response = await _dio.get('/api/v1/sertifikasi-kompetensi/options');
-      final data = response.data['data'] as List?;
-      return data?.map((e) => SertifikasiOption.fromJson(e)).toList() ?? [];
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is Map && data['sertifikasi'] is List) {
+        return (data['sertifikasi'] as List)
+            .map((e) => SertifikasiOption.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
+      } else if (data is List) {
+        return data
+            .map((e) => SertifikasiOption.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
-      throw Exception(e.message ?? 'Gagal memuat pilihan Sertifikasi');
+      return [];
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat pilihan Sertifikasi');
     }
   }
 
   Future<void> tambahSertifikasi(FormData data) async {
     try {
-      await _dio.post(
+      final response = await _dio.post(
         '/api/v1/sertifikasi-kompetensi',
         data: data,
         options: Options(
           contentType: 'multipart/form-data',
         ),
       );
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal menambahkan Sertifikasi Kompetensi');
+      ApiClient.unwrapMutation(response.data);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal menambahkan Sertifikasi Kompetensi');
     }
   }
 
   Future<void> hapusSertifikasi(int id) async {
     try {
-      await _dio.delete('/api/v1/sertifikasi-kompetensi/$id');
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal menghapus Sertifikasi Kompetensi');
+      final response = await _dio.delete('/api/v1/sertifikasi-kompetensi/$id');
+      ApiClient.unwrapMutation(response.data);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal menghapus Sertifikasi Kompetensi');
     }
   }
 
@@ -81,14 +73,8 @@ class SertifikasiService {
         savePath,
       );
       return savePath;
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal mengunduh file sertifikat');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal mengunduh file sertifikat');
     }
   }
 }

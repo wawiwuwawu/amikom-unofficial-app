@@ -10,11 +10,13 @@ class PusatStudiService {
   Future<List<PusatStudi>> getPusatStudiList() async {
     try {
       final response = await _dio.get('/api/v1/pusat-studi');
-      if (response.statusCode == 200) {
-        final List data = response.data['data'] ?? [];
-        return data.map((e) => PusatStudi.fromJson(e)).toList();
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is List) {
+        return data
+            .map((e) => PusatStudi.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
-      throw Exception('Gagal memuat daftar pusat studi');
+      return [];
     } catch (e) {
       throw ApiClient.handleError(e, 'Gagal memuat daftar pusat studi');
     }
@@ -23,11 +25,13 @@ class PusatStudiService {
   Future<List<PusatStudi>> getJoinedPusatStudi() async {
     try {
       final response = await _dio.get('/api/v1/pusat-studi/joined');
-      if (response.statusCode == 200) {
-        final List data = response.data['data'] ?? [];
-        return data.map((e) => PusatStudi.fromJson(e)).toList();
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is List) {
+        return data
+            .map((e) => PusatStudi.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
-      throw Exception('Gagal memuat pusat studi yang diikuti');
+      return [];
     } catch (e) {
       throw ApiClient.handleError(e, 'Gagal memuat pusat studi yang diikuti');
     }
@@ -36,10 +40,8 @@ class PusatStudiService {
   Future<Map<String, dynamic>> joinPusatStudi(String id) async {
     try {
       final response = await _dio.post('/api/v1/pusat-studi/join', data: {'id': id});
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data;
-      }
-      throw Exception('Gagal bergabung dengan pusat studi');
+      final mutation = ApiClient.unwrapMutation(response.data);
+      return mutation.rawRoot ?? {'success': mutation.success, 'message': mutation.message};
     } catch (e) {
       throw ApiClient.handleError(e, 'Gagal bergabung dengan pusat studi');
     }
@@ -48,8 +50,11 @@ class PusatStudiService {
   Future<PusatStudiDetail> getDetailPusatStudi(String base64Id) async {
     try {
       final response = await _dio.get('/api/v1/pusat-studi/$base64Id');
-      if (response.statusCode == 200) {
-        return PusatStudiDetail.fromJson(response.data['data'] ?? {});
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is Map<String, dynamic>) {
+        return PusatStudiDetail.fromJson(data);
+      } else if (data is Map) {
+        return PusatStudiDetail.fromJson(Map<String, dynamic>.from(data));
       }
       throw Exception('Gagal memuat detail pusat studi');
     } catch (e) {
@@ -60,11 +65,13 @@ class PusatStudiService {
   Future<List<JoinedDetailTema>> getJoinedDetail(String id) async {
     try {
       final response = await _dio.get('/api/v1/pusat-studi/$id/joined-detail');
-      if (response.statusCode == 200) {
-        final List data = response.data['data'] ?? [];
-        return data.map((e) => JoinedDetailTema.fromJson(e)).toList();
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is List) {
+        return data
+            .map((e) => JoinedDetailTema.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
-      throw Exception('Gagal memuat detail tema pusat studi');
+      return [];
     } catch (e) {
       throw ApiClient.handleError(e, 'Gagal memuat detail tema pusat studi');
     }
@@ -73,8 +80,13 @@ class PusatStudiService {
   Future<PusatStudiJoinedPageData?> getJoinedPage(String base64Id) async {
     try {
       final response = await _dio.get('/api/v1/pusat-studi/$base64Id/joined-page');
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        return PusatStudiJoinedPageData.fromJson(response.data['data']);
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data != null) {
+        if (data is Map<String, dynamic>) {
+          return PusatStudiJoinedPageData.fromJson(data);
+        } else if (data is Map) {
+          return PusatStudiJoinedPageData.fromJson(Map<String, dynamic>.from(data));
+        }
       }
       return null;
     } catch (e) {
@@ -88,10 +100,8 @@ class PusatStudiService {
         '/api/v1/pusat-studi/cancel-ajuan',
         data: {'id_ajuan': idAjuan},
       );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data;
-      }
-      throw Exception(response.data['message'] ?? 'Gagal membatalkan ajuan');
+      final mutation = ApiClient.unwrapMutation(response.data);
+      return mutation.rawRoot ?? {'success': mutation.success, 'message': mutation.message};
     } catch (e) {
       throw ApiClient.handleError(e, 'Gagal membatalkan ajuan');
     }
@@ -107,10 +117,8 @@ class PusatStudiService {
           'rencana_judul': rencanaJudul,
         },
       );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data;
-      }
-      throw Exception('Gagal mengusulkan tema');
+      final mutation = ApiClient.unwrapMutation(response.data);
+      return mutation.rawRoot ?? {'success': mutation.success, 'message': mutation.message};
     } catch (e) {
       throw ApiClient.handleError(e, 'Gagal mengusulkan tema');
     }
@@ -126,10 +134,8 @@ class PusatStudiService {
           'rencana_judul': rencanaJudul,
         },
       );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data;
-      }
-      throw Exception('Gagal memilih tema');
+      final mutation = ApiClient.unwrapMutation(response.data);
+      return mutation.rawRoot ?? {'success': mutation.success, 'message': mutation.message};
     } catch (e) {
       throw ApiClient.handleError(e, 'Gagal memilih tema');
     }

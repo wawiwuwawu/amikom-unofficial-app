@@ -968,83 +968,351 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
 
   // --- ACTIONS & MODAL DIALOGS ---
 
-  void _showFormProposalBaru() {
+  void _showFormProposalBaru() async {
     final judulCtrl = TextEditingController();
-    final reviewerCtrl = TextEditingController();
-    final temaCtrl = TextEditingController();
-    String tipe = 'non_fik';
+    File? pickedFile;
+    String? fileName;
+    int fileSize = 0;
+    String? fileError;
+    bool isSubmitting = false;
+    double uploadProgress = 0.0;
 
-    showModalBottomSheet(
+    final hasDospemWarning = (_mainData?.dospemAssigned == false) ||
+        (_mainData?.dospemWarning != null && _mainData!.dospemWarning!.isNotEmpty);
+
+    String formatFileSize(int bytes) {
+      if (bytes < 1024) return '$bytes B';
+      if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
+    }
+
+    String? validateFile(String name, int size) {
+      if (RegExp(r'''[&"'<>]''').hasMatch(name)) {
+        return 'Nama berkas tidak boleh memuat karakter khusus (&, ", \', <, >)';
+      }
+      if (size > 3 * 1024 * 1024) {
+        return 'Ukuran berkas melebihi batas maksimal 3 MB (${formatFileSize(size)})';
+      }
+      return null;
+    }
+
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setBsState) => Container(
-          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-          decoration: const BoxDecoration(
-            color: Color(0xFFFAFCFF),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Ajukan Proposal Skripsi Baru', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: tipe,
-                decoration: const InputDecoration(labelText: 'Tipe Proposal', border: OutlineInputBorder()),
-                items: const [
-                  DropdownMenuItem(value: 'non_fik', child: Text('Non-FIK')),
-                  DropdownMenuItem(value: 'fik', child: Text('FIK')),
+        builder: (ctx, setBsState) {
+          Future<void> pickPdfFile() async {
+            try {
+              final result = await FilePicker.pickFiles(
+                type: FileType.custom,
+                allowedExtensions: ['pdf'],
+              );
+              if (result != null && result.files.isNotEmpty && result.files.single.path != null) {
+                final file = File(result.files.single.path!);
+                final name = result.files.single.name;
+                final size = result.files.single.size;
+                final err = validateFile(name, size);
+                setBsState(() {
+                  pickedFile = file;
+                  fileName = name;
+                  fileSize = size;
+                  fileError = err;
+                });
+              }
+            } catch (e) {
+              setBsState(() {
+                fileError = 'Gagal memilih berkas: $e';
+              });
+            }
+          }
+
+          final isFormValid = judulCtrl.text.trim().isNotEmpty &&
+              pickedFile != null &&
+              fileError == null;
+
+          return Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+            ),
+            padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFAFCFF),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Ajukan Proposal Skripsi Baru',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF501F66),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(CupertinoIcons.xmark_circle_fill, color: Colors.grey, size: 22),
+                        onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (hasDospemWarning) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.amber.shade300),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            CupertinoIcons.exclamationmark_triangle_fill,
+                            color: Colors.amber.shade800,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              (_mainData?.dospemWarning != null && _mainData!.dospemWarning!.isNotEmpty)
+                                  ? _mainData!.dospemWarning!
+                                  : 'Dosen Pembimbing belum terdaftar. Pastikan Anda telah memenuhi persyaratan pengajuan proposal skripsi.',
+                              style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.3),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const Text(
+                    'Judul Proposal',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF501F66)),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: judulCtrl,
+                    minLines: 2,
+                    maxLines: 4,
+                    enabled: !isSubmitting,
+                    decoration: const InputDecoration(
+                      hintText: 'Masukkan judul skripsi yang diajukan...',
+                      border: OutlineInputBorder(),
+                      alignLabelWithHint: true,
+                    ),
+                    onChanged: (_) => setBsState(() {}),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Berkas Proposal (PDF)',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF501F66)),
+                  ),
+                  const SizedBox(height: 6),
+                  if (pickedFile == null)
+                    InkWell(
+                      onTap: isSubmitting ? null : pickPdfFile,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: fileError != null ? Colors.red.shade300 : Colors.grey.shade300,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(CupertinoIcons.doc_text, size: 36, color: Color(0xFF501F66)),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Pilih Berkas Proposal (PDF)',
+                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF501F66)),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Format PDF, maksimal 3 MB',
+                              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: fileError != null ? Colors.red.shade400 : Colors.grey.shade300,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(CupertinoIcons.doc_text_fill, color: Colors.red.shade700, size: 28),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  fileName ?? 'Berkas PDF',
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  formatFileSize(fileSize),
+                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (!isSubmitting) ...[
+                            IconButton(
+                              tooltip: 'Ganti Berkas',
+                              icon: const Icon(CupertinoIcons.arrow_2_squarepath, size: 18, color: Color(0xFF501F66)),
+                              onPressed: pickPdfFile,
+                            ),
+                            IconButton(
+                              tooltip: 'Hapus Berkas',
+                              icon: const Icon(CupertinoIcons.trash, size: 18, color: Colors.red),
+                              onPressed: () {
+                                setBsState(() {
+                                  pickedFile = null;
+                                  fileName = null;
+                                  fileSize = 0;
+                                  fileError = null;
+                                });
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  if (fileError != null) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(CupertinoIcons.exclamationmark_circle, color: Colors.red, size: 14),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            fileError!,
+                            style: const TextStyle(color: Colors.red, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (isSubmitting) ...[
+                    const SizedBox(height: 16),
+                    LinearProgressIndicator(
+                      value: uploadProgress > 0 ? uploadProgress : null,
+                      backgroundColor: Colors.purple.shade50,
+                      color: const Color(0xFF501F66),
+                      minHeight: 6,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    const SizedBox(height: 6),
+                    Center(
+                      child: Text(
+                        uploadProgress > 0
+                            ? 'Mengunggah: ${(uploadProgress * 100).toInt()}%'
+                            : 'Menyiapkan berkas...',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF501F66)),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF501F66),
+                        disabledBackgroundColor: Colors.grey.shade300,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: (!isFormValid || isSubmitting)
+                          ? null
+                          : () async {
+                              setBsState(() {
+                                isSubmitting = true;
+                                uploadProgress = 0.0;
+                              });
+                              try {
+                                final res = await _service.submitProposalBaru(
+                                  judul: judulCtrl.text.trim(),
+                                  filePdf: pickedFile!,
+                                  onSendProgress: (sent, total) {
+                                    if (ctx.mounted && total > 0) {
+                                      setBsState(() {
+                                        uploadProgress = sent / total;
+                                      });
+                                    }
+                                  },
+                                );
+                                if (ctx.mounted) {
+                                  Navigator.pop(ctx);
+                                }
+                                _showSnackBar(
+                                  res.message.isNotEmpty ? res.message : 'Proposal berhasil diajukan',
+                                  isSuccess: true,
+                                );
+                                _fetchProposals();
+                              } catch (e) {
+                                if (ctx.mounted) {
+                                  setBsState(() {
+                                    isSubmitting = false;
+                                    uploadProgress = 0.0;
+                                  });
+                                }
+                                _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
+                              }
+                            },
+                      child: isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text(
+                              'Kirim Pengajuan Proposal',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                    ),
+                  ),
                 ],
-                onChanged: (val) => setBsState(() => tipe = val ?? 'non_fik'),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: judulCtrl,
-                decoration: const InputDecoration(labelText: 'Judul Skripsi', border: OutlineInputBorder()),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: reviewerCtrl,
-                decoration: const InputDecoration(labelText: 'ID Reviewer / Dosen', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: temaCtrl,
-                decoration: const InputDecoration(labelText: 'ID Tema Pusat Studi', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66), padding: const EdgeInsets.symmetric(vertical: 14)),
-                  onPressed: () async {
-                    if (judulCtrl.text.trim().isEmpty) return;
-                    Navigator.pop(ctx);
-                    try {
-                      final res = await _service.submitProposalBaru(
-                        tipe: tipe,
-                        judul: judulCtrl.text.trim(),
-                        idReviewer: reviewerCtrl.text.trim(),
-                        idTema: temaCtrl.text.trim(),
-                      );
-                      _showSnackBar(res['message'] ?? 'Proposal berhasil diajukan');
-                      _fetchProposals();
-                    } catch (e) {
-                      _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
-                    }
-                  },
-                  child: const Text('Kirim Pengajuan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
+    judulCtrl.dispose();
   }
 
   void _showFormProposalUlang(SkripsiProposalItem item) {
@@ -1527,12 +1795,14 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
     }
   }
 
-  void _showSnackBar(String message, {bool isError = false}) {
+  void _showSnackBar(String message, {bool isError = false, bool isSuccess = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.redAccent : const Color(0xFF501F66),
+        backgroundColor: isError
+            ? Colors.redAccent
+            : (isSuccess ? const Color(0xFF2E7D32) : const Color(0xFF501F66)),
         behavior: SnackBarBehavior.floating,
       ),
     );

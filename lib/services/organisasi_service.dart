@@ -8,69 +8,54 @@ class OrganisasiService {
   Future<List<OrganisasiItem>> getOrganisasi() async {
     try {
       final response = await _dio.get('/api/v1/organisasi-mahasiswa');
-      final data = response.data['data'] as List?;
-      return data?.map((e) => OrganisasiItem.fromJson(e)).toList() ?? [];
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is List) {
+        return data
+            .map((e) => OrganisasiItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
-      throw Exception(e.message ?? 'Gagal memuat data Organisasi Mahasiswa');
+      return [];
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat data Organisasi Mahasiswa');
     }
   }
 
   Future<OrganisasiOptionResponse> getOptions() async {
     try {
       final response = await _dio.get('/api/v1/organisasi-mahasiswa/options');
-      final data = response.data['data'];
+      final data = ApiClient.unwrapData<dynamic>(response.data);
       if (data != null && data is Map<String, dynamic>) {
         return OrganisasiOptionResponse.fromJson(data);
+      } else if (data != null && data is Map) {
+        return OrganisasiOptionResponse.fromJson(Map<String, dynamic>.from(data));
       }
       return OrganisasiOptionResponse(organisasi: [], jabatan: []);
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat pilihan Organisasi');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat pilihan Organisasi');
     }
   }
 
   Future<void> tambahOrganisasi(FormData data) async {
     try {
-      await _dio.post(
+      final response = await _dio.post(
         '/api/v1/organisasi-mahasiswa',
         data: data,
         options: Options(
           contentType: 'multipart/form-data',
         ),
       );
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal menambahkan Organisasi Mahasiswa');
+      ApiClient.unwrapMutation(response.data);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal menambahkan Organisasi Mahasiswa');
     }
   }
 
   Future<void> hapusOrganisasi(int id) async {
     try {
-      await _dio.delete('/api/v1/organisasi-mahasiswa/$id');
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal menghapus Organisasi Mahasiswa');
+      final response = await _dio.delete('/api/v1/organisasi-mahasiswa/$id');
+      ApiClient.unwrapMutation(response.data);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal menghapus Organisasi Mahasiswa');
     }
   }
 
@@ -84,14 +69,8 @@ class OrganisasiService {
         savePath,
       );
       return savePath;
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal mengunduh dokumen organisasi');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal mengunduh dokumen organisasi');
     }
   }
 }

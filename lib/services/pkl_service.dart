@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../models/api_response.dart';
 import '../models/pkl.dart';
 import 'api_client.dart';
 
@@ -10,16 +11,14 @@ class PklService {
   Future<PklData> getPklData() async {
     try {
       final response = await _dio.get('/api/v1/pkl');
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        return PklData.fromJson(response.data['data']);
-      }
-      throw Exception('Gagal memuat data pendaftaran PKL');
+      final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
+      return PklData.fromJson(data);
     } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat data pendaftaran PKL');
+      throw _handleError(e, 'Gagal memuat data pendaftaran PKL');
     }
   }
 
-  Future<Map<String, dynamic>> submitPkl(String jenis, String judul) async {
+  Future<MutationResult> submitPkl(String jenis, String judul) async {
     try {
       final response = await _dio.post(
         '/api/v1/pkl',
@@ -28,12 +27,9 @@ class PklService {
           'judul': judul,
         },
       );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data;
-      }
-      throw Exception(response.data['message'] ?? 'Gagal menambahkan pendaftaran PKL');
+      return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal menambahkan pendaftaran PKL');
+      throw _handleError(e, 'Gagal menambahkan pendaftaran PKL');
     }
   }
 
@@ -52,19 +48,24 @@ class PklService {
 
       return savePath;
     } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal mengunduh formulir PKL');
+      throw _handleError(e, 'Gagal mengunduh formulir PKL');
     }
   }
 
-  Future<Map<String, dynamic>> deletePkl(String idPengajuan) async {
+  Future<MutationResult> deletePkl(String idPengajuan) async {
     try {
       final response = await _dio.delete('/api/v1/pkl/$idPengajuan');
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        return response.data ?? {'success': true, 'message': 'Pendaftaran PKL berhasil dihapus'};
-      }
-      throw Exception(response.data?['message'] ?? 'Gagal menghapus pendaftaran PKL');
+      return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal menghapus pendaftaran PKL');
+      throw _handleError(e, 'Gagal menghapus pendaftaran PKL');
     }
+  }
+
+  Exception _handleError(dynamic e, [String fallback = 'Terjadi kesalahan pada layanan PKL']) {
+    if (e is DioException) {
+      return ApiClient.handleError(e, fallback);
+    }
+    if (e is Exception) return e;
+    return Exception(e?.toString() ?? fallback);
   }
 }

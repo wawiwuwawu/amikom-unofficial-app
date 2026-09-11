@@ -10,8 +10,11 @@ class PpksService {
   Future<PpksData> getPpksData() async {
     try {
       final response = await _dio.get('/api/v1/ppks');
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        return PpksData.fromJson(response.data['data']);
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is Map<String, dynamic>) {
+        return PpksData.fromJson(data);
+      } else if (data is Map) {
+        return PpksData.fromJson(Map<String, dynamic>.from(data));
       }
       throw Exception('Gagal memuat formulir pengaduan PPKS');
     } catch (e) {
@@ -25,10 +28,8 @@ class PpksService {
         '/api/v1/ppks',
         data: body,
       );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data;
-      }
-      throw Exception(response.data['message'] ?? 'Gagal mengirim pengaduan PPKS');
+      final mutation = ApiClient.unwrapMutation(response.data);
+      return mutation.rawRoot ?? {'success': mutation.success, 'message': mutation.message};
     } catch (e) {
       throw ApiClient.handleError(e, 'Gagal mengirim pengaduan PPKS');
     }

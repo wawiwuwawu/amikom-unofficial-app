@@ -54,20 +54,26 @@ class BeritaDetail {
 
 class Pagination {
   final int currentPage;
-  final int nextOffset;
-  final int prevOffset;
+  final int? nextOffset;
+  final int? prevOffset;
 
   Pagination({
     required this.currentPage,
-    required this.nextOffset,
-    required this.prevOffset,
+    this.nextOffset,
+    this.prevOffset,
   });
 
   factory Pagination.fromJson(Map<String, dynamic> json) => Pagination(
-        currentPage: json['currentPage'] ?? 0,
-        nextOffset: json['nextOffset'] ?? 0,
-        prevOffset: json['prevOffset'] ?? 0,
+        currentPage: json['currentPage'] is num
+            ? (json['currentPage'] as num).toInt()
+            : int.tryParse(json['currentPage']?.toString() ?? '') ?? 0,
+        nextOffset: json['nextOffset'] is num
+            ? (json['nextOffset'] as num).toInt()
+            : (json['nextOffset'] != null ? int.tryParse(json['nextOffset'].toString()) : null),
+        prevOffset: json['prevOffset'] is num
+            ? (json['prevOffset'] as num).toInt()
+            : (json['prevOffset'] != null ? int.tryParse(json['prevOffset'].toString()) : null),
       );
 
-  bool get hasMore => nextOffset > 0;
+  bool get hasMore => nextOffset != null && nextOffset! > 0;
 }

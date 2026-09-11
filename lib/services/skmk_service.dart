@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../models/api_response.dart';
 import '../models/skmk.dart';
 import 'api_client.dart';
 
@@ -10,16 +11,14 @@ class SkmkService {
   Future<SkmkData> getSkmkData() async {
     try {
       final response = await _dio.get('/api/v1/skmk');
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        return SkmkData.fromJson(response.data['data']);
-      }
-      throw Exception('Gagal memuat data pengajuan SKMK');
+      final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
+      return SkmkData.fromJson(data);
     } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat data pengajuan SKMK');
+      throw _handleError(e, 'Gagal memuat data pengajuan SKMK');
     }
   }
 
-  Future<Map<String, dynamic>> submitSkmk(String keperluan, String ortu) async {
+  Future<MutationResult> submitSkmk(String keperluan, String ortu) async {
     try {
       final response = await _dio.post(
         '/api/v1/skmk',
@@ -28,24 +27,26 @@ class SkmkService {
           'ortu': ortu,
         },
       );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data;
-      }
-      throw Exception(response.data['message'] ?? 'Gagal menambahkan pengajuan SKMK');
+      return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal menambahkan pengajuan SKMK');
+      throw _handleError(e, 'Gagal menambahkan pengajuan SKMK');
     }
   }
 
-  Future<Map<String, dynamic>> deleteSkmk(String id) async {
+  Future<MutationResult> deleteSkmk(String id) async {
     try {
       final response = await _dio.delete('/api/v1/skmk/$id');
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        return response.data ?? {'success': true, 'message': 'Pengajuan Berhasil Dihapus'};
-      }
-      throw Exception(response.data?['message'] ?? 'Gagal menghapus pengajuan SKMK');
+      return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal menghapus pengajuan SKMK');
+      throw _handleError(e, 'Gagal menghapus pengajuan SKMK');
     }
+  }
+
+  Exception _handleError(dynamic e, [String fallback = 'Terjadi kesalahan pada layanan SKMK']) {
+    if (e is DioException) {
+      return ApiClient.handleError(e, fallback);
+    }
+    if (e is Exception) return e;
+    return Exception(e?.toString() ?? fallback);
   }
 }

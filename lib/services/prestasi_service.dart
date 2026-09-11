@@ -8,69 +8,54 @@ class PrestasiService {
   Future<List<PrestasiItem>> getPrestasi() async {
     try {
       final response = await _dio.get('/api/v1/prestasi-mahasiswa');
-      final data = response.data['data'] as List?;
-      return data?.map((e) => PrestasiItem.fromJson(e)).toList() ?? [];
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is List) {
+        return data
+            .map((e) => PrestasiItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
-      throw Exception(e.message ?? 'Gagal memuat data Prestasi Mahasiswa');
+      return [];
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat data Prestasi Mahasiswa');
     }
   }
 
   Future<PrestasiOptionsData> getOptions() async {
     try {
       final response = await _dio.get('/api/v1/prestasi-mahasiswa/options');
-      final data = response.data['data'] as Map<String, dynamic>?;
-      if (data == null) {
-        throw Exception('Data opsi prestasi kosong');
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is Map<String, dynamic>) {
+        return PrestasiOptionsData.fromJson(data);
+      } else if (data is Map) {
+        return PrestasiOptionsData.fromJson(Map<String, dynamic>.from(data));
       }
-      return PrestasiOptionsData.fromJson(data);
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat pilihan Prestasi');
+      throw Exception('Data opsi prestasi kosong');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat pilihan Prestasi');
     }
   }
 
   Future<void> tambahPrestasi(FormData data) async {
     try {
-      await _dio.post(
+      final response = await _dio.post(
         '/api/v1/prestasi-mahasiswa',
         data: data,
         options: Options(
           contentType: 'multipart/form-data',
         ),
       );
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal menambahkan Prestasi Mahasiswa');
+      ApiClient.unwrapMutation(response.data);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal menambahkan Prestasi Mahasiswa');
     }
   }
 
   Future<void> hapusPrestasi(int id) async {
     try {
-      await _dio.delete('/api/v1/prestasi-mahasiswa/$id');
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal menghapus Prestasi Mahasiswa');
+      final response = await _dio.delete('/api/v1/prestasi-mahasiswa/$id');
+      ApiClient.unwrapMutation(response.data);
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal menghapus Prestasi Mahasiswa');
     }
   }
 
@@ -84,14 +69,8 @@ class PrestasiService {
         savePath,
       );
       return savePath;
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal mengunduh file sertifikat');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal mengunduh file sertifikat');
     }
   }
 }

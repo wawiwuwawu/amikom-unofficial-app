@@ -9,7 +9,7 @@ class TranskripService {
   Future<List<TranskripItem>> getTranskrip() async {
     try {
       final response = await _dio.get('/api/v1/transkrip');
-      final list = (response.data as List)
+      final list = ApiClient.unwrapData<List>(response.data)
           .map((e) => TranskripItem.fromJson(e))
           .toList();
       return list;

@@ -8,7 +8,8 @@ class KeuanganService {
   Future<KeuanganHistoryResponse> getHistory() async {
     try {
       final response = await _dio.get('/api/v1/keuangan/history');
-      return KeuanganHistoryResponse.fromJson(response.data);
+      final root = ApiClient.unwrapRoot(response.data);
+      return KeuanganHistoryResponse.fromJson(root);
     } catch (e) {
       throw _handleError(e);
     }
@@ -82,7 +83,18 @@ class KeuanganService {
           'items': items.map((e) => e.toBayarPayload()).toList(),
         },
       );
-      return KeuanganVaResult.fromJson(response.data);
+      final root = ApiClient.unwrapRoot(response.data);
+      final payload = ApiClient.unwrapData<dynamic>(response.data);
+      final Map<String, dynamic> merged = {};
+      if (payload is Map<String, dynamic>) {
+        merged.addAll(payload);
+      } else {
+        merged.addAll(root);
+      }
+      if (root['message'] != null) {
+        merged['message'] = root['message'];
+      }
+      return KeuanganVaResult.fromJson(merged);
     } catch (e) {
       throw _handleError(e);
     }
@@ -91,7 +103,8 @@ class KeuanganService {
   Future<KeuanganTagihanResponse> getTagihan() async {
     try {
       final response = await _dio.get('/api/v1/keuangan/tagihan');
-      return KeuanganTagihanResponse.fromJson(response.data);
+      final root = ApiClient.unwrapRoot(response.data);
+      return KeuanganTagihanResponse.fromJson(root);
     } catch (e) {
       throw _handleError(e);
     }
@@ -99,7 +112,7 @@ class KeuanganService {
 
   Future<void> batalTagihan(String channelBank, String custCode, String idtrans) async {
     try {
-      await _dio.post(
+      final response = await _dio.post(
         '/api/v1/keuangan/tagihan/batal',
         data: {
           'channel_bank': channelBank,
@@ -107,6 +120,7 @@ class KeuanganService {
           'idtrans': idtrans,
         },
       );
+      ApiClient.unwrapMutation(response.data);
     } catch (e) {
       throw _handleError(e);
     }
@@ -120,6 +134,7 @@ class KeuanganService {
       }
       return Exception(e.message ?? 'Terjadi kesalahan request Keuangan');
     }
+    if (e is Exception) return e;
     return Exception(e.toString());
   }
 }

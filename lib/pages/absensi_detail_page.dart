@@ -95,9 +95,13 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
       }
     } catch (e) {
       if (mounted) {
+        final message = e.toString().replaceFirst('Exception: ', '').trim();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', ''), style: const TextStyle(color: Colors.white)),
+            content: Text(
+              message.isNotEmpty ? message : 'Gagal melakukan validasi presensi',
+              style: const TextStyle(color: Colors.white),
+            ),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
           ),

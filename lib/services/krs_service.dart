@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'api_client.dart';
+import '../models/api_response.dart';
 import '../models/krs.dart';
 
 class KrsService {
@@ -9,94 +10,105 @@ class KrsService {
   Future<KrsInfo> getInfo() async {
     try {
       final response = await _dio.get('/api/v1/krs');
-      return KrsInfo.fromJson(response.data);
+      final root = ApiClient.unwrapRoot(response.data);
+      return KrsInfo.fromJson(root);
     } catch (e) {
-      throw _handleError(e);
+      throw _handleError(e, 'Gagal memuat informasi KRS');
     }
   }
 
   Future<MatkulDitawarkanResponse> getMatkulDitawarkan() async {
     try {
       final response = await _dio.get('/api/v1/krs/matkul-ditawarkan');
-      return MatkulDitawarkanResponse.fromJson(response.data);
+      final root = ApiClient.unwrapRoot(response.data);
+      return MatkulDitawarkanResponse.fromJson(root);
     } catch (e) {
-      throw _handleError(e);
+      throw _handleError(e, 'Gagal memuat mata kuliah yang ditawarkan');
     }
   }
 
   Future<KrsPengajuanResponse> getPengajuan() async {
     try {
       final response = await _dio.get('/api/v1/krs/pengajuan');
-      return KrsPengajuanResponse.fromJson(response.data);
+      final root = ApiClient.unwrapRoot(response.data);
+      return KrsPengajuanResponse.fromJson(root);
     } catch (e) {
-      throw _handleError(e);
+      throw _handleError(e, 'Gagal memuat pengajuan KRS');
     }
   }
 
-  Future<void> submitPengajuan(List<String> makul) async {
+  Future<MutationResult> submitPengajuan(List<String> makul) async {
     try {
-      await _dio.post('/api/v1/krs/pengajuan', data: {'makul': makul});
+      final response = await _dio.post('/api/v1/krs/pengajuan', data: {'makul': makul});
+      return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e);
+      throw _handleError(e, 'Gagal mengajukan mata kuliah');
     }
   }
 
-  Future<void> deletePengajuan(String id) async {
+  Future<MutationResult> deletePengajuan(String id) async {
     try {
-      await _dio.delete('/api/v1/krs/pengajuan/$id');
+      final response = await _dio.delete('/api/v1/krs/pengajuan/$id');
+      return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e);
+      throw _handleError(e, 'Gagal menghapus pengajuan mata kuliah');
     }
   }
 
   Future<KrsPengisianResponse> getPengisian() async {
     try {
       final response = await _dio.get('/api/v1/krs/pengisian');
-      return KrsPengisianResponse.fromJson(response.data);
+      final root = ApiClient.unwrapRoot(response.data);
+      return KrsPengisianResponse.fromJson(root);
     } catch (e) {
-      throw _handleError(e);
+      throw _handleError(e, 'Gagal memuat pengisian KRS');
     }
   }
 
-  Future<void> submitPengisian(Map<String, dynamic> formData) async {
+  Future<MutationResult> submitPengisian(Map<String, dynamic> formData) async {
     try {
-      await _dio.post('/api/v1/krs/pengisian', data: {'formData': formData});
+      final response = await _dio.post('/api/v1/krs/pengisian', data: {'formData': formData});
+      return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e);
+      throw _handleError(e, 'Gagal menyimpan pengisian kelas');
     }
   }
 
   Future<KrsPengisianResponse> getBelumDiisi() async {
     try {
       final response = await _dio.get('/api/v1/krs/pengisian/belum-diisi');
-      return KrsPengisianResponse.fromJson(response.data);
+      final root = ApiClient.unwrapRoot(response.data);
+      return KrsPengisianResponse.fromJson(root);
     } catch (e) {
-      throw _handleError(e);
+      throw _handleError(e, 'Gagal memuat mata kuliah yang belum diisi');
     }
   }
 
-  Future<void> deletePengisian(String kode) async {
+  Future<MutationResult> deletePengisian(String kode) async {
     try {
-      await _dio.delete('/api/v1/krs/pengisian/$kode');
+      final response = await _dio.delete('/api/v1/krs/pengisian/$kode');
+      return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e);
+      throw _handleError(e, 'Gagal menghapus kelas pengisian');
     }
   }
 
   Future<JadwalKuliahResponse> getJadwal({String mod = 'kuliah_mbkm'}) async {
     try {
       final response = await _dio.get('/api/v1/krs/jadwal', queryParameters: {'mod': mod});
-      return JadwalKuliahResponse.fromJson(response.data);
+      final root = ApiClient.unwrapRoot(response.data);
+      return JadwalKuliahResponse.fromJson(root);
     } catch (e) {
-      throw _handleError(e);
+      throw _handleError(e, 'Gagal memuat jadwal perkuliahan');
     }
   }
 
-  Future<void> sinkronisasi() async {
+  Future<MutationResult> sinkronisasi() async {
     try {
-      await _dio.post('/api/v1/krs/sinkronisasi', data: {});
+      final response = await _dio.post('/api/v1/krs/sinkronisasi', data: {});
+      return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e);
+      throw _handleError(e, 'Gagal melakukan sinkronisasi KRS');
     }
   }
 
@@ -133,18 +145,17 @@ class KrsService {
       
       return savePath;
     } catch (e) {
-      throw _handleError(e);
+      throw _handleError(e, 'Gagal mengunduh KRS PDF');
     }
   }
 
-  Exception _handleError(dynamic e) {
-    if (e is DioException && e.response != null) {
-      final msg = e.response?.data?['message'];
-      if (msg != null && msg.toString().isNotEmpty) {
-        return Exception(msg);
-      }
-      return Exception(e.message ?? 'Terjadi kesalahan request KRS');
+  Exception _handleError(dynamic e, [String fallback = 'Terjadi kesalahan request KRS']) {
+    if (e is DioException) {
+      return ApiClient.handleError(e, fallback);
     }
-    return Exception(e.toString());
+    if (e is Exception) {
+      return e;
+    }
+    return Exception(e?.toString() ?? fallback);
   }
 }

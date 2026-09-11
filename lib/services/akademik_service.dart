@@ -11,9 +11,9 @@ class AkademikService {
   Future<List<Agenda>> getAgenda() async {
     try {
       final response = await _dio.get('/api/v1/akademik/agenda');
-      final data = response.data['data'] as List?;
-      if (data == null) return [];
-      return data.map((e) => Agenda.fromJson(e)).toList();
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is! List) return [];
+      return data.map((e) => Agenda.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     } catch (e) {
       throw _handleError(e);
     }

@@ -8,53 +8,51 @@ class MbkmService {
   Future<List<MbkmFakultas>> getDaftarMBKM() async {
     try {
       final response = await _client.dio.get('/api/v1/mbkm/fakultas');
-      final List data = response.data['data'] ?? [];
-      return data.map((e) => MbkmFakultas.fromJson(e)).toList();
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        throw Exception('Data MBKM tidak ditemukan.');
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is List) {
+        return data
+            .map((e) => MbkmFakultas.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
-      throw Exception(e.message ?? 'Gagal mengambil data MBKM');
+      return [];
     } catch (e) {
-      throw Exception('Terjadi kesalahan: $e');
+      throw ApiClient.handleError(e, 'Gagal mengambil data MBKM');
     }
   }
 
   Future<List<MbkmBimbingan>> getBimbingan(String idMbkm) async {
     try {
       final response = await _client.dio.get('/api/v1/mbkm/fakultas/bimbingan/$idMbkm');
-      final List data = response.data['data'] ?? [];
-      return data.map((e) => MbkmBimbingan.fromJson(e)).toList();
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        throw Exception('Riwayat bimbingan tidak ditemukan.');
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is List) {
+        return data
+            .map((e) => MbkmBimbingan.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
-      throw Exception(e.message ?? 'Gagal mengambil bimbingan');
+      return [];
     } catch (e) {
-      throw Exception('Terjadi kesalahan: $e');
+      throw ApiClient.handleError(e, 'Gagal mengambil bimbingan');
     }
   }
 
   Future<void> tambahBimbingan(String idMbkm, String isiBimbingan) async {
     try {
-      await _client.dio.post('/api/v1/mbkm/fakultas/bimbingan', data: {
+      final response = await _client.dio.post('/api/v1/mbkm/fakultas/bimbingan', data: {
         'id_mbkm': idMbkm,
         'isi_bimbingan': isiBimbingan,
       });
-    } on DioException catch (e) {
-      throw Exception(e.message ?? 'Gagal menambah bimbingan');
+      ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw Exception('Terjadi kesalahan: $e');
+      throw ApiClient.handleError(e, 'Gagal menambah bimbingan');
     }
   }
 
   Future<void> hapusBimbingan(String idBimbingan) async {
     try {
-      await _client.dio.delete('/api/v1/mbkm/fakultas/bimbingan/$idBimbingan');
-    } on DioException catch (e) {
-      throw Exception(e.message ?? 'Gagal menghapus bimbingan');
+      final response = await _client.dio.delete('/api/v1/mbkm/fakultas/bimbingan/$idBimbingan');
+      ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw Exception('Terjadi kesalahan: $e');
+      throw ApiClient.handleError(e, 'Gagal menghapus bimbingan');
     }
   }
 
@@ -65,11 +63,10 @@ class MbkmService {
         'surat_komitmen': await MultipartFile.fromFile(komitmenPath),
         'bukti_pembayaran': await MultipartFile.fromFile(pembayaranPath),
       });
-      await _client.dio.post('/api/v1/mbkm/fakultas/upload-komitmen', data: formData);
-    } on DioException catch (e) {
-      throw Exception(e.message ?? 'Gagal upload dokumen komitmen');
+      final response = await _client.dio.post('/api/v1/mbkm/fakultas/upload-komitmen', data: formData);
+      ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw Exception('Terjadi kesalahan: $e');
+      throw ApiClient.handleError(e, 'Gagal upload dokumen komitmen');
     }
   }
 
@@ -81,11 +78,10 @@ class MbkmService {
         'jenis': jenis,
         'file_luaran': await MultipartFile.fromFile(luaranPath),
       });
-      await _client.dio.post('/api/v1/mbkm/fakultas/upload-file-luaran', data: formData);
-    } on DioException catch (e) {
-      throw Exception(e.message ?? 'Gagal upload file luaran');
+      final response = await _client.dio.post('/api/v1/mbkm/fakultas/upload-file-luaran', data: formData);
+      ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw Exception('Terjadi kesalahan: $e');
+      throw ApiClient.handleError(e, 'Gagal upload file luaran');
     }
   }
 }

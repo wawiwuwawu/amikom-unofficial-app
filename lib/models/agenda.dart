@@ -11,9 +11,9 @@ class Agenda {
 
   factory Agenda.fromJson(Map<String, dynamic> json) {
     return Agenda(
-      title: json['TITLE'] ?? '',
-      mulai: json['MULAI'] ?? '',
-      selesai: json['SELESAI'] ?? '',
+      title: json['title'] ?? json['TITLE'] ?? '',
+      mulai: json['mulai'] ?? json['MULAI'] ?? '',
+      selesai: json['selesai'] ?? json['SELESAI'] ?? '',
     );
   }
 }

@@ -14,6 +14,7 @@ import 'pages/ujian_susulan_page.dart';
 import 'pages/ppks_page.dart';
 import 'pages/skripsi_page.dart';
 import 'pages/penafian_page.dart';
+import 'pages/nilai_rincian_page.dart';
 import 'services/navigation_service.dart';
 
 void main() async {
@@ -55,6 +56,7 @@ class MyApp extends StatelessWidget {
         '/ppks': (_) => const PpksPage(),
         '/skripsi': (_) => const SkripsiPage(),
         '/penafian': (_) => const PenafianPage(),
+        '/nilai-rincian': (_) => const NilaiRincianPage(),
       },
     );
   }

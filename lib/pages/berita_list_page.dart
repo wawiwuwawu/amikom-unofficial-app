@@ -31,14 +31,20 @@ class _BeritaListPageState extends State<BeritaListPage> {
       final offset = (page - 1) * 5;
       final res = await _service.getBerita(offset: offset);
       if (!mounted) return;
-      final data = (res['data'] as List)
-          .map((e) => Berita.fromJson(e))
+      final rawList = res['data'] as List? ?? [];
+      final data = rawList
+          .map((e) => Berita.fromJson(e as Map<String, dynamic>))
           .toList();
+      final pagination = res['pagination'] is Map<String, dynamic>
+          ? Pagination.fromJson(res['pagination'] as Map<String, dynamic>)
+          : null;
       setState(() {
         _list
           ..clear()
           ..addAll(data);
-        _hasMore = data.length >= 5;
+        _hasMore = pagination != null
+            ? (pagination.hasMore || (pagination.nextOffset != null && pagination.nextOffset! > 0))
+            : data.length >= 5;
         _page = page;
         _error = null;
       });

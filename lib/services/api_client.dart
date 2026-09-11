@@ -8,6 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/login_response.dart';
 import '../models/dashboard.dart';
+import '../models/api_response.dart';
 import 'navigation_service.dart';
 
 const _maxRetries = 2;
@@ -62,9 +63,11 @@ class ApiClient {
           if (data is Map<String, dynamic>) {
             final msg = (data['message'] ?? '').toString().toLowerCase();
             final path = response.requestOptions.path;
-            if (!path.contains('/auth/') &&
+            final method = response.requestOptions.method.toUpperCase();
+            final isSafeMethod = method == 'GET' || method == 'HEAD';
+            if (isSafeMethod &&
+                !path.contains('/auth/') &&
                 (msg.contains('unauthorized') ||
-                    msg.contains('tidak valid') ||
                     msg.contains('sesi berakhir'))) {
               final retryCount = _getRetryCount(response.requestOptions);
               if (retryCount >= _maxRetries) {
@@ -123,39 +126,85 @@ class ApiClient {
           ));
           return;
         }
+        final statusCode = error.response?.statusCode;
+        final resData = error.response?.data;
+        final serverMsg = (resData is Map<String, dynamic>
+                ? (resData['message'] ?? '')
+                : (resData?.toString() ?? ''))
+            .toString()
+            .toLowerCase();
 
-        if (error.response?.statusCode == 401) {
+        // 429 Rate limit detection
+        if (statusCode == 429) {
+          handler.next(error.copyWith(
+            message: 'Terlalu banyak permintaan. Silakan tunggu sebentar.',
+          ));
+          return;
+        }
+
+        // 500 Upstream portal session expired detection
+        if (statusCode == 500 &&
+            !error.requestOptions.path.contains('/auth/') &&
+            (serverMsg.contains('sesi') || serverMsg.contains('session'))) {
+          final method = error.requestOptions.method.toUpperCase();
+          final isSafeMethod = method == 'GET' || method == 'HEAD';
           final retryCount = _getRetryCount(error.requestOptions);
-          if (retryCount >= _maxRetries) {
-            await _forceLogout();
-            handler.reject(DioException(
-              requestOptions: error.requestOptions,
-              response: error.response,
-              type: DioExceptionType.badResponse,
-              message: 'Sesi berakhir. Silakan login ulang.',
-            ));
-            return;
+
+          if (isSafeMethod &&
+              retryCount < _maxRetries &&
+              _token != null &&
+              _refreshToken != null) {
+            error.requestOptions.extra['retryCount'] = retryCount + 1;
+            final renewed = await _renewSessionWithLock();
+            if (renewed) {
+              error.requestOptions.headers['Authorization'] = 'Bearer $_token';
+              try {
+                final retryResponse = await dio.fetch(error.requestOptions);
+                handler.resolve(retryResponse);
+                return;
+              } catch (_) {}
+            }
           }
 
-          error.requestOptions.extra['retryCount'] = retryCount + 1;
-          final renewed = await _renewSessionWithLock();
-          if (renewed) {
-            error.requestOptions.headers['Authorization'] = 'Bearer $_token';
-            error.requestOptions.extra['retryCount'] = 0;
-            try {
-              final retryResponse = await dio.fetch(error.requestOptions);
-              handler.resolve(retryResponse);
-              return;
-            } catch (e) {
-              if (e is DioException) {
-                handler.reject(e);
-              } else {
-                handler.reject(DioException(
-                  requestOptions: error.requestOptions,
-                  error: e,
-                ));
+          await _forceLogout();
+          handler.reject(DioException(
+            requestOptions: error.requestOptions,
+            response: error.response,
+            type: DioExceptionType.badResponse,
+            message: 'Sesi berakhir. Silakan login ulang.',
+          ));
+          return;
+        }
+
+        if (statusCode == 401) {
+          final method = error.requestOptions.method.toUpperCase();
+          final isSafeMethod = method == 'GET' || method == 'HEAD';
+          final retryCount = _getRetryCount(error.requestOptions);
+
+          if (isSafeMethod &&
+              retryCount < _maxRetries &&
+              _token != null &&
+              _refreshToken != null) {
+            error.requestOptions.extra['retryCount'] = retryCount + 1;
+            final renewed = await _renewSessionWithLock();
+            if (renewed) {
+              error.requestOptions.headers['Authorization'] = 'Bearer $_token';
+              error.requestOptions.extra['retryCount'] = 0;
+              try {
+                final retryResponse = await dio.fetch(error.requestOptions);
+                handler.resolve(retryResponse);
+                return;
+              } catch (e) {
+                if (e is DioException) {
+                  handler.reject(e);
+                } else {
+                  handler.reject(DioException(
+                    requestOptions: error.requestOptions,
+                    error: e,
+                  ));
+                }
+                return;
               }
-              return;
             }
           }
 
@@ -330,6 +379,9 @@ class ApiClient {
       );
       return LoginResponse.fromJson(response.data);
     } on DioException catch (e) {
+      if (e.response?.statusCode == 429) {
+        rethrow;
+      }
       if (e.response != null) {
         throw Exception(e.response?.data?['message'] ?? 'Login gagal');
       }
@@ -337,13 +389,83 @@ class ApiClient {
     }
   }
 
+  // ─── API Envelope Helpers ─────────────────────────────
+  static T unwrapData<T>(dynamic responseData) {
+    if (ApiResponse.isEnvelope(responseData)) {
+      return (responseData as Map<String, dynamic>)['data'] as T;
+    }
+    return responseData as T;
+  }
+
+  static Map<String, dynamic> unwrapRoot(dynamic responseData) {
+    if (responseData is Map<String, dynamic>) {
+      final status = responseData['status'];
+      if (status == 'error' || status == 'fail') {
+        final message = responseData['message']?.toString() ??
+            'Terjadi kesalahan pada respons server';
+        throw Exception(message);
+      }
+      return responseData;
+    }
+    throw Exception('Respons server tidak valid');
+  }
+
+  static MutationResult unwrapMutation(dynamic responseData) {
+    final result = MutationResult.fromJson(responseData);
+    result.ensureSuccess();
+    return result;
+  }
+
   // ponytail: centralized error handler to prevent raw null/English network messages
   static Exception handleError(dynamic e, [String fallback = 'Terjadi kesalahan']) {
     if (e is DioException) {
-      final serverMsg = e.response?.data?['message'];
-      if (serverMsg != null && serverMsg.toString().trim().isNotEmpty) {
-        return Exception(serverMsg.toString().trim());
+      final statusCode = e.response?.statusCode;
+      final serverData = e.response?.data;
+      String? serverMsg;
+      if (serverData is Map<String, dynamic>) {
+        serverMsg = serverData['message']?.toString().trim();
+      } else if (serverData is String && serverData.trim().isNotEmpty) {
+        serverMsg = serverData.trim();
       }
+
+      if (statusCode == 400) {
+        if (serverMsg != null && serverMsg.isNotEmpty) {
+          return Exception(serverMsg);
+        }
+        return Exception('Permintaan tidak valid');
+      }
+
+      if (statusCode == 401) {
+        return Exception('Sesi berakhir. Silakan login ulang.');
+      }
+
+      if (statusCode == 413) {
+        return Exception(serverMsg != null && serverMsg.isNotEmpty
+            ? serverMsg
+            : 'Ukuran berkas melebihi batas 5 MB');
+      }
+
+      if (statusCode == 429) {
+        return Exception('Terlalu banyak permintaan. Silakan tunggu sebentar.');
+      }
+
+      if (statusCode == 500) {
+        if (serverMsg != null &&
+            (serverMsg.toLowerCase().contains('sesi') ||
+                serverMsg.toLowerCase().contains('session'))) {
+          return Exception('Sesi berakhir. Silakan login ulang.');
+        }
+        return Exception('Terjadi kendala pada server portal');
+      }
+
+      if (statusCode == 502 || statusCode == 503 || statusCode == 504) {
+        return Exception('Layanan portal Amikom sedang tidak dapat diakses');
+      }
+
+      if (serverMsg != null && serverMsg.isNotEmpty) {
+        return Exception(serverMsg);
+      }
+
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
@@ -361,7 +483,8 @@ class ApiClient {
   Future<Dashboard> getDashboard() async {
     try {
       final response = await dio.get('/api/v1/dashboard');
-      return Dashboard.fromJson(response.data);
+      final data = unwrapData<Map<String, dynamic>>(response.data);
+      return Dashboard.fromJson(data);
     } catch (e) {
       throw handleError(e, 'Tidak dapat terhubung ke server');
     }

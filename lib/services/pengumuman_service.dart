@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:dio/dio.dart';
 import 'api_client.dart';
 import '../models/pengumuman.dart';
 
@@ -9,16 +8,15 @@ class PengumumanService {
   Future<List<PengumumanItem>> getList() async {
     try {
       final response = await _dio.get('/api/v1/pengumumanAkademik');
-      final data = response.data['data'] as List?;
-      return data?.map((e) => PengumumanItem.fromJson(e)).toList() ?? [];
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is List) {
+        return data
+            .map((e) => PengumumanItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
       }
-      throw Exception(e.message ?? 'Gagal memuat pengumuman');
+      return [];
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat pengumuman');
     }
   }
 
@@ -27,7 +25,7 @@ class PengumumanService {
       final str = idOrUrl.toString().trim();
       final endpoint = _buildEndpoint(str);
       final response = await _dio.get(endpoint);
-      final raw = response.data;
+      final raw = ApiClient.unwrapData<dynamic>(response.data);
 
       Map<String, dynamic> jsonMap = _extractJsonMap(raw);
 
@@ -47,14 +45,8 @@ class PengumumanService {
       }
 
       return detail;
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat detail pengumuman');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat detail pengumuman');
     }
   }
 

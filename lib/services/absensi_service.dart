@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'api_client.dart';
 import '../models/absensi.dart';
 
@@ -8,18 +7,16 @@ class AbsensiService {
   Future<List<MakulBelumValidasi>> getMakulBelumValidasi() async {
     try {
       final response = await _dio.get('/api/v1/absensi/makul-belum-validasi');
-      final map = response.data as Map<String, dynamic>;
-      return map.entries
-          .map((e) => MakulBelumValidasi.fromJson(e))
-          .toList();
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
+      final data = ApiClient.unwrapData<dynamic>(response.data);
+      if (data is Map) {
+        return data.entries
+            .map((e) => MakulBelumValidasi.fromJson(
+                MapEntry<String, dynamic>(e.key.toString(), e.value)))
+            .toList();
       }
-      throw Exception(e.message ?? 'Gagal memuat data absensi');
+      return [];
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat data absensi');
     }
   }
 
@@ -29,17 +26,12 @@ class AbsensiService {
         '/api/v1/absensi/semester',
         data: {'thn_akademik': thnAkademik},
       );
-      return (response.data as List)
-          .map((e) => OptionItem.fromJson(e))
+      final data = ApiClient.unwrapData<List>(response.data);
+      return data
+          .map((e) => OptionItem.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat semester');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat semester');
     }
   }
 
@@ -49,17 +41,12 @@ class AbsensiService {
         '/api/v1/absensi/matkul',
         data: {'thn_akademik': thnAkademik, 'semester': semester},
       );
-      return (response.data as List)
-          .map((e) => OptionItem.fromJson(e))
+      final data = ApiClient.unwrapData<List>(response.data);
+      return data
+          .map((e) => OptionItem.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat matakuliah');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat matakuliah');
     }
   }
 
@@ -74,44 +61,42 @@ class AbsensiService {
           'makul': makul,
         },
       );
-      return AbsensiMahasiswa.fromJson(response.data);
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat data mahasiswa');
+      return AbsensiMahasiswa.fromJson(
+          ApiClient.unwrapData<Map<String, dynamic>>(response.data));
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat data mahasiswa');
     }
   }
 
   Future<PresensiDetail> getPresensiDetail(String id) async {
     try {
       final response = await _dio.get('/api/v1/absensi/presensi/$id');
-      return PresensiDetail.fromJson(response.data);
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat detail presensi');
+      return PresensiDetail.fromJson(
+          ApiClient.unwrapData<Map<String, dynamic>>(response.data));
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat detail presensi');
     }
   }
 
   Future<void> validasi(Map<String, dynamic> data) async {
     try {
-      await _dio.post('/api/v1/absensi/validasi', data: data);
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
+      final response = await _dio.post('/api/v1/absensi/validasi', data: data);
+      ApiClient.unwrapMutation(response.data);
+      final dynamic raw = response.data;
+      if (raw is Map<String, dynamic>) {
+        final innerData = raw['data'];
+        if (innerData is Map<String, dynamic>) {
+          final nested = innerData['data'];
+          if (nested is Map<String, dynamic> && nested['success'] == false) {
+            throw Exception(nested['message']?.toString() ?? 'Validasi presensi ditolak');
+          }
+          if (innerData['success'] == false) {
+            throw Exception(innerData['message']?.toString() ?? 'Validasi presensi ditolak');
+          }
         }
       }
-      throw Exception(e.message ?? 'Gagal melakukan validasi');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal melakukan validasi');
     }
   }
 }
