@@ -14,7 +14,7 @@ class SkmkService {
       final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
       return SkmkData.fromJson(data);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat data pengajuan SKMK');
+      throw ApiClient.handleError(e, 'Gagal memuat data pengajuan SKMK');
     }
   }
 
@@ -29,7 +29,7 @@ class SkmkService {
       );
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal menambahkan pengajuan SKMK');
+      throw ApiClient.handleError(e, 'Gagal menambahkan pengajuan SKMK');
     }
   }
 
@@ -38,15 +38,7 @@ class SkmkService {
       final response = await _dio.delete('/api/v1/skmk/$id');
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal menghapus pengajuan SKMK');
+      throw ApiClient.handleError(e, 'Gagal menghapus pengajuan SKMK');
     }
-  }
-
-  Exception _handleError(dynamic e, [String fallback = 'Terjadi kesalahan pada layanan SKMK']) {
-    if (e is DioException) {
-      return ApiClient.handleError(e, fallback);
-    }
-    if (e is Exception) return e;
-    return Exception(e?.toString() ?? fallback);
   }
 }

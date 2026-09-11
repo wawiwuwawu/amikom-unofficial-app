@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'api_client.dart';
 import '../models/berita.dart';
 
@@ -12,7 +11,7 @@ class BeritaService {
       });
       return ApiClient.unwrapRoot(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat berita');
+      throw ApiClient.handleError(e, 'Gagal memuat berita');
     }
   }
 
@@ -22,15 +21,7 @@ class BeritaService {
       final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
       return BeritaDetail.fromJson(data);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat detail berita');
+      throw ApiClient.handleError(e, 'Gagal memuat detail berita');
     }
-  }
-
-  Exception _handleError(dynamic e, [String fallback = 'Terjadi kesalahan pada layanan Berita']) {
-    if (e is DioException) {
-      return ApiClient.handleError(e, fallback);
-    }
-    if (e is Exception) return e;
-    return Exception(e?.toString() ?? fallback);
   }
 }

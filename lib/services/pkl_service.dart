@@ -14,7 +14,7 @@ class PklService {
       final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
       return PklData.fromJson(data);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat data pendaftaran PKL');
+      throw ApiClient.handleError(e, 'Gagal memuat data pendaftaran PKL');
     }
   }
 
@@ -29,7 +29,7 @@ class PklService {
       );
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal menambahkan pendaftaran PKL');
+      throw ApiClient.handleError(e, 'Gagal menambahkan pendaftaran PKL');
     }
   }
 
@@ -48,7 +48,7 @@ class PklService {
 
       return savePath;
     } catch (e) {
-      throw _handleError(e, 'Gagal mengunduh formulir PKL');
+      throw ApiClient.handleError(e, 'Gagal mengunduh formulir PKL');
     }
   }
 
@@ -57,15 +57,7 @@ class PklService {
       final response = await _dio.delete('/api/v1/pkl/$idPengajuan');
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal menghapus pendaftaran PKL');
+      throw ApiClient.handleError(e, 'Gagal menghapus pendaftaran PKL');
     }
-  }
-
-  Exception _handleError(dynamic e, [String fallback = 'Terjadi kesalahan pada layanan PKL']) {
-    if (e is DioException) {
-      return ApiClient.handleError(e, fallback);
-    }
-    if (e is Exception) return e;
-    return Exception(e?.toString() ?? fallback);
   }
 }

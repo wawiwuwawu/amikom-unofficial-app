@@ -14,7 +14,7 @@ class IzinPenelitianService {
       final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
       return IzinPenelitianData.fromJson(data);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat data Izin Penelitian');
+      throw ApiClient.handleError(e, 'Gagal memuat data Izin Penelitian');
     }
   }
 
@@ -26,7 +26,7 @@ class IzinPenelitianService {
       );
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal menambahkan pengajuan izin penelitian');
+      throw ApiClient.handleError(e, 'Gagal menambahkan pengajuan izin penelitian');
     }
   }
 
@@ -35,15 +35,7 @@ class IzinPenelitianService {
       final response = await _dio.delete('/api/v1/izin-penelitian/$id');
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal menghapus pengajuan izin penelitian');
+      throw ApiClient.handleError(e, 'Gagal menghapus pengajuan izin penelitian');
     }
-  }
-
-  Exception _handleError(dynamic e, [String fallback = 'Terjadi kesalahan pada layanan Izin Penelitian']) {
-    if (e is DioException) {
-      return ApiClient.handleError(e, fallback);
-    }
-    if (e is Exception) return e;
-    return Exception(e?.toString() ?? fallback);
   }
 }

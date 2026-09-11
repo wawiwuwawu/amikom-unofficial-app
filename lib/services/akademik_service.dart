@@ -15,7 +15,7 @@ class AkademikService {
       if (data is! List) return [];
       return data.map((e) => Agenda.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal memuat agenda');
     }
   }
 
@@ -42,7 +42,7 @@ class AkademikService {
       if (data == null) return [];
       return data.map((e) => JadwalUjian.fromJson(e)).toList();
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal memuat jadwal ujian');
     }
   }
 
@@ -76,19 +76,7 @@ class AkademikService {
       
       return savePath;
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal mengunduh kartu ujian');
     }
-  }
-
-
-  Exception _handleError(dynamic e) {
-    if (e is DioException && e.response != null) {
-      final msg = e.response?.data?['message'];
-      if (msg != null && msg.toString().isNotEmpty) {
-        return Exception(msg);
-      }
-      return Exception(e.message ?? 'Terjadi kesalahan');
-    }
-    return Exception(e.toString());
   }
 }

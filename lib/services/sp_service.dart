@@ -14,7 +14,7 @@ class SpService {
       final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
       return SpAvailableData.fromJson(data);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat daftar matakuliah SP yang tersedia');
+      throw ApiClient.handleError(e, 'Gagal memuat daftar matakuliah SP yang tersedia');
     }
   }
 
@@ -24,7 +24,7 @@ class SpService {
       final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
       return SpTakenData.fromJson(data);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat matakuliah SP yang sudah diambil');
+      throw ApiClient.handleError(e, 'Gagal memuat matakuliah SP yang sudah diambil');
     }
   }
 
@@ -44,9 +44,9 @@ class SpService {
           kategoriOpsionalSksBesar: [],
         );
       }
-      throw _handleError(e, 'Gagal memuat rekomendasi SP');
+      throw ApiClient.handleError(e, 'Gagal memuat rekomendasi SP');
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat rekomendasi SP');
+      throw ApiClient.handleError(e, 'Gagal memuat rekomendasi SP');
     }
   }
 
@@ -58,7 +58,7 @@ class SpService {
       );
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal mengajukan matakuliah SP');
+      throw ApiClient.handleError(e, 'Gagal mengajukan matakuliah SP');
     }
   }
 
@@ -67,15 +67,7 @@ class SpService {
       final response = await _dio.delete('/api/v1/sp/$idKrs');
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal menghapus matakuliah SP');
+      throw ApiClient.handleError(e, 'Gagal menghapus matakuliah SP');
     }
-  }
-
-  Exception _handleError(dynamic e, [String fallback = 'Terjadi kesalahan pada layanan SP']) {
-    if (e is DioException) {
-      return ApiClient.handleError(e, fallback);
-    }
-    if (e is Exception) return e;
-    return Exception(e?.toString() ?? fallback);
   }
 }

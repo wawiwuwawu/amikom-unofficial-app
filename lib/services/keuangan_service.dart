@@ -11,7 +11,7 @@ class KeuanganService {
       final root = ApiClient.unwrapRoot(response.data);
       return KeuanganHistoryResponse.fromJson(root);
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal memuat riwayat pembayaran');
     }
   }
 
@@ -24,7 +24,7 @@ class KeuanganService {
       final list = response.data['data'] as List? ?? [];
       return list.map((e) => KeuanganDetailItem.fromJson(e)).toList();
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal memuat rincian pembayaran');
     }
   }
 
@@ -45,7 +45,7 @@ class KeuanganService {
 
       return savePath;
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal mengunduh riwayat pembayaran');
     }
   }
 
@@ -67,7 +67,7 @@ class KeuanganService {
 
       return savePath;
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal mengunduh rincian pembayaran');
     }
   }
 
@@ -96,7 +96,7 @@ class KeuanganService {
       }
       return KeuanganVaResult.fromJson(merged);
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal melakukan pembayaran');
     }
   }
 
@@ -106,7 +106,7 @@ class KeuanganService {
       final root = ApiClient.unwrapRoot(response.data);
       return KeuanganTagihanResponse.fromJson(root);
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal memuat tagihan');
     }
   }
 
@@ -122,19 +122,7 @@ class KeuanganService {
       );
       ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e);
+      throw ApiClient.handleError(e, 'Gagal membatalkan tagihan');
     }
-  }
-
-  Exception _handleError(dynamic e) {
-    if (e is DioException && e.response != null) {
-      final msg = e.response?.data?['message'];
-      if (msg != null && msg.toString().isNotEmpty) {
-        return Exception(msg);
-      }
-      return Exception(e.message ?? 'Terjadi kesalahan request Keuangan');
-    }
-    if (e is Exception) return e;
-    return Exception(e.toString());
   }
 }

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'api_client.dart';
+import 'aktivitas_helper.dart';
 import '../models/organisasi.dart';
 
 class OrganisasiService {
@@ -35,42 +36,12 @@ class OrganisasiService {
     }
   }
 
-  Future<void> tambahOrganisasi(FormData data) async {
-    try {
-      final response = await _dio.post(
-        '/api/v1/organisasi-mahasiswa',
-        data: data,
-        options: Options(
-          contentType: 'multipart/form-data',
-        ),
-      );
-      ApiClient.unwrapMutation(response.data);
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal menambahkan Organisasi Mahasiswa');
-    }
-  }
+  Future<void> tambahOrganisasi(FormData data) =>
+      AktivitasHelper.submit('/api/v1/organisasi-mahasiswa', data, 'Gagal menambahkan Organisasi Mahasiswa');
 
-  Future<void> hapusOrganisasi(int id) async {
-    try {
-      final response = await _dio.delete('/api/v1/organisasi-mahasiswa/$id');
-      ApiClient.unwrapMutation(response.data);
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal menghapus Organisasi Mahasiswa');
-    }
-  }
+  Future<void> hapusOrganisasi(int id) =>
+      AktivitasHelper.delete('/api/v1/organisasi-mahasiswa', id, 'Gagal menghapus Organisasi Mahasiswa');
 
-  Future<String> downloadFile(int id, String namaFile) async {
-    try {
-      // ponytail: centralized download dir via ApiClient
-      final dir = await ApiClient.getDownloadDir();
-      final savePath = '$dir/$namaFile';
-      await _dio.download(
-        '/api/v1/organisasi-mahasiswa/$id/file',
-        savePath,
-      );
-      return savePath;
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal mengunduh dokumen organisasi');
-    }
-  }
+  Future<String> downloadFile(int id, String namaFile) =>
+      AktivitasHelper.downloadFile('/api/v1/organisasi-mahasiswa', id, namaFile, 'Gagal mengunduh dokumen organisasi');
 }

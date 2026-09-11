@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import '../models/seminar.dart';
 import 'api_client.dart';
 
@@ -11,7 +10,7 @@ class SeminarService {
       final list = ApiClient.unwrapData<List>(response.data);
       return list.map((e) => Seminar.fromJson(e)).toList();
     } catch (e) {
-      throw _handleError(e, 'Gagal mengambil jadwal KP');
+      throw ApiClient.handleError(e, 'Gagal mengambil jadwal KP');
     }
   }
 
@@ -21,18 +20,7 @@ class SeminarService {
       final list = ApiClient.unwrapData<List>(response.data);
       return list.map((e) => Seminar.fromJson(e)).toList();
     } catch (e) {
-      throw _handleError(e, 'Gagal mengambil jadwal Skripsi');
+      throw ApiClient.handleError(e, 'Gagal mengambil jadwal Skripsi');
     }
-  }
-
-  Exception _handleError(dynamic e, [String fallback = 'Terjadi kesalahan']) {
-    if (e is DioException) {
-      if (e.response?.statusCode == 404) {
-        return Exception('Data jadwal tidak ditemukan.');
-      }
-      return ApiClient.handleError(e, fallback);
-    }
-    if (e is Exception) return e;
-    return Exception(e?.toString() ?? fallback);
   }
 }

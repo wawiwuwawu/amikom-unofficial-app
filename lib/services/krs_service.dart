@@ -13,7 +13,7 @@ class KrsService {
       final root = ApiClient.unwrapRoot(response.data);
       return KrsInfo.fromJson(root);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat informasi KRS');
+      throw ApiClient.handleError(e, 'Gagal memuat informasi KRS');
     }
   }
 
@@ -23,7 +23,7 @@ class KrsService {
       final root = ApiClient.unwrapRoot(response.data);
       return MatkulDitawarkanResponse.fromJson(root);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat mata kuliah yang ditawarkan');
+      throw ApiClient.handleError(e, 'Gagal memuat mata kuliah yang ditawarkan');
     }
   }
 
@@ -33,7 +33,7 @@ class KrsService {
       final root = ApiClient.unwrapRoot(response.data);
       return KrsPengajuanResponse.fromJson(root);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat pengajuan KRS');
+      throw ApiClient.handleError(e, 'Gagal memuat pengajuan KRS');
     }
   }
 
@@ -42,7 +42,7 @@ class KrsService {
       final response = await _dio.post('/api/v1/krs/pengajuan', data: {'makul': makul});
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal mengajukan mata kuliah');
+      throw ApiClient.handleError(e, 'Gagal mengajukan mata kuliah');
     }
   }
 
@@ -51,7 +51,7 @@ class KrsService {
       final response = await _dio.delete('/api/v1/krs/pengajuan/$id');
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal menghapus pengajuan mata kuliah');
+      throw ApiClient.handleError(e, 'Gagal menghapus pengajuan mata kuliah');
     }
   }
 
@@ -61,7 +61,7 @@ class KrsService {
       final root = ApiClient.unwrapRoot(response.data);
       return KrsPengisianResponse.fromJson(root);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat pengisian KRS');
+      throw ApiClient.handleError(e, 'Gagal memuat pengisian KRS');
     }
   }
 
@@ -70,7 +70,7 @@ class KrsService {
       final response = await _dio.post('/api/v1/krs/pengisian', data: {'formData': formData});
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal menyimpan pengisian kelas');
+      throw ApiClient.handleError(e, 'Gagal menyimpan pengisian kelas');
     }
   }
 
@@ -80,7 +80,7 @@ class KrsService {
       final root = ApiClient.unwrapRoot(response.data);
       return KrsPengisianResponse.fromJson(root);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat mata kuliah yang belum diisi');
+      throw ApiClient.handleError(e, 'Gagal memuat mata kuliah yang belum diisi');
     }
   }
 
@@ -89,7 +89,7 @@ class KrsService {
       final response = await _dio.delete('/api/v1/krs/pengisian/$kode');
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal menghapus kelas pengisian');
+      throw ApiClient.handleError(e, 'Gagal menghapus kelas pengisian');
     }
   }
 
@@ -99,7 +99,7 @@ class KrsService {
       final root = ApiClient.unwrapRoot(response.data);
       return JadwalKuliahResponse.fromJson(root);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat jadwal perkuliahan');
+      throw ApiClient.handleError(e, 'Gagal memuat jadwal perkuliahan');
     }
   }
 
@@ -108,7 +108,7 @@ class KrsService {
       final response = await _dio.post('/api/v1/krs/sinkronisasi', data: {});
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal melakukan sinkronisasi KRS');
+      throw ApiClient.handleError(e, 'Gagal melakukan sinkronisasi KRS');
     }
   }
 
@@ -145,17 +145,7 @@ class KrsService {
       
       return savePath;
     } catch (e) {
-      throw _handleError(e, 'Gagal mengunduh KRS PDF');
+      throw ApiClient.handleError(e, 'Gagal mengunduh KRS PDF');
     }
-  }
-
-  Exception _handleError(dynamic e, [String fallback = 'Terjadi kesalahan request KRS']) {
-    if (e is DioException) {
-      return ApiClient.handleError(e, fallback);
-    }
-    if (e is Exception) {
-      return e;
-    }
-    return Exception(e?.toString() ?? fallback);
   }
 }

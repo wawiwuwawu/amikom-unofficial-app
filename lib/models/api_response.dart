@@ -1,32 +1,3 @@
-class ApiResponse<T> {
-  final String status;
-  final T data;
-  final Map<String, dynamic>? rawRoot;
-
-  ApiResponse({
-    required this.status,
-    required this.data,
-    this.rawRoot,
-  });
-
-  static bool isEnvelope(dynamic json) {
-    return json is Map<String, dynamic> &&
-        json['status'] == 'success' &&
-        json.containsKey('data');
-  }
-
-  factory ApiResponse.fromJson(
-    Map<String, dynamic> json,
-    T Function(dynamic data) fromJsonT,
-  ) {
-    return ApiResponse<T>(
-      status: json['status'] as String? ?? 'success',
-      data: fromJsonT(json['data']),
-      rawRoot: json,
-    );
-  }
-}
-
 class MutationResult {
   final bool success;
   final String message;

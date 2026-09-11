@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 
 class NavigationService {
-  static NavigationService? _instance;
-  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static final navigatorKey = GlobalKey<NavigatorState>();
+  static NavigationService get instance => const NavigationService();
+  const NavigationService();
+}
 
-  NavigationService._();
-
-  static NavigationService get instance {
-    _instance ??= NavigationService._();
-    return _instance!;
-  }
+extension NavigationServiceCompat on NavigationService {
+  GlobalKey<NavigatorState> get navigatorKey => NavigationService.navigatorKey;
 }

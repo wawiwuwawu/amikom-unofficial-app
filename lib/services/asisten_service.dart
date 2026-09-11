@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'api_client.dart';
 import '../models/api_response.dart';
 import '../models/asisten.dart';
@@ -12,7 +11,7 @@ class AsistenService {
       final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
       return AsistenInfo.fromJson(data);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat info asisten');
+      throw ApiClient.handleError(e, 'Gagal memuat info asisten');
     }
   }
 
@@ -22,7 +21,7 @@ class AsistenService {
       final root = ApiClient.unwrapRoot(response.data);
       return AsistenTahunAkademikResponse.fromJson(root);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat tahun akademik');
+      throw ApiClient.handleError(e, 'Gagal memuat tahun akademik');
     }
   }
 
@@ -46,7 +45,7 @@ class AsistenService {
       final root = ApiClient.unwrapRoot(response.data);
       return AsistenJadwalResponse.fromJson(root);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat jadwal asisten');
+      throw ApiClient.handleError(e, 'Gagal memuat jadwal asisten');
     }
   }
 
@@ -56,7 +55,7 @@ class AsistenService {
       final root = ApiClient.unwrapRoot(response.data);
       return AsistenLaporan.fromJson(root);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat laporan asisten');
+      throw ApiClient.handleError(e, 'Gagal memuat laporan asisten');
     }
   }
 
@@ -69,17 +68,7 @@ class AsistenService {
       );
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal memproses pengajuan bebas KP');
+      throw ApiClient.handleError(e, 'Gagal memproses pengajuan bebas KP');
     }
-  }
-
-  Exception _handleError(dynamic e, [String fallback = 'Terjadi kesalahan pada layanan Asisten']) {
-    if (e is DioException) {
-      return ApiClient.handleError(e, fallback);
-    }
-    if (e is Exception) {
-      return e;
-    }
-    return Exception(e?.toString() ?? fallback);
   }
 }

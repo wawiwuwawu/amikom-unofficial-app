@@ -4,24 +4,7 @@ import 'package:app_amikom/models/api_response.dart';
 import 'package:app_amikom/services/api_client.dart';
 
 void main() {
-  group('ApiResponse & MutationResult', () {
-    test('ApiResponse.isEnvelope detects envelope correctly', () {
-      expect(ApiResponse.isEnvelope({'status': 'success', 'data': {'foo': 'bar'}}), isTrue);
-      expect(ApiResponse.isEnvelope({'status': 'error', 'data': {'foo': 'bar'}}), isFalse);
-      expect(ApiResponse.isEnvelope({'status': 'success'}), isFalse);
-      expect(ApiResponse.isEnvelope('string'), isFalse);
-      expect(ApiResponse.isEnvelope([1, 2, 3]), isFalse);
-    });
-
-    test('ApiResponse.fromJson parses envelope', () {
-      final res = ApiResponse.fromJson(
-        {'status': 'success', 'data': 'hello'},
-        (d) => d.toString(),
-      );
-      expect(res.status, equals('success'));
-      expect(res.data, equals('hello'));
-    });
-
+  group('MutationResult', () {
     test('MutationResult parses success & failure', () {
       final successRes = MutationResult.fromJson({
         'status': 'success',

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'api_client.dart';
+import 'aktivitas_helper.dart';
 import '../models/sertifikasi.dart';
 
 class SertifikasiService {
@@ -39,42 +40,12 @@ class SertifikasiService {
     }
   }
 
-  Future<void> tambahSertifikasi(FormData data) async {
-    try {
-      final response = await _dio.post(
-        '/api/v1/sertifikasi-kompetensi',
-        data: data,
-        options: Options(
-          contentType: 'multipart/form-data',
-        ),
-      );
-      ApiClient.unwrapMutation(response.data);
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal menambahkan Sertifikasi Kompetensi');
-    }
-  }
+  Future<void> tambahSertifikasi(FormData data) =>
+      AktivitasHelper.submit('/api/v1/sertifikasi-kompetensi', data, 'Gagal menambahkan Sertifikasi Kompetensi');
 
-  Future<void> hapusSertifikasi(int id) async {
-    try {
-      final response = await _dio.delete('/api/v1/sertifikasi-kompetensi/$id');
-      ApiClient.unwrapMutation(response.data);
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal menghapus Sertifikasi Kompetensi');
-    }
-  }
+  Future<void> hapusSertifikasi(int id) =>
+      AktivitasHelper.delete('/api/v1/sertifikasi-kompetensi', id, 'Gagal menghapus Sertifikasi Kompetensi');
 
-  Future<String> downloadFile(int id, String namaFile) async {
-    try {
-      // ponytail: centralized download dir via ApiClient
-      final dir = await ApiClient.getDownloadDir();
-      final savePath = '$dir/$namaFile';
-      await _dio.download(
-        '/api/v1/sertifikasi-kompetensi/$id/file',
-        savePath,
-      );
-      return savePath;
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal mengunduh file sertifikat');
-    }
-  }
+  Future<String> downloadFile(int id, String namaFile) =>
+      AktivitasHelper.downloadFile('/api/v1/sertifikasi-kompetensi', id, namaFile, 'Gagal mengunduh file sertifikat');
 }

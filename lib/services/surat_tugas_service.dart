@@ -14,7 +14,7 @@ class SuratTugasService {
       final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
       return SuratTugasData.fromJson(data);
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat data Surat Tugas');
+      throw ApiClient.handleError(e, 'Gagal memuat data Surat Tugas');
     }
   }
 
@@ -29,7 +29,7 @@ class SuratTugasService {
     } on DioException catch (_) {
       return [];
     } catch (e) {
-      throw _handleError(e, 'Gagal mencari data mahasiswa');
+      throw ApiClient.handleError(e, 'Gagal mencari data mahasiswa');
     }
   }
 
@@ -39,7 +39,7 @@ class SuratTugasService {
       final list = ApiClient.unwrapData<List>(response.data);
       return list.map((e) => SuratTugasMember.fromJson(e)).toList();
     } catch (e) {
-      throw _handleError(e, 'Gagal memuat anggota surat tugas');
+      throw ApiClient.handleError(e, 'Gagal memuat anggota surat tugas');
     }
   }
 
@@ -51,7 +51,7 @@ class SuratTugasService {
       );
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal mengajukan Surat Tugas');
+      throw ApiClient.handleError(e, 'Gagal mengajukan Surat Tugas');
     }
   }
 
@@ -63,7 +63,7 @@ class SuratTugasService {
       );
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal mengedit Surat Tugas');
+      throw ApiClient.handleError(e, 'Gagal mengedit Surat Tugas');
     }
   }
 
@@ -72,15 +72,7 @@ class SuratTugasService {
       final response = await _dio.delete('/api/v1/surat-tugas/$idSurat');
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      throw _handleError(e, 'Gagal menghapus Surat Tugas');
+      throw ApiClient.handleError(e, 'Gagal menghapus Surat Tugas');
     }
-  }
-
-  Exception _handleError(dynamic e, [String fallback = 'Terjadi kesalahan pada layanan Surat Tugas']) {
-    if (e is DioException) {
-      return ApiClient.handleError(e, fallback);
-    }
-    if (e is Exception) return e;
-    return Exception(e?.toString() ?? fallback);
   }
 }

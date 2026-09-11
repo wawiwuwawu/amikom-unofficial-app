@@ -391,8 +391,10 @@ class ApiClient {
 
   // ─── API Envelope Helpers ─────────────────────────────
   static T unwrapData<T>(dynamic responseData) {
-    if (ApiResponse.isEnvelope(responseData)) {
-      return (responseData as Map<String, dynamic>)['data'] as T;
+    if (responseData is Map<String, dynamic> &&
+        responseData['status'] == 'success' &&
+        responseData.containsKey('data')) {
+      return responseData['data'] as T;
     }
     return responseData as T;
   }
