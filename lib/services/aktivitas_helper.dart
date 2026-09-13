@@ -20,6 +20,20 @@ class AktivitasHelper {
     }
   }
 
+  static Future<void> edit(
+    String path,
+    int id,
+    FormData data,
+    String fallbackError,
+  ) async {
+    try {
+      final response = await ApiClient.instance.dio.put('$path/$id', data: data);
+      ApiClient.unwrapMutation(response.data);
+    } catch (e) {
+      throw ApiClient.handleError(e, fallbackError);
+    }
+  }
+
   static Future<void> delete(
     String path,
     int id,

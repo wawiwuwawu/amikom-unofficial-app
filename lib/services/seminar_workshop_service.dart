@@ -39,6 +39,9 @@ class SeminarWorkshopService {
   Future<void> tambahSeminarWorkshop(FormData data) =>
       AktivitasHelper.submit('/api/v1/seminar-workshop', data, 'Gagal menambahkan Seminar & Workshop');
 
+  Future<void> editSeminarWorkshop(int id, FormData data) =>
+      AktivitasHelper.edit('/api/v1/seminar-workshop', id, data, 'Gagal mengubah data Seminar atau Workshop');
+
   Future<void> hapusSeminarWorkshop(int id) =>
       AktivitasHelper.delete('/api/v1/seminar-workshop', id, 'Gagal menghapus Seminar & Workshop');
 

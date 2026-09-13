@@ -7,8 +7,13 @@ import '../services/sertifikasi_service.dart';
 
 class SertifikasiFormSheet extends StatefulWidget {
   final VoidCallback onSuccess;
+  final SertifikasiItem? itemToEdit;
 
-  const SertifikasiFormSheet({super.key, required this.onSuccess});
+  const SertifikasiFormSheet({
+    super.key,
+    required this.onSuccess,
+    this.itemToEdit,
+  });
 
   @override
   State<SertifikasiFormSheet> createState() => _SertifikasiFormSheetState();
@@ -26,16 +31,21 @@ class _SertifikasiFormSheetState extends State<SertifikasiFormSheet> {
   final _judulLainnyaController = TextEditingController();
   final _nilaiController = TextEditingController();
   int? _selectedTahun;
-
   PlatformFile? _selectedFile;
   bool _isSubmitting = false;
+  bool get _isEditing => widget.itemToEdit != null;
 
   @override
   void initState() {
     super.initState();
+    if (_isEditing) {
+      final item = widget.itemToEdit!;
+      _selectedJudul = item.judul;
+      _nilaiController.text = item.grade;
+      _selectedTahun = item.tahun;
+    }
     _loadOptions();
   }
-
   @override
   void dispose() {
     _judulLainnyaController.dispose();
@@ -49,6 +59,13 @@ class _SertifikasiFormSheetState extends State<SertifikasiFormSheet> {
       if (mounted) {
         setState(() {
           _options = opts;
+          if (_isEditing && _selectedJudul != null) {
+            final exists = _options.any((o) => o.value == _selectedJudul);
+            if (!exists) {
+              _judulLainnyaController.text = _selectedJudul!;
+              _selectedJudul = 'SERTIFIKASI LAINNYA';
+            }
+          }
           _loadingOptions = false;
         });
       }
@@ -65,7 +82,7 @@ class _SertifikasiFormSheetState extends State<SertifikasiFormSheet> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedFile == null) {
+    if (!_isEditing && _selectedFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Silakan pilih file sertifikat (PDF)')),
       );
@@ -86,23 +103,36 @@ class _SertifikasiFormSheetState extends State<SertifikasiFormSheet> {
     setState(() => _isSubmitting = true);
 
     try {
-      final formData = FormData.fromMap({
+      final mapData = <String, dynamic>{
         'judul': _selectedJudul,
         if (_selectedJudul == 'SERTIFIKASI LAINNYA') 'judul_lainnya': _judulLainnyaController.text,
         'nilai': _nilaiController.text,
         'tahun': _selectedTahun.toString(),
-        'file_sertifikat': await MultipartFile.fromFile(
+      };
+
+      if (_selectedFile != null && _selectedFile!.path != null) {
+        mapData['file_sertifikat'] = await MultipartFile.fromFile(
           _selectedFile!.path!,
           filename: _selectedFile!.name,
-        ),
-      });
+        );
+      }
 
-      await _service.tambahSertifikasi(formData);
+      final formData = FormData.fromMap(mapData);
+
+      if (_isEditing) {
+        await _service.editSertifikasi(widget.itemToEdit!.id, formData);
+      } else {
+        await _service.tambahSertifikasi(formData);
+      }
 
       if (mounted) {
-        Navigator.pop(context); // Close sheet
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sertifikasi berhasil ditambahkan')),
+          SnackBar(
+            content: Text(_isEditing
+                ? 'Sertifikasi berhasil diubah'
+                : 'Sertifikasi berhasil ditambahkan'),
+          ),
         );
         widget.onSuccess();
       }
@@ -151,9 +181,9 @@ class _SertifikasiFormSheetState extends State<SertifikasiFormSheet> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Text(
-                            'Tambah Sertifikasi',
-                            style: TextStyle(
+                          Text(
+                            _isEditing ? 'Edit Sertifikasi' : 'Tambah Sertifikasi',
+                            style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF501F66),
@@ -232,10 +262,19 @@ class _SertifikasiFormSheetState extends State<SertifikasiFormSheet> {
 
                           SkpiFilePicker(
                             selectedFile: _selectedFile,
-                            label: 'File Scan Sertifikat (PDF)*',
+                            label: _isEditing
+                                ? 'File Scan Sertifikat (Opsional jika tidak diganti)'
+                                : 'File Scan Sertifikat (PDF)*',
                             allowedExtensions: const ['pdf'],
                             onFileSelected: (file) => setState(() => _selectedFile = file),
                           ),
+                          if (_isEditing && _selectedFile == null && widget.itemToEdit!.file.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              'File saat ini: ${widget.itemToEdit!.file}',
+                              style: const TextStyle(fontSize: 12, color: Colors.black54),
+                            ),
+                          ],
                           const SizedBox(height: 32),
 
                           // Submit Button
@@ -255,7 +294,10 @@ class _SertifikasiFormSheetState extends State<SertifikasiFormSheet> {
                                     width: 20,
                                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                   )
-                                : const Text('Upload Sertifikasi', style: TextStyle(fontWeight: FontWeight.bold)),
+                                : Text(
+                                    _isEditing ? 'Simpan Perubahan' : 'Upload Sertifikasi',
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
                           ),
                         ],
                       ),

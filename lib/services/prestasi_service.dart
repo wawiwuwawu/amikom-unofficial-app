@@ -39,6 +39,9 @@ class PrestasiService {
   Future<void> tambahPrestasi(FormData data) =>
       AktivitasHelper.submit('/api/v1/prestasi-mahasiswa', data, 'Gagal menambahkan Prestasi Mahasiswa');
 
+  Future<void> editPrestasi(int id, FormData data) =>
+      AktivitasHelper.edit('/api/v1/prestasi-mahasiswa', id, data, 'Gagal mengubah data Prestasi Mahasiswa');
+
   Future<void> hapusPrestasi(int id) =>
       AktivitasHelper.delete('/api/v1/prestasi-mahasiswa', id, 'Gagal menghapus Prestasi Mahasiswa');
 

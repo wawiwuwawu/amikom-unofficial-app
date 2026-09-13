@@ -37,6 +37,7 @@ import 'ujian_susulan_page.dart';
 import 'ppks_page.dart';
 import 'skripsi_page.dart';
 import 'nilai_rincian_page.dart';
+import 'rekognisi_page.dart';
 import '../services/notifikasi_service.dart';
 
 class MainPage extends StatefulWidget {
@@ -617,6 +618,13 @@ class _MainPageState extends State<MainPage> {
           'color': const Color(0xFF501F66),
           'page': (BuildContext ctx) =>
               SeminarWorkshopPage(onBack: () => Navigator.pop(ctx)),
+        },
+        {
+          'title': 'Rekognisi Mahasiswa',
+          'icon': CupertinoIcons.rosette,
+          'color': const Color(0xFF501F66),
+          'page': (BuildContext ctx) =>
+              RekognisiPage(onBack: () => Navigator.pop(ctx)),
         },
       ],
       'Informasi & Dokumen Kampus': [

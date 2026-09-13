@@ -3,24 +3,23 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-import '../models/sertifikasi.dart';
-import '../services/sertifikasi_service.dart';
+import '../models/rekognisi.dart';
+import '../services/rekognisi_service.dart';
 import '../widgets/glass_card.dart';
-import '../widgets/sertifikasi_form_sheet.dart';
+import '../widgets/rekognisi_form_sheet.dart';
 
-class SertifikasiPage extends StatefulWidget {
-  final VoidCallback onBack;
+class RekognisiPage extends StatefulWidget {
+  final VoidCallback? onBack;
 
-  const SertifikasiPage({super.key, required this.onBack});
+  const RekognisiPage({super.key, this.onBack});
 
   @override
-  State<SertifikasiPage> createState() => _SertifikasiPageState();
+  State<RekognisiPage> createState() => _RekognisiPageState();
 }
 
-class _SertifikasiPageState extends State<SertifikasiPage> {
-  final _service = SertifikasiService();
-  List<SertifikasiItem> _items = [];
+class _RekognisiPageState extends State<RekognisiPage> {
+  final _service = RekognisiService();
+  List<RekognisiItem> _items = [];
   bool _loading = true;
   String? _error;
 
@@ -31,12 +30,9 @@ class _SertifikasiPageState extends State<SertifikasiPage> {
   }
 
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    setState(() => _loading = true);
     try {
-      final items = await _service.getSertifikasi();
+      final items = await _service.getRekognisi();
       if (mounted) {
         setState(() {
           _items = items;
@@ -45,39 +41,41 @@ class _SertifikasiPageState extends State<SertifikasiPage> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+        setState(() {
+          _error = e.toString().replaceFirst('Exception: ', '');
+        });
       }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  void _showForm([SertifikasiItem? item]) {
+  void _showForm([RekognisiItem? item]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => SertifikasiFormSheet(
+      builder: (context) => RekognisiFormSheet(
         onSuccess: _load,
         itemToEdit: item,
       ),
     );
   }
 
-  Future<void> _deleteItem(SertifikasiItem item) async {
+  Future<void> _deleteItem(RekognisiItem item) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Hapus Sertifikasi'),
-        content: Text('Apakah Anda yakin ingin menghapus sertifikasi "${item.judul}"?'),
+        title: const Text('Hapus Rekognisi'),
+        content: Text('Apakah Anda yakin ingin menghapus data rekognisi "${item.judul}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Batal'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
             child: const Text('Hapus', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -85,18 +83,18 @@ class _SertifikasiPageState extends State<SertifikasiPage> {
     );
 
     if (confirm != true) return;
-
     if (!mounted) return;
-    // Tampilkan loading snackbar
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Menghapus data...')),
     );
 
     try {
-      await _service.hapusSertifikasi(item.id);
+      await _service.hapusRekognisi(item.id);
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Berhasil dihapus')),
+          const SnackBar(content: Text('Data berhasil dihapus')),
         );
         _load();
       }
@@ -109,27 +107,26 @@ class _SertifikasiPageState extends State<SertifikasiPage> {
     }
   }
 
-  Future<void> _downloadFile(SertifikasiItem item) async {
-    if (item.fileUrl.isNotEmpty && item.fileUrl.startsWith('http')) {
-      final uri = Uri.parse(item.fileUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+  Future<void> _downloadFile(RekognisiItem item) async {
+    if (item.file.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Berkas dokumen tidak tersedia')),
+      );
       return;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Mengunduh file...')),
+      const SnackBar(content: Text('Mengunduh berkas...')),
     );
 
     try {
-      final filename = item.file.isNotEmpty ? item.file : 'sertifikat_${item.id}.pdf';
+      final filename = item.file.isNotEmpty ? item.file : 'rekognisi_${item.id}.pdf';
       final path = await _service.downloadFile(item.id, filename);
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('File tersimpan di $path'),
+            content: Text('Berkas tersimpan di $path'),
             action: SnackBarAction(
               label: 'Buka',
               onPressed: () {
@@ -164,17 +161,17 @@ class _SertifikasiPageState extends State<SertifikasiPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: const Text('Sertifikasi Kompetensi', style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.white.withValues(alpha: 0.5),
+          title: const Text('Rekognisi Mahasiswa', style: TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
             icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-            onPressed: widget.onBack,
+            onPressed: widget.onBack ?? () => Navigator.pop(context),
           ),
         ),
         body: _buildBody(),
         floatingActionButton: FloatingActionButton(
-          onPressed: _showForm,
+          onPressed: () => _showForm(),
           backgroundColor: const Color(0xFF501F66),
           child: const Icon(CupertinoIcons.add, color: Colors.white),
         ),
@@ -192,41 +189,41 @@ class _SertifikasiPageState extends State<SertifikasiPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(CupertinoIcons.exclamationmark_triangle, size: 48, color: Colors.red),
+            const Icon(CupertinoIcons.exclamationmark_circle, size: 48, color: Colors.red),
             const SizedBox(height: 16),
             Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _load,
-              child: const Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66)),
+              child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
-      ).animate().fadeIn();
+      );
     }
 
     if (_items.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
-            SizedBox(height: 100),
-            Center(
-              child: Text(
-                'Belum ada data sertifikasi kompetensi',
-                style: TextStyle(color: Colors.black54),
-              ),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(CupertinoIcons.rosette, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            const Text(
+              'Belum ada data rekognisi mahasiswa',
+              style: TextStyle(color: Colors.grey, fontSize: 16),
             ),
           ],
         ),
-      ).animate().fadeIn();
+      );
     }
 
     return RefreshIndicator(
       onRefresh: _load,
+      color: const Color(0xFF501F66),
       child: ListView.builder(
-        padding: const EdgeInsets.all(16).copyWith(bottom: 100),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 130),
         itemCount: _items.length,
         itemBuilder: (context, index) {
           final item = _items[index];
@@ -246,13 +243,20 @@ class _SertifikasiPageState extends State<SertifikasiPage> {
                       Expanded(
                         child: Text(
                           item.judul,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF501F66)),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFF501F66),
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: isValid ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
+                          color: isValid
+                              ? Colors.green.withValues(alpha: 0.1)
+                              : Colors.orange.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: isValid ? Colors.green : Colors.orange,
@@ -270,8 +274,35 @@ class _SertifikasiPageState extends State<SertifikasiPage> {
                     ],
                   ),
                   const SizedBox(height: 8),
+                  Text('Tingkat: ${item.tingkat}', style: const TextStyle(color: Colors.black87)),
                   Text('Tahun: ${item.tahun}', style: const TextStyle(color: Colors.black87)),
-                  Text('Nilai / Grade: ${item.grade}', style: const TextStyle(color: Colors.black87)),
+                  if (item.kontribusi.isNotEmpty)
+                    Text('Kontribusi: ${item.kontribusi}', style: const TextStyle(color: Colors.black87)),
+                  if (item.link.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    InkWell(
+                      onTap: () async {
+                        final uri = Uri.tryParse(item.link);
+                        if (uri != null && await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      child: Row(
+                        children: [
+                          const Icon(CupertinoIcons.link, size: 14, color: Colors.blue),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              item.link,
+                              style: const TextStyle(color: Colors.blue, fontSize: 12, decoration: TextDecoration.underline),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   if (item.keterangan.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text('Catatan: ${item.keterangan}', style: const TextStyle(color: Colors.red, fontSize: 12)),
@@ -292,11 +323,12 @@ class _SertifikasiPageState extends State<SertifikasiPage> {
                           label: const Text('Hapus', style: TextStyle(color: Colors.red)),
                         ),
                       ],
-                      TextButton.icon(
-                        onPressed: () => _downloadFile(item),
-                        icon: const Icon(CupertinoIcons.cloud_download, color: Color(0xFF501F66), size: 18),
-                        label: const Text('Unduh File', style: TextStyle(color: Color(0xFF501F66))),
-                      ),
+                      if (item.file.isNotEmpty)
+                        TextButton.icon(
+                          onPressed: () => _downloadFile(item),
+                          icon: const Icon(CupertinoIcons.cloud_download, color: Color(0xFF501F66), size: 18),
+                          label: const Text('Unduh Berkas', style: TextStyle(color: Color(0xFF501F66))),
+                        ),
                     ],
                   ),
                 ],

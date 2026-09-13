@@ -8,8 +8,13 @@ import '../services/prestasi_service.dart';
 
 class PrestasiFormSheet extends StatefulWidget {
   final VoidCallback onSuccess;
+  final PrestasiItem? itemToEdit;
 
-  const PrestasiFormSheet({super.key, required this.onSuccess});
+  const PrestasiFormSheet({
+    super.key,
+    required this.onSuccess,
+    this.itemToEdit,
+  });
 
   @override
   State<PrestasiFormSheet> createState() => _PrestasiFormSheetState();
@@ -38,13 +43,19 @@ class _PrestasiFormSheetState extends State<PrestasiFormSheet> {
   final _tahunController = TextEditingController(text: DateTime.now().year.toString());
 
   PlatformFile? _selectedFile;
+  bool get _isEditing => widget.itemToEdit != null;
 
   @override
   void initState() {
     super.initState();
+    if (_isEditing) {
+      final item = widget.itemToEdit!;
+      _kategoriController.text = item.perolehan;
+      _prestasiLainnyaController.text = item.kejuaraan;
+      _tahunController.text = item.tahun;
+    }
     _loadOptions();
   }
-
   @override
   void dispose() {
     _prestasiLainnyaController.dispose();
@@ -124,17 +135,22 @@ class _PrestasiFormSheetState extends State<PrestasiFormSheet> {
           filename: _selectedFile!.name,
         );
       }
-
       final formData = FormData.fromMap(formDataMap);
-      await _service.tambahPrestasi(formData);
+      if (_isEditing) {
+        await _service.editPrestasi(widget.itemToEdit!.id, formData);
+      } else {
+        await _service.tambahPrestasi(formData);
+      }
 
       if (!mounted) return;
       Navigator.pop(context);
       widget.onSuccess();
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Prestasi Mahasiswa berhasil ditambahkan'),
+        SnackBar(
+          content: Text(_isEditing
+              ? 'Prestasi Mahasiswa berhasil diubah'
+              : 'Prestasi Mahasiswa berhasil ditambahkan'),
           backgroundColor: Colors.green,
         ),
       );
@@ -182,9 +198,9 @@ class _PrestasiFormSheetState extends State<PrestasiFormSheet> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Tambah Prestasi Mahasiswa',
-                    style: TextStyle(
+                  Text(
+                    _isEditing ? 'Edit Prestasi Mahasiswa' : 'Tambah Prestasi Mahasiswa',
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF501F66),
@@ -386,9 +402,18 @@ class _PrestasiFormSheetState extends State<PrestasiFormSheet> {
 
                               SkpiFilePicker(
                                 selectedFile: _selectedFile,
-                                label: 'File Sertifikat/Bukti (PDF/Gambar)*',
+                                label: _isEditing
+                                    ? 'File Sertifikat/Bukti (Opsional jika tidak diganti)'
+                                    : 'File Sertifikat/Bukti (PDF/Gambar)*',
                                 onFileSelected: (file) => setState(() => _selectedFile = file),
                               ),
+                              if (_isEditing && _selectedFile == null && widget.itemToEdit!.file.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  'File saat ini: ${widget.itemToEdit!.file}',
+                                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                                ),
+                              ],
                               const SizedBox(height: 24),
 
                               // Tombol Submit
@@ -411,8 +436,10 @@ class _PrestasiFormSheetState extends State<PrestasiFormSheet> {
                                           child: CircularProgressIndicator(
                                               strokeWidth: 2, color: Colors.white),
                                         )
-                                      : const Text('Upload Prestasi',
-                                          style: TextStyle(fontWeight: FontWeight.bold)),
+                                      : Text(
+                                          _isEditing ? 'Simpan Perubahan' : 'Upload Prestasi',
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
                                 ),
                               ),
                             ],

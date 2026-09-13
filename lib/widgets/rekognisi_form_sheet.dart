@@ -3,38 +3,40 @@ import 'package:flutter/cupertino.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'skpi_file_picker.dart';
-import '../models/seminar_workshop.dart';
-import '../services/seminar_workshop_service.dart';
-class SeminarWorkshopFormSheet extends StatefulWidget {
-  final VoidCallback onSuccess;
-  final SeminarWorkshopItem? itemToEdit;
+import '../models/rekognisi.dart';
+import '../services/rekognisi_service.dart';
 
-  const SeminarWorkshopFormSheet({
+class RekognisiFormSheet extends StatefulWidget {
+  final VoidCallback onSuccess;
+  final RekognisiItem? itemToEdit;
+
+  const RekognisiFormSheet({
     super.key,
     required this.onSuccess,
     this.itemToEdit,
   });
 
   @override
-  State<SeminarWorkshopFormSheet> createState() => _SeminarWorkshopFormSheetState();
+  State<RekognisiFormSheet> createState() => _RekognisiFormSheetState();
 }
 
-class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
-  final _service = SeminarWorkshopService();
+class _RekognisiFormSheetState extends State<RekognisiFormSheet> {
+  final _service = RekognisiService();
   final _formKey = GlobalKey<FormState>();
 
-  SeminarWorkshopOptionsData? _optionsData;
+  RekognisiOptionResponse? _optionsData;
   bool _isLoadingOptions = true;
   bool _isSubmitting = false;
   String? _error;
 
-  String? _selectedJenisKegiatan;
-  final _judulController = TextEditingController();
-  String? _selectedSebagai;
-  String? _selectedTingkatan;
+  String? _selectedJudul;
+  String? _selectedTingkat;
+  String? _selectedKontribusi;
   final _tahunController = TextEditingController(text: DateTime.now().year.toString());
+  final _linkController = TextEditingController();
 
   PlatformFile? _selectedFile;
+
   bool get _isEditing => widget.itemToEdit != null;
 
   @override
@@ -42,16 +44,19 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
     super.initState();
     if (_isEditing) {
       final item = widget.itemToEdit!;
-      _judulController.text = item.judul;
-      _selectedSebagai = item.sebagai;
-      _tahunController.text = item.tahun;
+      _selectedJudul = item.judul;
+      _selectedTingkat = item.tingkat;
+      _selectedKontribusi = item.kontribusi.isNotEmpty ? item.kontribusi : null;
+      _tahunController.text = item.tahun.toString();
+      _linkController.text = item.link;
     }
     _loadOptions();
   }
+
   @override
   void dispose() {
-    _judulController.dispose();
     _tahunController.dispose();
+    _linkController.dispose();
     super.dispose();
   }
 
@@ -75,20 +80,26 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
     }
   }
 
-
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedJenisKegiatan == null) {
+    if (_selectedJudul == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih jenis kegiatan terlebih dahulu')),
+        const SnackBar(content: Text('Pilih jenis rekognisi terlebih dahulu')),
       );
       return;
     }
 
-    if (_selectedSebagai == null) {
+    if (_selectedTingkat == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih peran (sebagai) terlebih dahulu')),
+        const SnackBar(content: Text('Pilih tingkat rekognisi terlebih dahulu')),
+      );
+      return;
+    }
+
+    if (!_isEditing && _selectedFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Silakan pilih berkas bukti (PDF)')),
       );
       return;
     }
@@ -97,28 +108,27 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
 
     try {
       final formDataMap = <String, dynamic>{
-        'jenis_kegiatan': _selectedJenisKegiatan,
-        'judul': _judulController.text.trim(),
-        'sebagai': _selectedSebagai,
+        'judul': _selectedJudul,
+        'tingkat': _selectedTingkat,
         'tahun': _tahunController.text.trim(),
+        if (_linkController.text.trim().isNotEmpty) 'link': _linkController.text.trim(),
+        if (_selectedKontribusi != null && _selectedKontribusi!.isNotEmpty)
+          'kontribusi': _selectedKontribusi,
       };
 
-      if (_selectedTingkatan != null && _selectedTingkatan!.isNotEmpty) {
-        formDataMap['tingkatan'] = _selectedTingkatan;
-      }
-
       if (_selectedFile != null && _selectedFile!.path != null) {
-        formDataMap['file_sertifikat'] = await MultipartFile.fromFile(
+        formDataMap['file_dokumen'] = await MultipartFile.fromFile(
           _selectedFile!.path!,
           filename: _selectedFile!.name,
         );
       }
 
       final formData = FormData.fromMap(formDataMap);
+
       if (_isEditing) {
-        await _service.editSeminarWorkshop(widget.itemToEdit!.id, formData);
+        await _service.editRekognisi(widget.itemToEdit!.id, formData);
       } else {
-        await _service.tambahSeminarWorkshop(formData);
+        await _service.tambahRekognisi(formData);
       }
 
       if (!mounted) return;
@@ -128,8 +138,8 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_isEditing
-              ? 'Seminar / Workshop berhasil diubah'
-              : 'Seminar / Workshop berhasil ditambahkan'),
+              ? 'Rekognisi berhasil diubah'
+              : 'Rekognisi berhasil ditambahkan'),
           backgroundColor: Colors.green,
         ),
       );
@@ -178,7 +188,7 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _isEditing ? 'Edit Seminar / Workshop' : 'Tambah Seminar / Workshop',
+                    _isEditing ? 'Edit Rekognisi Mahasiswa' : 'Tambah Rekognisi Mahasiswa',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -213,80 +223,75 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Dropdown Jenis Kegiatan (Wajib)
+                              // Dropdown Jenis Rekognisi (Judul)
                               DropdownButtonFormField<String>(
-                                initialValue: _selectedJenisKegiatan,
+                                initialValue: _selectedJudul,
                                 decoration: InputDecoration(
-                                  labelText: 'Jenis Kegiatan *',
+                                  labelText: 'Jenis Rekognisi *',
                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  prefixIcon: const Icon(CupertinoIcons.rectangle_grid_2x2),
+                                  prefixIcon: const Icon(CupertinoIcons.rosette),
                                 ),
                                 isExpanded: true,
-                                items: _optionsData?.jenisKegiatan.map((opt) {
+                                items: _optionsData?.jenisRekognisi.map((opt) {
                                   return DropdownMenuItem<String>(
                                     value: opt.value,
                                     child: Text(opt.label, overflow: TextOverflow.ellipsis),
                                   );
                                 }).toList(),
-                                onChanged: (val) {
-                                  setState(() {
-                                    _selectedJenisKegiatan = val;
-                                  });
-                                },
-                                validator: (val) => val == null ? 'Pilih jenis kegiatan' : null,
+                                onChanged: (val) => setState(() => _selectedJudul = val),
+                                validator: (val) => val == null ? 'Pilih jenis rekognisi' : null,
                               ),
                               const SizedBox(height: 16),
 
-                              // Judul Seminar / Workshop (Wajib)
-                              TextFormField(
-                                controller: _judulController,
-                                decoration: InputDecoration(
-                                  labelText: 'Judul Seminar / Workshop *',
-                                  hintText: 'Contoh: Workshop Artificial Intelligence & Cloud',
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  prefixIcon: const Icon(CupertinoIcons.textbox),
-                                ),
-                                validator: (val) =>
-                                    (val == null || val.trim().isEmpty) ? 'Masukkan judul seminar/workshop' : null,
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Dropdown Sebagai (Wajib)
+                              // Dropdown Tingkat
                               DropdownButtonFormField<String>(
-                                initialValue: _selectedSebagai,
+                                initialValue: _selectedTingkat,
                                 decoration: InputDecoration(
-                                  labelText: 'Peran / Sebagai *',
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  prefixIcon: const Icon(CupertinoIcons.person_badge_plus),
-                                ),
-                                isExpanded: true,
-                                items: _optionsData?.sebagai.map((opt) {
-                                  return DropdownMenuItem<String>(
-                                    value: opt.value,
-                                    child: Text(opt.label, overflow: TextOverflow.ellipsis),
-                                  );
-                                }).toList(),
-                                onChanged: (val) => setState(() => _selectedSebagai = val),
-                                validator: (val) => val == null ? 'Pilih peran (sebagai)' : null,
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Dropdown Tingkatan (Opsional)
-                              DropdownButtonFormField<String>(
-                                initialValue: _selectedTingkatan,
-                                decoration: InputDecoration(
-                                  labelText: 'Tingkatan (Opsional)',
+                                  labelText: 'Tingkat *',
                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                   prefixIcon: const Icon(CupertinoIcons.globe),
                                 ),
                                 isExpanded: true,
-                                items: _optionsData?.tingkatan.map((opt) {
+                                items: _optionsData?.tingkat.map((opt) {
                                   return DropdownMenuItem<String>(
                                     value: opt.value,
                                     child: Text(opt.label, overflow: TextOverflow.ellipsis),
                                   );
                                 }).toList(),
-                                onChanged: (val) => setState(() => _selectedTingkatan = val),
+                                onChanged: (val) => setState(() => _selectedTingkat = val),
+                                validator: (val) => val == null ? 'Pilih tingkat rekognisi' : null,
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Dropdown Kontribusi (Opsional)
+                              DropdownButtonFormField<String>(
+                                initialValue: _selectedKontribusi,
+                                decoration: InputDecoration(
+                                  labelText: 'Kontribusi (Opsional)',
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  prefixIcon: const Icon(CupertinoIcons.person_badge_plus),
+                                ),
+                                isExpanded: true,
+                                items: _optionsData?.kontribusi.map((opt) {
+                                  return DropdownMenuItem<String>(
+                                    value: opt.value,
+                                    child: Text(opt.label, overflow: TextOverflow.ellipsis),
+                                  );
+                                }).toList(),
+                                onChanged: (val) => setState(() => _selectedKontribusi = val),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Input Link URL
+                              TextFormField(
+                                controller: _linkController,
+                                keyboardType: TextInputType.url,
+                                decoration: InputDecoration(
+                                  labelText: 'Tautan / Link Berita (Opsional)',
+                                  hintText: 'https://...',
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  prefixIcon: const Icon(CupertinoIcons.link),
+                                ),
                               ),
                               const SizedBox(height: 16),
 
@@ -307,8 +312,9 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
                               SkpiFilePicker(
                                 selectedFile: _selectedFile,
                                 label: _isEditing
-                                    ? 'File Sertifikat/Bukti (Opsional jika tidak diganti)'
-                                    : 'File Sertifikat/Bukti (PDF/Gambar)*',
+                                    ? 'File Scan Bukti (Opsional jika tidak diganti)'
+                                    : 'File Scan Bukti (PDF)*',
+                                allowedExtensions: const ['pdf'],
                                 onFileSelected: (file) => setState(() => _selectedFile = file),
                               ),
                               if (_isEditing && _selectedFile == null && widget.itemToEdit!.file.isNotEmpty) ...[
@@ -341,7 +347,7 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
                                               strokeWidth: 2, color: Colors.white),
                                         )
                                       : Text(
-                                          _isEditing ? 'Simpan Perubahan' : 'Upload Seminar / Workshop',
+                                          _isEditing ? 'Simpan Perubahan' : 'Upload Rekognisi',
                                           style: const TextStyle(fontWeight: FontWeight.bold),
                                         ),
                                 ),

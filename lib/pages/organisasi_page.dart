@@ -52,13 +52,14 @@ class _OrganisasiPageState extends State<OrganisasiPage> {
     }
   }
 
-  void _showForm() {
+  void _showForm([OrganisasiItem? item]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => OrganisasiFormSheet(
         onSuccess: _load,
+        itemToEdit: item,
       ),
     );
   }
@@ -278,12 +279,18 @@ class _OrganisasiPageState extends State<OrganisasiPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      if (!isValid)
+                      if (!isValid) ...[
+                        TextButton.icon(
+                          onPressed: () => _showForm(item),
+                          icon: const Icon(CupertinoIcons.pencil, color: Color(0xFF501F66), size: 18),
+                          label: const Text('Edit', style: TextStyle(color: Color(0xFF501F66))),
+                        ),
                         TextButton.icon(
                           onPressed: () => _deleteItem(item),
                           icon: const Icon(CupertinoIcons.trash, color: Colors.red, size: 18),
                           label: const Text('Hapus', style: TextStyle(color: Colors.red)),
                         ),
+                      ],
                       TextButton.icon(
                         onPressed: () => _downloadFile(item),
                         icon: const Icon(CupertinoIcons.cloud_download, color: Color(0xFF501F66), size: 18),

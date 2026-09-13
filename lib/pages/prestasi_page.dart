@@ -50,13 +50,14 @@ class _PrestasiPageState extends State<PrestasiPage> {
     }
   }
 
-  void _showAddFormSheet() {
+  void _showAddFormSheet([PrestasiItem? item]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => PrestasiFormSheet(
         onSuccess: _loadData,
+        itemToEdit: item,
       ),
     );
   }
@@ -342,12 +343,18 @@ class _PrestasiPageState extends State<PrestasiPage> {
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.end,
                                     children: [
-                                      if (item.status.toLowerCase() != 'valid')
+                                      if (item.verifikasi != 1 && item.status.toLowerCase() != 'valid') ...[
+                                        TextButton.icon(
+                                          onPressed: () => _showAddFormSheet(item),
+                                          icon: const Icon(CupertinoIcons.pencil, color: Color(0xFF501F66), size: 18),
+                                          label: const Text('Edit', style: TextStyle(color: Color(0xFF501F66))),
+                                        ),
                                         TextButton.icon(
                                           onPressed: () => _deleteItem(item),
                                           icon: const Icon(CupertinoIcons.trash, color: Colors.red, size: 18),
                                           label: const Text('Hapus', style: TextStyle(color: Colors.red)),
                                         ),
+                                      ],
                                       TextButton.icon(
                                         onPressed: () => _downloadFile(item),
                                         icon: const Icon(CupertinoIcons.cloud_download,

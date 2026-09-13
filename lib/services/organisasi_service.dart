@@ -39,6 +39,9 @@ class OrganisasiService {
   Future<void> tambahOrganisasi(FormData data) =>
       AktivitasHelper.submit('/api/v1/organisasi-mahasiswa', data, 'Gagal menambahkan Organisasi Mahasiswa');
 
+  Future<void> editOrganisasi(int id, FormData data) =>
+      AktivitasHelper.edit('/api/v1/organisasi-mahasiswa', id, data, 'Gagal mengubah data Organisasi Mahasiswa');
+
   Future<void> hapusOrganisasi(int id) =>
       AktivitasHelper.delete('/api/v1/organisasi-mahasiswa', id, 'Gagal menghapus Organisasi Mahasiswa');
 
