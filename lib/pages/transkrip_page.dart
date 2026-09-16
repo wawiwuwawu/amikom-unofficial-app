@@ -28,11 +28,8 @@ const List<String> _gradeOrder = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'D', 'E
 ///   4. daftar mata kuliah — satu AppListGroup, trailing [AppGradeBadge];
 ///   5. distribusi nilai — hitungan per huruf mutu dari data yang sama.
 ///
-/// Tombol kembali disediakan otomatis oleh [AppScaffold] mengikuti route,
-/// sehingga `onBack` hanya dipertahankan untuk kompatibilitas pemanggil lama.
 class TranskripPage extends StatefulWidget {
-  final VoidCallback? onBack;
-  const TranskripPage({super.key, this.onBack});
+  const TranskripPage({super.key});
 
   @override
   State<TranskripPage> createState() => _TranskripPageState();

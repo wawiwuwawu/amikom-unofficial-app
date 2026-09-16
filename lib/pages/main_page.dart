@@ -90,7 +90,7 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _openNotifikasi() async {
     await _openPage(
-      NotifikasiListPage(onBack: () => Navigator.pop(context)),
+      NotifikasiListPage(),
     );
     _checkUnreadNotif();
   }
@@ -516,7 +516,7 @@ class _MainPageState extends State<MainPage> {
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: () => _openPage(
-                AbsensiPage(onBack: () => Navigator.pop(context)),
+                AbsensiPage(),
               ),
               child: const SizedBox(
                 width: 46,

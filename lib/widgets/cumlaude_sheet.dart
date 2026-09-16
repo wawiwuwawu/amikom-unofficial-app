@@ -233,7 +233,7 @@ class CumlaudeSheet extends StatelessWidget {
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) =>
-                                          SpPage(onBack: () => Navigator.pop(context)),
+                                          SpPage(),
                                     ),
                                   );
                                 },

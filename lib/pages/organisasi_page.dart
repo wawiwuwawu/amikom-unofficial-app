@@ -10,9 +10,8 @@ import '../widgets/app_kit.dart';
 import '../widgets/organisasi_form_sheet.dart';
 
 class OrganisasiPage extends StatefulWidget {
-  final VoidCallback onBack;
 
-  const OrganisasiPage({super.key, required this.onBack});
+  const OrganisasiPage({super.key});
 
   @override
   State<OrganisasiPage> createState() => _OrganisasiPageState();

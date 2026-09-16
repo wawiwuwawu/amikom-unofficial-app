@@ -13,7 +13,7 @@ import '../widgets/rekognisi_form_sheet.dart';
 ///
 /// Redesign memakai design system:
 ///   * kerangka halaman memakai [AppScaffold] — tombol kembali disediakan
-///     otomatis mengikuti route, `onBack` dipertahankan untuk pemanggil lama;
+///     otomatis mengikuti route;
 ///   * daftar rekognisi disajikan sebagai baris [AppListRow] bertumpuk dalam
 ///     satu [AppListGroup] (bukan satu kartu per item), status verifikasi jadi
 ///     [AppPill], detail kontribusi/tautan/catatan memakai [AppKeyValue], dan
@@ -22,9 +22,8 @@ import '../widgets/rekognisi_form_sheet.dart';
 ///     dan [AppEmptyState].
 /// Semua panggilan service, state, dan navigasi tidak berubah.
 class RekognisiPage extends StatefulWidget {
-  final VoidCallback? onBack;
 
-  const RekognisiPage({super.key, this.onBack});
+  const RekognisiPage({super.key});
 
   @override
   State<RekognisiPage> createState() => _RekognisiPageState();

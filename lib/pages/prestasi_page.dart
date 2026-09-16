@@ -10,9 +10,8 @@ import '../widgets/app_kit.dart';
 import '../widgets/prestasi_form_sheet.dart';
 
 class PrestasiPage extends StatefulWidget {
-  final VoidCallback onBack;
 
-  const PrestasiPage({super.key, required this.onBack});
+  const PrestasiPage({super.key});
 
   @override
   State<PrestasiPage> createState() => _PrestasiPageState();

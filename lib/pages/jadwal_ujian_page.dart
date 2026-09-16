@@ -11,8 +11,7 @@ import '../widgets/app_kit.dart';
 /// tanggal (info depan) · mata kuliah · jam · ruang · nomor kursi,
 /// dengan aksi "Ingatkan di Kalender" per baris dan tombol cetak kartu ujian.
 class JadwalUjianPage extends StatefulWidget {
-  final VoidCallback? onBack;
-  const JadwalUjianPage({super.key, this.onBack});
+  const JadwalUjianPage({super.key});
 
   @override
   State<JadwalUjianPage> createState() => _JadwalUjianPageState();

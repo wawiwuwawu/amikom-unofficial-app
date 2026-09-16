@@ -16,11 +16,8 @@ import 'absensi_detail_page.dart';
 ///   3. filter tahun akademik / semester / matakuliah;
 ///   4. ringkasan kehadiran (AppStatTile) + riwayat pertemuan (daftar).
 ///
-/// Tombol kembali disediakan otomatis oleh [AppScaffold] mengikuti route,
-/// sehingga `onBack` hanya dipertahankan untuk kompatibilitas pemanggil lama.
 class AbsensiPage extends StatefulWidget {
-  final VoidCallback? onBack;
-  const AbsensiPage({super.key, this.onBack});
+  const AbsensiPage({super.key});
 
   @override
   State<AbsensiPage> createState() => _AbsensiPageState();

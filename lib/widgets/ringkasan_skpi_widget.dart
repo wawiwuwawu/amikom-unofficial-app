@@ -138,7 +138,7 @@ class RingkasanSkpiWidget extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => SertifikasiPage(onBack: () => Navigator.pop(context)),
+                        builder: (_) => SertifikasiPage(),
                       ),
                     );
                   },
@@ -163,7 +163,7 @@ class RingkasanSkpiWidget extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => PrestasiPage(onBack: () => Navigator.pop(context)),
+                        builder: (_) => PrestasiPage(),
                       ),
                     );
                   },

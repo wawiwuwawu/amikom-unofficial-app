@@ -19,12 +19,9 @@ import '../widgets/app_kit.dart';
 ///   * syarat/keluhan BAA dipecah jadi [AppSurface] peringatan + baris kontak.
 /// Semua panggilan service, state, dan navigasi tidak berubah.
 ///
-/// Tombol kembali disediakan otomatis oleh [AppScaffold] mengikuti route,
-/// sehingga `onBack` hanya dipertahankan untuk kompatibilitas pemanggil lama.
 class SkmkPage extends StatefulWidget {
-  final VoidCallback? onBack;
 
-  const SkmkPage({super.key, this.onBack});
+  const SkmkPage({super.key});
 
   @override
   State<SkmkPage> createState() => _SkmkPageState();

@@ -20,11 +20,8 @@ import '../widgets/app_kit.dart';
 ///      dalam satu grup ([AppListGroup] + [AppListRow]), bukan satu kartu per
 ///      mata kuliah.
 ///
-/// Tombol kembali disediakan otomatis oleh [AppScaffold] mengikuti route,
-/// sehingga `onBack` hanya dipertahankan untuk kompatibilitas pemanggil lama.
 class AsistenPage extends StatefulWidget {
-  final VoidCallback? onBack;
-  const AsistenPage({super.key, this.onBack});
+  const AsistenPage({super.key});
 
   @override
   State<AsistenPage> createState() => _AsistenPageState();

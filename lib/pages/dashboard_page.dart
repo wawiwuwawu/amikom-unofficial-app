@@ -168,7 +168,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _buildTagihanAlert() {
     return AppSurface(
       variant: AppSurfaceVariant.warning,
-      onTap: () => _push(KeuanganPage(onBack: () => Navigator.pop(context))),
+      onTap: () => _push(KeuanganPage()),
       child: Row(
         children: [
           const Icon(
@@ -323,7 +323,7 @@ class _DashboardPageState extends State<DashboardPage> {
             width: double.infinity,
             child: FilledButton.icon(
               onPressed: () =>
-                  _push(AbsensiPage(onBack: () => Navigator.pop(context))),
+                  _push(AbsensiPage()),
               icon: const Icon(CupertinoIcons.qrcode_viewfinder, size: 18),
               label: const Text('Presensi Sekarang'),
             ),
@@ -495,7 +495,7 @@ class _DashboardPageState extends State<DashboardPage> {
             width: double.infinity,
             child: FilledButton.icon(
               onPressed: () =>
-                  _push(SpPage(onBack: () => Navigator.pop(context))),
+                  _push(SpPage()),
               icon: const Icon(CupertinoIcons.arrow_right_circle_fill, size: 18),
               label: const Text('Lihat Rekomendasi'),
             ),

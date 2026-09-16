@@ -13,12 +13,8 @@ import '../widgets/app_kit.dart';
 /// `AppListGroup` komponen, nilai akhir ditandai `AppGradeBadge`, dan ringkasan
 /// semester di atas memakai `AppStatTile`.
 class NilaiRincianPage extends StatefulWidget {
-  final VoidCallback? onBack;
 
-  const NilaiRincianPage({
-    super.key,
-    this.onBack,
-  });
+  const NilaiRincianPage({super.key});
 
   @override
   State<NilaiRincianPage> createState() => _NilaiRincianPageState();

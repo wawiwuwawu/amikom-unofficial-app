@@ -10,8 +10,7 @@ import '../widgets/app_kit.dart';
 import 'panduan_pembayaran_page.dart';
 
 class KeuanganPage extends StatefulWidget {
-  final VoidCallback? onBack;
-  const KeuanganPage({super.key, this.onBack});
+  const KeuanganPage({super.key});
 
   @override
   State<KeuanganPage> createState() => _KeuanganPageState();

@@ -167,7 +167,7 @@ class _ProgressKelulusanCardState extends State<ProgressKelulusanCard> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => SpPage(onBack: () => Navigator.pop(context)),
+                              builder: (_) => SpPage(),
                             ),
                           );
                         },

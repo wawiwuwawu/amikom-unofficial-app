@@ -13,12 +13,9 @@ import '../widgets/app_kit.dart';
 /// disajikan sebagai daftar [AppListGroup] + [AppListRow] agar mudah dipindai;
 /// kartu ([AppSurface]) hanya untuk banner periode, ringkasan, dan catatan.
 ///
-/// Tombol kembali disediakan otomatis oleh [AppScaffold] mengikuti route,
-/// sehingga `onBack` hanya dipertahankan untuk kompatibilitas pemanggil lama.
 class SpPage extends StatefulWidget {
-  final VoidCallback? onBack;
 
-  const SpPage({super.key, this.onBack});
+  const SpPage({super.key});
 
   @override
   State<SpPage> createState() => _SpPageState();

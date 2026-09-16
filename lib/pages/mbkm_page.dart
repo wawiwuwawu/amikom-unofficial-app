@@ -9,8 +9,7 @@ import 'mbkm_bimbingan_page.dart';
 /// MBKM internal kampus — ringkasan program + kelengkapan dokumen disajikan
 /// sebagai daftar bergaris (AppListGroup/AppListRow), bukan kartu per item.
 class MbkmPage extends StatefulWidget {
-  final VoidCallback? onBack;
-  const MbkmPage({super.key, this.onBack});
+  const MbkmPage({super.key});
 
   @override
   State<MbkmPage> createState() => _MbkmPageState();
