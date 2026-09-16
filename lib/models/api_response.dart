@@ -69,6 +69,6 @@ class MutationResult {
         'message': message,
         'data': data,
         if (errors != null) 'errors': errors,
-        if (rawRoot != null) ...rawRoot!,
+        ...?rawRoot,
       };
 }
