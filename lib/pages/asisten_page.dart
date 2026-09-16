@@ -1,14 +1,27 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/asisten.dart';
 import '../services/asisten_service.dart';
 import '../services/api_client.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
+/// Asisten Praktikum — identitas asisten, rekap kehadiran, status Bebas KP,
+/// grafik kinerja, dan jadwal mengajar.
+///
+/// Susunan tampilan (dari atas ke bawah), supaya terbaca sekali gulir:
+///   1. identitas (kartu sorotan);
+///   2. ringkasan kehadiran sebagai [AppStatTile] — angka, bukan kartu;
+///   3. status Bebas KP (banner + progres + aksi);
+///   4. grafik kinerja per semester;
+///   5. jadwal mengajar: pemilih tahun akademik → pemilih hari → daftar kelas
+///      dalam satu grup ([AppListGroup] + [AppListRow]), bukan satu kartu per
+///      mata kuliah.
+///
+/// Tombol kembali disediakan otomatis oleh [AppScaffold] mengikuti route,
+/// sehingga `onBack` hanya dipertahankan untuk kompatibilitas pemanggil lama.
 class AsistenPage extends StatefulWidget {
   final VoidCallback? onBack;
   const AsistenPage({super.key, this.onBack});
@@ -34,6 +47,14 @@ class _AsistenPageState extends State<AsistenPage> {
   String? _errorJadwal;
   String? _selectedHari;
   String _fotoUrl = '';
+
+  /// Warna seri grafik — diambil dari token semantik, bukan warna Material mentah.
+  static const List<Color> _chartColors = [
+    AppColors.primary,
+    AppColors.info,
+    AppColors.warning,
+    AppColors.success,
+  ];
 
   @override
   void initState() {
@@ -136,7 +157,7 @@ class _AsistenPageState extends State<AsistenPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Pengajuan Bebas KP berhasil dikirim!'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
         _loadAllData(); // Refresh data
@@ -148,6 +169,7 @@ class _AsistenPageState extends State<AsistenPage> {
             content: Text(
               'Gagal mengajukan: ${e.toString().replaceFirst('Exception: ', '')}',
             ),
+            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -156,375 +178,257 @@ class _AsistenPageState extends State<AsistenPage> {
 
   @override
   Widget build(BuildContext context) {
-    final canPop = Navigator.canPop(context);
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFAFCFF), // Pearl White
-            Color(0xFFE3F2FD), // Ice Blue
-          ],
-        ),
-      ),
-      child: Scaffold(
-        extendBodyBehindAppBar: true,
-        backgroundColor: const Color(0xFFFAFCFF),
-        appBar: AppBar(
-          leading: (widget.onBack != null || canPop)
-              ? IconButton(
-                  icon: const Icon(
-                    CupertinoIcons.back,
-                    color: Color(0xFF501F66),
-                  ),
-                  onPressed: widget.onBack ?? () => Navigator.pop(context),
-                )
-              : null,
-          title: const Text(
-            'Asisten Praktikum',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: Colors.white.withValues(alpha: 0.5),
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          flexibleSpace: ClipRRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(color: Colors.transparent),
-            ),
-          ),
-        ),
-        body: SafeArea(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null
-              ? _buildErrorState()
-              : _buildContent(),
-        ),
-      ),
+    return AppScaffold(
+      title: 'Asisten Praktikum',
+      subtitle: 'Rekap kehadiran & jadwal mengajar',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      body: _buildBody(),
     );
   }
 
-  Widget _buildErrorState() {
-    bool isNotAsisten =
-        _error!.toLowerCase().contains('bukan asisten') ||
-        _error!.toLowerCase().contains('not found');
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            isNotAsisten
-                ? CupertinoIcons.person_crop_circle_badge_xmark
-                : CupertinoIcons.exclamationmark_triangle,
-            size: 64,
-            color: isNotAsisten ? Colors.grey : Colors.redAccent,
-          ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
-          const SizedBox(height: 16),
-          Text(
-            isNotAsisten ? 'Kamu bukan asisten praktikum.' : _error!,
-            style: TextStyle(
-              color: isNotAsisten ? Colors.grey.shade700 : Colors.redAccent,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          if (!isNotAsisten)
-            ElevatedButton(
-              onPressed: _loadAllData,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF501F66),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Coba Lagi'),
-            ),
-        ],
-      ),
-    );
-  }
+  Widget _buildBody() {
+    if (_loading) return const AppLoading(message: 'Memuat data asisten…');
 
-  Widget _buildContent() {
+    final error = _error;
+    if (error != null) return _buildErrorState(error);
+
     return RefreshIndicator(
       onRefresh: _loadAllData,
+      color: AppColors.primary,
       child: ListView(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: MediaQuery.of(context).padding.bottom + 100,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          MediaQuery.of(context).padding.bottom + 100,
         ),
         children: [
           _buildProfileCard(),
-          const SizedBox(height: 20),
-          _buildStatsRow(),
-          const SizedBox(height: 24),
+          _buildStatsSection(),
           _buildBebasKpSection(),
-          const SizedBox(height: 24),
-          if (_laporan != null && _laporan!.labels.isNotEmpty) ...[
-            const Text(
-              'Grafik Kinerja',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF501F66),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildModernChart(),
-            const SizedBox(height: 24),
-          ],
-          const Text(
-            'Jadwal Asisten',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF501F66),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildJadwalSection(),
+          if (_laporan != null && _laporan!.labels.isNotEmpty)
+            AppSection(title: 'Grafik Kinerja', child: _buildModernChart()),
+          AppSection(title: 'Jadwal Asisten', child: _buildJadwalSection()),
         ],
       ),
     );
   }
+
+  Widget _buildErrorState(String error) {
+    final isNotAsisten =
+        error.toLowerCase().contains('bukan asisten') ||
+        error.toLowerCase().contains('not found');
+
+    if (isNotAsisten) {
+      return const AppEmptyState(
+        title: 'Kamu bukan asisten praktikum.',
+        message: 'Menu ini hanya bisa dibuka oleh mahasiswa '
+            'yang terdaftar sebagai asisten praktikum.',
+        icon: CupertinoIcons.person_crop_circle_badge_xmark,
+      );
+    }
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: AppSpacing.page,
+        child: AppErrorState(message: error, onRetry: _loadAllData),
+      ),
+    );
+  }
+
+  // ── Identitas asisten ──────────────────────────────────────────────────────
 
   Widget _buildProfileCard() {
     final mhs = _info!.mahasiswa;
 
-    return GlassCard(
+    return AppSurface(
+      variant: AppSurfaceVariant.hero,
+      radius: AppRadius.lg,
       child: Row(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadius.sm),
             child: _fotoUrl.isNotEmpty
                 ? Image.network(
                     _fotoUrl,
                     width: 60,
                     height: 80,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      width: 60,
-                      height: 80,
-                      color: const Color(0xFF501F66).withValues(alpha: 0.1),
-                      child: const Icon(
-                        CupertinoIcons.person_alt,
-                        size: 40,
-                        color: Color(0xFF501F66),
-                      ),
-                    ),
+                    errorBuilder: (context, error, stackTrace) =>
+                        _fotoPlaceholder(),
                   )
-                : Container(
-                    width: 60,
-                    height: 80,
-                    color: const Color(0xFF501F66).withValues(alpha: 0.1),
-                    child: const Icon(
-                      CupertinoIcons.person_alt,
-                      size: 40,
-                      color: Color(0xFF501F66),
-                    ),
-                  ),
+                : _fotoPlaceholder(),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.lg),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  mhs.nama,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.black87,
-                  ),
-                ),
-                Text(
-                  '${mhs.npm} • ${mhs.namaDept}',
-                  style: const TextStyle(color: Colors.black54, fontSize: 13),
-                ),
+                Text(mhs.nama, style: AppText.h2),
+                const SizedBox(height: AppSpacing.xs),
+                Text('${mhs.npm} • ${mhs.namaDept}', style: AppText.bodySm),
               ],
             ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0);
-  }
-
-  Widget _buildStatsRow() {
-    final s = _info!.stats;
-    return Row(
-          children: [
-            Expanded(
-              child: _buildStatItem('Hadir', s.hadir.toString(), Colors.green),
-            ),
-            Expanded(
-              child: _buildStatItem('Izin', s.izin.toString(), Colors.orange),
-            ),
-            Expanded(
-              child: _buildStatItem(
-                'Ganti',
-                s.pengganti.toString(),
-                Colors.blue,
-              ),
-            ),
-            Expanded(
-              child: _buildStatItem('Alpa', s.alpa.toString(), Colors.red),
-            ),
-          ],
-        )
-        .animate()
-        .fadeIn(delay: 100.ms, duration: 400.ms)
-        .slideY(begin: 0.1, end: 0);
-  }
-
-  Widget _buildStatItem(String label, String value, Color color) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
           ),
         ],
       ),
     );
   }
 
+  Widget _fotoPlaceholder() {
+    return Container(
+      width: 60,
+      height: 80,
+      alignment: Alignment.center,
+      decoration: AppDeco.card(radius: AppRadius.sm),
+      child: const Icon(
+        CupertinoIcons.person_alt,
+        size: 36,
+        color: AppColors.primary,
+      ),
+    );
+  }
+
+  // ── Ringkasan kehadiran (angka, bukan kartu per item) ──────────────────────
+
+  Widget _buildStatsSection() {
+    final s = _info!.stats;
+
+    return AppSection(
+      title: 'Ringkasan Kehadiran',
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: AppStatTile(
+              value: s.hadir.toString(),
+              label: 'Hadir',
+              icon: Icons.check_circle_outline,
+              accent: AppColors.success,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: AppStatTile(
+              value: s.izin.toString(),
+              label: 'Izin',
+              icon: Icons.event_busy_outlined,
+              accent: AppColors.warning,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: AppStatTile(
+              value: s.pengganti.toString(),
+              label: 'Ganti',
+              icon: Icons.swap_horiz,
+              accent: AppColors.info,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: AppStatTile(
+              value: s.alpa.toString(),
+              label: 'Alpa',
+              icon: Icons.cancel_outlined,
+              accent: AppColors.danger,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Status Bebas KP (banner + progres + aksi) ──────────────────────────────
+
   Widget _buildBebasKpSection() {
     final s = _info!.stats;
     final int totalKehadiran = s.hadir + s.pengganti;
     final int targetKehadiran = 200; // Minimal 200 kali mengajar
 
-    double progress = (totalKehadiran / targetKehadiran).clamp(0.0, 1.0);
-    bool isEligible = _info!.bisaAjukanBebasKP;
+    final double progress = (totalKehadiran / targetKehadiran).clamp(0.0, 1.0);
+    final bool isEligible = _info!.bisaAjukanBebasKP;
+    final Color progressColor = isEligible
+        ? AppColors.success
+        : AppColors.primary;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [const Color(0xFF501F66), const Color(0xFF8B4FA8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return AppSection(
+      title: 'Status Bebas KP',
+      child: AppSurface(
+        variant: AppSurfaceVariant.hero,
+        radius: AppRadius.lg,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Untuk mengajukan Bebas KP, asisten harus mencapai target minimum kehadiran dan rata-rata evaluasi.',
+              style: AppText.bodySm,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Kehadiran', style: AppText.label),
+                Text(
+                  '$totalKehadiran / $targetKehadiran',
+                  style: AppText.h3.copyWith(color: progressColor),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 8,
+                backgroundColor: AppColors.border,
+                color: progressColor,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: isEligible ? _submitBebasKp : null,
+                child: Text(
+                  isEligible ? 'Ajukan Bebas KP' : 'Syarat Belum Terpenuhi',
+                ),
+              ),
+            ),
+          ],
         ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF501F66).withValues(alpha: 0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Status Bebas KP',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Untuk mengajukan Bebas KP, asisten harus mencapai target minimum kehadiran dan rata-rata evaluasi.',
-            style: TextStyle(color: Colors.white70, fontSize: 13),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Kehadiran', style: const TextStyle(color: Colors.white)),
-              Text(
-                '$totalKehadiran / $targetKehadiran',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.white.withValues(alpha: 0.2),
-              color: Colors.greenAccent,
-              minHeight: 8,
-            ),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: isEligible ? _submitBebasKp : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: const Color(0xFF501F66),
-                disabledBackgroundColor: Colors.white.withValues(alpha: 0.5),
-                disabledForegroundColor: const Color(
-                  0xFF501F66,
-                ).withValues(alpha: 0.5),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(
-                isEligible ? 'Ajukan Bebas KP' : 'Syarat Belum Terpenuhi',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(delay: 200.ms, duration: 400.ms).slideY(begin: 0.1, end: 0);
+    );
+  }
+
+  // ── Grafik kinerja ─────────────────────────────────────────────────────────
+
+  Widget _buildModernChart() {
+    return Column(
+      children: [
+        _buildLineChart(),
+        const SizedBox(height: AppSpacing.lg),
+        _buildChartLegend(),
+      ],
+    );
   }
 
   Widget _buildLineChart() {
-    if (_laporan == null || _laporan!.datasets.isEmpty) return const SizedBox();
+    if (_laporan == null || _laporan!.datasets.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     List<LineChartBarData> lines = [];
     double maxY = 0;
 
-    final brightColors = [
-      Colors.blueAccent,
-      Colors.pinkAccent,
-      Colors.orangeAccent,
-      Colors.greenAccent,
-    ];
     int datasetIndex = 0;
 
     for (var dataset in _laporan!.datasets) {
       if (dataset.type != 'line') continue;
 
-      Color color = brightColors[datasetIndex % brightColors.length];
+      Color color = _chartColors[datasetIndex % _chartColors.length];
       datasetIndex++;
       List<FlSpot> spots = [];
 
@@ -545,7 +449,7 @@ class _AsistenPageState extends State<AsistenPage> {
             getDotPainter: (spot, percent, barData, index) {
               return FlDotCirclePainter(
                 radius: 4,
-                color: Colors.white,
+                color: AppColors.surface,
                 strokeWidth: 2,
                 strokeColor: color,
               );
@@ -570,232 +474,209 @@ class _AsistenPageState extends State<AsistenPage> {
     maxY = maxY > 0 ? maxY + 10 : 100;
     if (maxY > 100) maxY = 100; // Cap at 100 if it's a percentage
 
-    return Container(
-      height: 300,
-      padding: const EdgeInsets.only(right: 16, left: 0, top: 24, bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
+    return AppSurface(
+      radius: AppRadius.lg,
+      padding: const EdgeInsets.only(
+        right: AppSpacing.lg,
+        top: AppSpacing.xl,
+        bottom: AppSpacing.md,
       ),
-      child: LineChart(
-        LineChartData(
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: 25,
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: Colors.grey.withValues(alpha: 0.2),
-              strokeWidth: 1,
+      child: SizedBox(
+        height: 300,
+        child: LineChart(
+          LineChartData(
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              horizontalInterval: 25,
+              getDrawingHorizontalLine: (value) =>
+                  const FlLine(color: AppColors.border, strokeWidth: 1),
             ),
-          ),
-          titlesData: FlTitlesData(
-            show: true,
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 30,
-                interval: 1,
-                getTitlesWidget: (value, meta) {
-                  int idx = value.toInt();
-                  if (idx >= 0 && idx < _laporan!.labels.length) {
-                    // Extract only the part before the dash or short version to fit
-                    String label = _laporan!.labels[idx];
-                    if (label.contains('-')) {
-                      // e.g. "2024/2025 - Ganjil" -> "24/25 Gjl"
-                      var parts = label.split('-');
-                      var thn = parts[0].trim().replaceAll('20', '');
-                      var smt = parts[1].trim().substring(0, 3);
-                      label = '$thn $smt';
-                    }
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        label,
-                        style: const TextStyle(
-                          color: Colors.black54,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+            titlesData: FlTitlesData(
+              show: true,
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 30,
+                  interval: 1,
+                  getTitlesWidget: (value, meta) {
+                    int idx = value.toInt();
+                    if (idx >= 0 && idx < _laporan!.labels.length) {
+                      // Extract only the part before the dash or short version to fit
+                      String label = _laporan!.labels[idx];
+                      if (label.contains('-')) {
+                        // e.g. "2024/2025 - Ganjil" -> "24/25 Gjl"
+                        var parts = label.split('-');
+                        var thn = parts[0].trim().replaceAll('20', '');
+                        var smt = parts[1].trim().substring(0, 3);
+                        label = '$thn $smt';
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          label,
+                          style: AppText.label.copyWith(
+                            fontSize: 10,
+                            color: AppColors.textMuted,
+                          ),
                         ),
+                      );
+                    }
+                    return const Text('');
+                  },
+                ),
+              ),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  interval: 25,
+                  reservedSize: 36,
+                  getTitlesWidget: (value, meta) {
+                    return Text(
+                      value.toInt().toString(),
+                      style: AppText.label.copyWith(
+                        fontSize: 10,
+                        color: AppColors.textMuted,
                       ),
+                      textAlign: TextAlign.right,
                     );
-                  }
-                  return const Text('');
-                },
+                  },
+                ),
               ),
             ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                interval: 25,
-                reservedSize: 36,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    value.toInt().toString(),
-                    style: const TextStyle(color: Colors.black54, fontSize: 10),
-                    textAlign: TextAlign.right,
-                  );
+            borderData: FlBorderData(show: false),
+            minX: 0,
+            maxX: (_laporan!.labels.length - 1).toDouble(),
+            minY: 0,
+            maxY: maxY,
+            lineBarsData: lines,
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipItems: (touchedSpots) {
+                  return touchedSpots.map((LineBarSpot touchedSpot) {
+                    final textStyle = AppText.label.copyWith(
+                      color: touchedSpot.bar.color,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    );
+                    return LineTooltipItem('${touchedSpot.y}', textStyle);
+                  }).toList();
                 },
               ),
-            ),
-          ),
-          borderData: FlBorderData(show: false),
-          minX: 0,
-          maxX: (_laporan!.labels.length - 1).toDouble(),
-          minY: 0,
-          maxY: maxY,
-          lineBarsData: lines,
-          lineTouchData: LineTouchData(
-            touchTooltipData: LineTouchTooltipData(
-              // getTooltipColor was changed to getTooltipColor in newer fl_chart versions, using the correct parameter for current version
-              getTooltipItems: (touchedSpots) {
-                return touchedSpots.map((LineBarSpot touchedSpot) {
-                  final textStyle = TextStyle(
-                    color: touchedSpot.bar.color,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  );
-                  return LineTooltipItem('${touchedSpot.y}', textStyle);
-                }).toList();
-              },
             ),
           ),
         ),
       ),
-    ).animate().fadeIn(delay: 300.ms, duration: 400.ms).slideY(begin: 0.1, end: 0);
-  }
-
-  Widget _buildModernChart() {
-    return Column(
-      children: [
-        _buildLineChart(),
-        const SizedBox(height: 16),
-        _buildChartLegend(),
-      ],
     );
   }
 
   Widget _buildChartLegend() {
-    if (_laporan == null || _laporan!.datasets.isEmpty) return const SizedBox();
+    if (_laporan == null || _laporan!.datasets.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-    final brightColors = [
-      Colors.blueAccent,
-      Colors.pinkAccent,
-      Colors.orangeAccent,
-      Colors.greenAccent,
-    ];
     int datasetIndex = 0;
 
     return Wrap(
-      spacing: 16,
-      runSpacing: 8,
+      spacing: AppSpacing.lg,
+      runSpacing: AppSpacing.sm,
       alignment: WrapAlignment.center,
       children: _laporan!.datasets.where((d) => d.type == 'line').map((d) {
-        final color = brightColors[datasetIndex % brightColors.length];
+        final color = _chartColors[datasetIndex % _chartColors.length];
         datasetIndex++;
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
             ),
             const SizedBox(width: 6),
             Text(
               d.label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.black87,
+              style: AppText.bodySm.copyWith(
                 fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
               ),
             ),
           ],
         );
       }).toList(),
-    ).animate().fadeIn(delay: 500.ms);
+    );
   }
+
+  // ── Jadwal mengajar ────────────────────────────────────────────────────────
 
   Widget _buildJadwalSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (_tahunAkademikList.isNotEmpty)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<AsistenTahunAkademik>(
-                isExpanded: true,
-                value: _selectedTahun,
-                icon: const Icon(CupertinoIcons.chevron_down, size: 16),
-                items: _tahunAkademikList.map((t) {
-                  return DropdownMenuItem(
-                    value: t,
-                    child: Text(
-                      '${t.thnAkademik} - ${t.semester == 1
-                          ? 'Ganjil'
-                          : t.semester == 2
-                          ? 'Genap'
-                          : 'Pendek'}',
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null && val != _selectedTahun) {
-                    setState(() => _selectedTahun = val);
-                    _loadJadwal();
-                  }
-                },
-              ),
-            ),
-          ).animate().fadeIn(delay: 400.ms, duration: 400.ms),
-
-        const SizedBox(height: 16),
-
+        if (_tahunAkademikList.isNotEmpty) _buildTahunDropdown(),
+        const SizedBox(height: AppSpacing.lg),
         if (_loadingJadwal)
-          const Padding(
-            padding: EdgeInsets.all(20),
-            child: Center(
-              child: CircularProgressIndicator(color: Color(0xFF501F66)),
-            ),
-          )
+          const AppLoading(message: 'Memuat jadwal…')
         else if (_errorJadwal != null)
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Text(
-              _errorJadwal!,
-              style: const TextStyle(color: Colors.red),
-            ),
-          )
+          AppErrorState(message: _errorJadwal!, onRetry: _loadJadwal)
         else if (_jadwalList.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(20),
-            child: Text(
-              'Tidak ada jadwal untuk periode ini',
-              style: TextStyle(color: Colors.black54),
-            ),
+          const AppEmptyState(
+            title: 'Tidak ada jadwal untuk periode ini',
+            icon: CupertinoIcons.calendar,
           )
         else
           ..._buildGroupedJadwal(),
       ],
+    );
+  }
+
+  /// Pemilih tahun akademik — memakai tema input global (AppDeco + AppText),
+  /// bukan warna/border yang ditulis ulang di halaman.
+  Widget _buildTahunDropdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: AppDeco.card(),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<AsistenTahunAkademik>(
+          isExpanded: true,
+          value: _selectedTahun,
+          icon: const Icon(
+            CupertinoIcons.chevron_down,
+            size: 16,
+            color: AppColors.textMuted,
+          ),
+          items: _tahunAkademikList.map((t) {
+            return DropdownMenuItem(
+              value: t,
+              child: Text(
+                '${t.thnAkademik} - ${t.semester == 1
+                    ? 'Ganjil'
+                    : t.semester == 2
+                    ? 'Genap'
+                    : 'Pendek'}',
+                style: AppText.body,
+              ),
+            );
+          }).toList(),
+          onChanged: (val) {
+            if (val != null && val != _selectedTahun) {
+              setState(() => _selectedTahun = val);
+              _loadJadwal();
+            }
+          },
+        ),
+      ),
     );
   }
 
@@ -842,6 +723,8 @@ class _AsistenPageState extends State<AsistenPage> {
     }
   }
 
+  /// Pemilih hari (pil) + daftar kelas hari terpilih dalam SATU grup baris,
+  /// supaya jadwal bisa dipindai tanpa menggulir kartu demi kartu.
   List<Widget> _buildGroupedJadwal() {
     final grouped = <String, List<AsistenJadwal>>{};
     for (var j in _jadwalList) {
@@ -852,196 +735,103 @@ class _AsistenPageState extends State<AsistenPage> {
       ..sort((a, b) => _getHariWeight(a).compareTo(_getHariWeight(b)));
 
     if (sortedKeys.isEmpty) return [];
+
     if (_selectedHari == null || !sortedKeys.contains(_selectedHari)) {
       _selectedHari = sortedKeys.first;
     }
 
-    List<Widget> widgets = [];
+    final items = grouped[_selectedHari] ?? [];
 
-    widgets.add(
+    return [
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-          children: sortedKeys.map((hari) {
-            final isSelected = hari == _selectedHari;
-            return GestureDetector(
-              onTap: () => setState(() => _selectedHari = hari),
-              child: AnimatedContainer(
-                duration: 300.ms,
-                margin: const EdgeInsets.only(right: 8, bottom: 16),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF501F66) : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected
-                        ? const Color(0xFF501F66)
-                        : Colors.grey.withValues(alpha: 0.3),
-                  ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: const Color(
-                              0xFF501F66,
-                            ).withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ]
-                      : [],
-                ),
-                child: Text(
-                  hari,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.black54,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
+          children: [
+            for (final hari in sortedKeys) ...[
+              _hariChip(hari),
+              const SizedBox(width: AppSpacing.sm),
+            ],
+          ],
         ),
-      ).animate().fadeIn(delay: 400.ms),
+      ),
+      const SizedBox(height: AppSpacing.md),
+      AppListGroup.from([
+        for (final item in items) _jadwalRow(item),
+      ]),
+    ];
+  }
+
+  Widget _hariChip(String hari) {
+    final isSelected = hari == _selectedHari;
+    return ChoiceChip(
+      label: Text(hari),
+      selected: isSelected,
+      showCheckmark: false,
+      backgroundColor: AppColors.surface,
+      selectedColor: AppColors.primary,
+      side: isSelected
+          ? BorderSide.none
+          : const BorderSide(color: AppColors.border),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      labelStyle: AppText.label.copyWith(
+        fontSize: 12,
+        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+        color: isSelected ? Colors.white : AppColors.textSecondary,
+      ),
+      onSelected: (val) {
+        if (val) setState(() => _selectedHari = hari);
+      },
     );
+  }
 
-    int delayIdx = 0;
-    final items = grouped[_selectedHari] ?? [];
+  Widget _jadwalRow(AsistenJadwal item) {
+    final keterangan = <String>[
+      if (item.kode.isNotEmpty) item.kode,
+      if (item.ruang.isNotEmpty) item.ruang,
+      if (item.dosen.isNotEmpty) item.dosen,
+    ].join(' • ');
 
-    for (var item in items) {
-      widgets.add(
-        Card(
-              color: Colors.white,
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF501F66,
-                            ).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            item.kode,
-                            style: const TextStyle(
-                              color: Color(0xFF501F66),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '${item.sks} SKS',
-                            style: const TextStyle(
-                              color: Colors.blue,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      item.mkl,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(
-                          CupertinoIcons.clock,
-                          size: 14,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          item.jam,
-                          style: const TextStyle(
-                            color: Colors.black54,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const Spacer(),
-                        const Icon(
-                          CupertinoIcons.location,
-                          size: 14,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          item.ruang,
-                          style: const TextStyle(
-                            color: Colors.black54,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    const Divider(height: 1, color: Colors.black12),
-                    const SizedBox(height: 4),
-                    TextButton.icon(
-                      onPressed: () => _addToGoogleCalendar(item),
-                      icon: const Icon(
-                        CupertinoIcons.calendar_badge_plus,
-                        size: 16,
-                        color: Color(0xFF501F66),
-                      ),
-                      label: const Text(
-                        'Add to Google Calendar',
-                        style: TextStyle(
-                          color: Color(0xFF501F66),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(0, 30),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        alignment: Alignment.centerLeft,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-            .animate()
-            .fadeIn(delay: (400 + (delayIdx * 50)).ms)
-            .slideY(begin: 0.1, end: 0),
-      );
-      delayIdx++;
-    }
-    return widgets;
+    return AppListRow(
+      // Jam jadi info depan: yang pertama dicari saat melihat jadwal mengajar.
+      leading: Container(
+        width: 64,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.xs,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+        child: Text(
+          item.jam.isEmpty ? '-' : item.jam,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: AppText.label.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      title: item.mkl.isEmpty ? '-' : item.mkl,
+      subtitle: keterangan.isEmpty ? null : keterangan,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppPill('${item.sks} SKS', tone: AppPillTone.info),
+          IconButton(
+            tooltip: 'Add to Google Calendar',
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(
+              CupertinoIcons.calendar_badge_plus,
+              size: 18,
+              color: AppColors.primary,
+            ),
+            onPressed: () => _addToGoogleCalendar(item),
+          ),
+        ],
+      ),
+    );
   }
 }

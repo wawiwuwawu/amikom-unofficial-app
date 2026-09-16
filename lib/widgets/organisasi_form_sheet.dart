@@ -4,6 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'skpi_file_picker.dart';
 import '../models/organisasi.dart';
 import '../services/organisasi_service.dart';
+import '../theme/app_theme.dart';
+import 'app_kit.dart';
 
 class OrganisasiFormSheet extends StatefulWidget {
   final VoidCallback onSuccess;
@@ -158,182 +160,167 @@ class _OrganisasiFormSheetState extends State<OrganisasiFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFFFAFCFF),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: _loadingOptions
-              ? const SizedBox(
-                  height: 200,
-                  child: Center(child: CircularProgressIndicator(color: Color(0xFF501F66))),
-                )
-              : _error != null
-                  ? SizedBox(
-                      height: 200,
-                      child: Center(child: Text(_error!, style: const TextStyle(color: Colors.red))),
-                    )
-                  : Form(
-                      key: _formKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            _isEditing ? 'Edit Organisasi / Kepanitiaan' : 'Tambah Organisasi / Kepanitiaan',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF501F66),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 24),
-                          
-                          // Dropdown Organisasi
-                          DropdownButtonFormField<String>(
-                            decoration: const InputDecoration(
-                              labelText: 'Organisasi',
-                              border: OutlineInputBorder(),
-                            ),
-                            isExpanded: true,
-                            initialValue: _selectedOrganisasi,
-                            items: _options?.organisasi.map((opt) {
-                              return DropdownMenuItem(
-                                value: opt.value,
-                                child: Text(opt.label),
-                              );
-                            }).toList() ?? [],
-                            onChanged: (val) {
-                              setState(() {
-                                _selectedOrganisasi = val;
-                                if (val?.toLowerCase() != 'kepanitiaan') {
-                                  _kegiatanController.clear();
-                                }
-                              });
-                            },
-                            validator: (val) => val == null ? 'Wajib dipilih' : null,
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Field Kepanitiaan (Conditional)
-                          if (_selectedOrganisasi?.toLowerCase() == 'kepanitiaan') ...[
-                            TextFormField(
-                              controller: _kegiatanController,
-                              decoration: const InputDecoration(
-                                labelText: 'Nama Kegiatan Kepanitiaan',
-                                border: OutlineInputBorder(),
-                              ),
-                              validator: (val) => (val == null || val.isEmpty) ? 'Wajib diisi' : null,
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-
-                          // Dropdown Jabatan
-                          DropdownButtonFormField<String>(
-                            decoration: const InputDecoration(
-                              labelText: 'Jabatan',
-                              border: OutlineInputBorder(),
-                            ),
-                            isExpanded: true,
-                            initialValue: _selectedJabatan,
-                            items: _options?.jabatan.map((opt) {
-                              return DropdownMenuItem(
-                                value: opt.value,
-                                child: Text(opt.label),
-                              );
-                            }).toList() ?? [],
-                            onChanged: (val) {
-                              setState(() {
-                                _selectedJabatan = val;
-                                if (val?.toLowerCase() != 'lainnya') {
-                                  _jabatanLainnyaController.clear();
-                                }
-                              });
-                            },
-                            validator: (val) => val == null ? 'Wajib dipilih' : null,
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Field Jabatan Lainnya (Conditional)
-                          if (_selectedJabatan?.toLowerCase() == 'lainnya') ...[
-                            TextFormField(
-                              controller: _jabatanLainnyaController,
-                              decoration: const InputDecoration(
-                                labelText: 'Masukkan Jabatan Lainnya',
-                                border: OutlineInputBorder(),
-                              ),
-                              validator: (val) => (val == null || val.isEmpty) ? 'Wajib diisi' : null,
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-
-                          // Dropdown Tahun
-                          DropdownButtonFormField<int>(
-                            decoration: const InputDecoration(
-                              labelText: 'Tahun',
-                              border: OutlineInputBorder(),
-                            ),
-                            initialValue: _selectedTahun,
-                            items: _getTahunList().map((thn) {
-                              return DropdownMenuItem(
-                                value: thn,
-                                child: Text(thn.toString()),
-                              );
-                            }).toList(),
-                            onChanged: (val) => setState(() => _selectedTahun = val),
-                            validator: (val) => val == null ? 'Wajib dipilih' : null,
-                          ),
-                          const SizedBox(height: 16),
-
-                          SkpiFilePicker(
-                            selectedFile: _selectedFile,
-                            label: _isEditing
-                                ? 'Dokumen Pengesahan (Opsional jika tidak diganti)'
-                                : 'Dokumen Pengesahan (PDF)*',
-                            allowedExtensions: const ['pdf'],
-                            onFileSelected: (file) => setState(() => _selectedFile = file),
-                          ),
-                          if (_isEditing && _selectedFile == null && widget.itemToEdit!.file.isNotEmpty) ...[
-                            const SizedBox(height: 6),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: _loadingOptions
+                ? const SizedBox(
+                    height: 200,
+                    child: AppLoading(message: 'Memuat pilihan…'),
+                  )
+                : _error != null
+                    ? SizedBox(
+                        height: 200,
+                        child: Center(
+                          child: AppErrorState(message: _error!, onRetry: _loadOptions),
+                        ),
+                      )
+                    : Form(
+                        key: _formKey,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
                             Text(
-                              'File saat ini: ${widget.itemToEdit!.file}',
-                              style: const TextStyle(fontSize: 12, color: Colors.black54),
+                              _isEditing ? 'Edit Organisasi / Kepanitiaan' : 'Tambah Organisasi / Kepanitiaan',
+                              style: AppText.h2,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: AppSpacing.xl),
+
+                            // Dropdown Organisasi
+                            DropdownButtonFormField<String>(
+                              decoration: const InputDecoration(
+                                labelText: 'Organisasi',
+                              ),
+                              isExpanded: true,
+                              initialValue: _selectedOrganisasi,
+                              items: _options?.organisasi.map((opt) {
+                                return DropdownMenuItem(
+                                  value: opt.value,
+                                  child: Text(opt.label),
+                                );
+                              }).toList() ?? [],
+                              onChanged: (val) {
+                                setState(() {
+                                  _selectedOrganisasi = val;
+                                  if (val?.toLowerCase() != 'kepanitiaan') {
+                                    _kegiatanController.clear();
+                                  }
+                                });
+                              },
+                              validator: (val) => val == null ? 'Wajib dipilih' : null,
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+
+                            // Field Kepanitiaan (Conditional)
+                            if (_selectedOrganisasi?.toLowerCase() == 'kepanitiaan') ...[
+                              TextFormField(
+                                controller: _kegiatanController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Nama Kegiatan Kepanitiaan',
+                                ),
+                                validator: (val) => (val == null || val.isEmpty) ? 'Wajib diisi' : null,
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
+                            ],
+
+                            // Dropdown Jabatan
+                            DropdownButtonFormField<String>(
+                              decoration: const InputDecoration(
+                                labelText: 'Jabatan',
+                              ),
+                              isExpanded: true,
+                              initialValue: _selectedJabatan,
+                              items: _options?.jabatan.map((opt) {
+                                return DropdownMenuItem(
+                                  value: opt.value,
+                                  child: Text(opt.label),
+                                );
+                              }).toList() ?? [],
+                              onChanged: (val) {
+                                setState(() {
+                                  _selectedJabatan = val;
+                                  if (val?.toLowerCase() != 'lainnya') {
+                                    _jabatanLainnyaController.clear();
+                                  }
+                                });
+                              },
+                              validator: (val) => val == null ? 'Wajib dipilih' : null,
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+
+                            // Field Jabatan Lainnya (Conditional)
+                            if (_selectedJabatan?.toLowerCase() == 'lainnya') ...[
+                              TextFormField(
+                                controller: _jabatanLainnyaController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Masukkan Jabatan Lainnya',
+                                ),
+                                validator: (val) => (val == null || val.isEmpty) ? 'Wajib diisi' : null,
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
+                            ],
+
+                            // Dropdown Tahun
+                            DropdownButtonFormField<int>(
+                              decoration: const InputDecoration(
+                                labelText: 'Tahun',
+                              ),
+                              initialValue: _selectedTahun,
+                              items: _getTahunList().map((thn) {
+                                return DropdownMenuItem(
+                                  value: thn,
+                                  child: Text(thn.toString()),
+                                );
+                              }).toList(),
+                              onChanged: (val) => setState(() => _selectedTahun = val),
+                              validator: (val) => val == null ? 'Wajib dipilih' : null,
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+
+                            SkpiFilePicker(
+                              selectedFile: _selectedFile,
+                              label: _isEditing
+                                  ? 'Dokumen Pengesahan (Opsional jika tidak diganti)'
+                                  : 'Dokumen Pengesahan (PDF)*',
+                              allowedExtensions: const ['pdf'],
+                              onFileSelected: (file) => setState(() => _selectedFile = file),
+                            ),
+                            if (_isEditing && _selectedFile == null && widget.itemToEdit!.file.isNotEmpty) ...[
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                'File saat ini: ${widget.itemToEdit!.file}',
+                                style: AppText.bodySm,
+                              ),
+                            ],
+                            const SizedBox(height: AppSpacing.xxl),
+
+                            // Submit Button
+                            FilledButton(
+                              onPressed: _isSubmitting ? null : _submit,
+                              child: _isSubmitting
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : Text(_isEditing ? 'Simpan Perubahan' : 'Upload Dokumen'),
                             ),
                           ],
-                          const SizedBox(height: 32),
-
-                          // Submit Button
-                          ElevatedButton(
-                            onPressed: _isSubmitting ? null : _submit,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF501F66),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: _isSubmitting
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                  )
-                                : Text(
-                                    _isEditing ? 'Simpan Perubahan' : 'Upload Dokumen',
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
+          ),
         ),
       ),
     );

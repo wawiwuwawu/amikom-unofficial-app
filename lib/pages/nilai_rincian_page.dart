@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+
 import '../models/nilai_rincian.dart';
 import '../services/nilai_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
+/// Rincian Nilai — isinya data yang dibaca & dibandingkan (komponen penilaian
+/// per mata kuliah), jadi disajikan sebagai DAFTAR, bukan tumpukan kartu:
+/// satu `AppSection` per mata kuliah, satu `AppSurface` ringkas berisi
+/// `AppListGroup` komponen, nilai akhir ditandai `AppGradeBadge`, dan ringkasan
+/// semester di atas memakai `AppStatTile`.
 class NilaiRincianPage extends StatefulWidget {
   final VoidCallback? onBack;
 
@@ -139,35 +146,80 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
     }
   }
 
-  Color _getGradeColor(String grade) {
-    final clean = grade.trim().toUpperCase();
-    if (clean.startsWith('A')) return const Color(0xFF2E7D32); // Emerald Green
-    if (clean.startsWith('B')) return const Color(0xFF1565C0); // Sapphire Blue
-    if (clean.startsWith('C')) return const Color(0xFFE65100); // Amber Orange
-    if (clean.startsWith('D') || clean.startsWith('E')) {
-      return const Color(0xFFC62828); // Crimson Red
+  // ── Ringkasan & turunan data (tanpa mengubah model/service) ──────────────
+
+  List<KelompokNilaiItem> get _kelompokList =>
+      _rincian?.kelompok ?? const <KelompokNilaiItem>[];
+
+  int get _totalMatkul {
+    var total = 0;
+    for (final kelompok in _kelompokList) {
+      total += kelompok.matkul.length;
     }
-    return const Color(0xFF501F66); // Amikom Deep Purple
+    return total;
   }
+
+  int get _totalKomponen {
+    var total = 0;
+    for (final kelompok in _kelompokList) {
+      for (final matkul in kelompok.matkul) {
+        total += _komponenList(matkul, kelompok.kolom).length;
+      }
+    }
+    return total;
+  }
+
+  String get _rerataNilaiAkhir {
+    final nilai = <double>[];
+    for (final kelompok in _kelompokList) {
+      for (final matkul in kelompok.matkul) {
+        final parsed =
+            double.tryParse(matkul.nilaiAkhir.trim().replaceAll(',', '.'));
+        if (parsed != null) nilai.add(parsed);
+      }
+    }
+    if (nilai.isEmpty) return '—';
+    final total = nilai.fold<double>(0.0, (a, b) => a + b);
+    return (total / nilai.length).toStringAsFixed(2);
+  }
+
+  /// Daftar komponen penilaian yang tampil untuk satu mata kuliah.
+  List<MapEntry<String, dynamic>> _komponenList(
+    MatkulNilaiItem matkul,
+    List<String> kolomList,
+  ) {
+    final komponen = <MapEntry<String, dynamic>>[];
+    if (kolomList.isNotEmpty) {
+      for (final col in kolomList) {
+        final val = matkul.nilai[col] ?? matkul.nilai[col.toLowerCase()] ?? '-';
+        komponen.add(MapEntry(col, val));
+      }
+    } else if (matkul.nilai.isNotEmpty) {
+      matkul.nilai.forEach((k, v) {
+        komponen.add(MapEntry(k, v));
+      });
+    }
+    return komponen;
+  }
+
+  String _gradeLabel(String grade) => grade.isNotEmpty ? grade : '-';
+
+  // ── Lembar pedoman rentang nilai ─────────────────────────────────────────
 
   void _showRentangNilaiSheet(BuildContext context) {
     final rentangList = _rincian?.rentangNilai ?? [];
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFFFAFCFF),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
-            24,
-            16,
-            24,
-            MediaQuery.of(ctx).padding.bottom + 24,
+            AppSpacing.xl,
+            AppSpacing.lg,
+            AppSpacing.xl,
+            MediaQuery.of(ctx).padding.bottom + AppSpacing.xl,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -176,140 +228,41 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
               Center(
                 child: Container(
                   width: 44,
-                  height: 5,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(10),
+                    color: AppColors.borderStrong,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: AppSpacing.lg),
               Row(
-                children: const [
-                  Icon(
+                children: [
+                  const Icon(
                     CupertinoIcons.chart_bar_square_fill,
-                    color: Color(0xFF501F66),
-                    size: 24,
+                    color: AppColors.primary,
+                    size: 22,
                   ),
-                  SizedBox(width: 10),
-                  Text(
-                    'Pedoman Rentang Nilai',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF501F66),
-                    ),
-                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Text('Pedoman Rentang Nilai', style: AppText.h2),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.lg),
               if (rentangList.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Center(
-                    child: Text(
-                      'Informasi rentang nilai belum tersedia.',
-                      style: TextStyle(color: Colors.black54),
-                    ),
-                  ),
+                AppEmptyState(
+                  title: 'Rentang nilai belum tersedia',
+                  message: 'Informasi rentang nilai belum diumumkan.',
+                  icon: CupertinoIcons.chart_bar_square_fill,
                 )
               else
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade200),
-                      borderRadius: BorderRadius.circular(16),
+                AppListGroup.from([
+                  for (final r in rentangList)
+                    AppListRow(
+                      leading: AppGradeBadge(grade: _gradeLabel(r.huruf), size: 30),
+                      title: r.rentang,
+                      subtitle: r.bobot.isNotEmpty ? 'Bobot ${r.bobot}' : null,
                     ),
-                    child: Table(
-                      columnWidths: const {
-                        0: FlexColumnWidth(2),
-                        1: FlexColumnWidth(1.2),
-                        2: FlexColumnWidth(1.2),
-                      },
-                      children: [
-                        TableRow(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF501F66).withValues(alpha: 0.08),
-                          ),
-                          children: const [
-                            Padding(
-                              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                              child: Text(
-                                'Rentang Skor',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
-                            ),
-                            Padding(
-                              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                              child: Center(
-                                child: Text(
-                                  'Huruf',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                ),
-                              ),
-                            ),
-                            Padding(
-                              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                              child: Center(
-                                child: Text(
-                                  'Bobot',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        ...rentangList.map((r) {
-                          final color = _getGradeColor(r.huruf);
-                          return TableRow(
-                            decoration: BoxDecoration(
-                              border: Border(top: BorderSide(color: Colors.grey.shade200)),
-                            ),
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                                child: Text(
-                                  r.rentang,
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                                child: Center(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: color.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      r.huruf,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: color,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                                child: Center(
-                                  child: Text(
-                                    r.bobot,
-                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                ),
+                ]),
             ],
           ),
         );
@@ -317,64 +270,29 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
     );
   }
 
+  // ── Kerangka halaman ─────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text(
-          'Rincian Nilai',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF501F66),
-          ),
+    return AppScaffold(
+      title: 'Rincian Nilai',
+      subtitle: 'Komponen penilaian tiap mata kuliah',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      actions: [
+        IconButton(
+          icon: const Icon(CupertinoIcons.info_circle_fill),
+          tooltip: 'Pedoman Rentang Nilai',
+          onPressed: () => _showRentangNilaiSheet(context),
         ),
-        backgroundColor: Colors.white.withValues(alpha: 0.85),
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(
-            CupertinoIcons.back,
-            color: Color(0xFF501F66),
-          ),
-          onPressed: widget.onBack ?? () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(
-              CupertinoIcons.info_circle_fill,
-              color: Color(0xFF501F66),
-            ),
-            tooltip: 'Pedoman Rentang Nilai',
-            onPressed: () => _showRentangNilaiSheet(context),
-          ),
-        ],
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFAFCFF), // Pearl White
-              Color(0xFFE3F2FD), // Ice Blue
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: _buildMainContent(),
-        ),
-      ),
+      ],
+      body: _buildMainContent(),
     );
   }
 
   Widget _buildMainContent() {
     if (_loadingOptions) {
-      return Center(
-        child: const CircularProgressIndicator(
-          color: Color(0xFF501F66),
-        ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
-      );
+      return const AppLoading(message: 'Memuat rincian nilai…');
     }
 
     // WAJIB menerapkan bottom padding: MediaQuery.of(context).padding.bottom + 130
@@ -382,117 +300,74 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
 
     return RefreshIndicator(
       onRefresh: _fetchRincian,
-      color: const Color(0xFF501F66),
+      color: AppColors.primary,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-        padding: EdgeInsets.fromLTRB(16, 12, 16, bottomNavPadding),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.md,
+          AppSpacing.lg,
+          bottomNavPadding,
+        ),
         children: [
-          _buildFilterCard().animate().slideY(begin: -0.1),
-          const SizedBox(height: 14),
-          if (_rincian != null && _rincian!.rentangNilai.isNotEmpty) ...[
-            _buildExpandableRentangCard(),
-            const SizedBox(height: 14),
-          ],
-          if (_loadingRincian) ...[
-            const SizedBox(height: 60),
-            Center(
-              child: const CircularProgressIndicator(
-                color: Color(0xFF501F66),
-              ).animate().scale(),
-            ),
-          ] else if (_error != null) ...[
-            _buildErrorState(),
-          ] else if (_rincian != null) ...[
-            _buildRincianList(_rincian!),
-          ] else ...[
-            _buildEmptyState('Pilih tahun akademik dan semester untuk melihat rincian nilai.'),
-          ],
+          _buildFilterSection().animate().fadeIn(duration: 220.ms),
+          if (_rincian != null) ..._buildRingkasanSections(),
+          _buildRincianBody(),
         ],
       ),
     );
   }
 
-  Widget _buildFilterCard() {
-    return GlassCard(
-      padding: const EdgeInsets.all(14),
-      borderRadius: 20,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              Icon(
-                CupertinoIcons.slider_horizontal_3,
-                size: 18,
-                color: Color(0xFF501F66),
-              ),
-              SizedBox(width: 8),
-              Text(
-                'Filter Semester',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: Color(0xFF501F66),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: _buildDropdown(
-                  value: _selectedThn,
-                  items: _tahunList,
-                  hint: 'Tahun Akademik',
-                  onChanged: (v) {
-                    setState(() => _selectedThn = v);
-                  },
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
-                child: _buildDropdown(
-                  value: _selectedSmt,
-                  items: _semesterList,
-                  hint: 'Semester',
-                  onChanged: (v) {
-                    setState(() => _selectedSmt = v);
-                  },
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF501F66), Color(0xFF7B2CBF)],
+  // ── Filter semester ──────────────────────────────────────────────────────
+
+  Widget _buildFilterSection() {
+    return AppSection(
+      title: 'Filter Semester',
+      topGap: AppSpacing.sm,
+      child: AppSurface(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: _buildDropdown(
+                    value: _selectedThn,
+                    items: _tahunList,
+                    hint: 'Tahun Akademik',
+                    onChanged: (v) {
+                      setState(() => _selectedThn = v);
+                    },
                   ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF501F66).withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
                 ),
-                child: IconButton(
-                  onPressed: (_selectedThn != null || _selectedSmt != null)
-                      ? _fetchRincian
-                      : null,
-                  icon: const Icon(
-                    CupertinoIcons.search,
-                    color: Colors.white,
-                    size: 20,
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  flex: 2,
+                  child: _buildDropdown(
+                    value: _selectedSmt,
+                    items: _semesterList,
+                    hint: 'Semester',
+                    onChanged: (v) {
+                      setState(() => _selectedSmt = v);
+                    },
                   ),
-                  tooltip: 'Tampilkan Nilai',
                 ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: (_selectedThn != null || _selectedSmt != null)
+                    ? _fetchRincian
+                    : null,
+                icon: const Icon(CupertinoIcons.search, size: 18),
+                label: const Text('Tampilkan Nilai'),
               ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -506,24 +381,20 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
     final effectiveValue = items.any((e) => e.value == value) ? value : null;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.75),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade300, width: 0.8),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      decoration: AppDeco.card(radius: AppRadius.sm),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: effectiveValue,
           hint: Text(
             hint,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            style: AppText.bodySm,
             overflow: TextOverflow.ellipsis,
           ),
           isExpanded: true,
           icon: const Icon(
             CupertinoIcons.chevron_down,
-            color: Color(0xFF501F66),
+            color: AppColors.primary,
             size: 14,
           ),
           items: items.map((e) {
@@ -531,10 +402,9 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
               value: e.value,
               child: Text(
                 e.label,
-                style: const TextStyle(
-                  fontSize: 12,
+                style: AppText.bodySm.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  color: AppColors.textPrimary,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -546,103 +416,94 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
     );
   }
 
-  Widget _buildExpandableRentangCard() {
-    final rentangList = _rincian?.rentangNilai ?? [];
+  // ── Ringkasan semester (stat tiles) ──────────────────────────────────────
 
-    return GlassCard(
-      borderRadius: 18,
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        children: [
-          InkWell(
-            onTap: () {
-              setState(() => _isRentangExpanded = !_isRentangExpanded);
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-              child: Row(
-                children: [
-                  const Icon(
-                    CupertinoIcons.chart_pie_fill,
-                    size: 18,
-                    color: Color(0xFF501F66),
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Informasi Rentang Nilai (A, B, C, D, E)',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF501F66),
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    _isRentangExpanded
-                        ? CupertinoIcons.chevron_up
-                        : CupertinoIcons.chevron_down,
-                    size: 16,
-                    color: const Color(0xFF501F66),
-                  ),
-                ],
+  List<Widget> _buildRingkasanSections() {
+    final rincian = _rincian;
+    if (rincian == null) return const [];
+
+    return [
+      AppSection(
+        title: 'Ringkasan Semester',
+        child: Row(
+          children: [
+            Expanded(
+              child: AppStatTile(
+                value: '$_totalMatkul',
+                label: 'Mata kuliah',
+                icon: CupertinoIcons.book_fill,
               ),
             ),
-          ),
-          if (_isRentangExpanded) ...[
-            const Divider(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: rentangList.map((r) {
-                final color = _getGradeColor(r.huruf);
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: color.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        r.huruf,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: color,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '(${r.rentang})',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade800,
-                        ),
-                      ),
-                      if (r.bobot.isNotEmpty) ...[
-                        const SizedBox(width: 4),
-                        Text(
-                          '• ${r.bobot}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                );
-              }).toList(),
-            ).animate().fadeIn(duration: 250.ms),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: AppStatTile(
+                value: '$_totalKomponen',
+                label: 'Komponen',
+                icon: CupertinoIcons.chart_bar_alt_fill,
+                accent: AppColors.info,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: AppStatTile(
+                value: _rerataNilaiAkhir,
+                label: 'Rerata NA',
+                icon: CupertinoIcons.chart_bar_square_fill,
+                accent: AppColors.success,
+              ),
+            ),
           ],
-        ],
+        ),
       ),
+      if (rincian.rentangNilai.isNotEmpty) _buildRentangSection(rincian),
+    ];
+  }
+
+  Widget _buildRentangSection(RincianNilaiResponse rincian) {
+    return AppSection(
+      title: 'Pedoman Rentang Nilai',
+      trailing: TextButton.icon(
+        onPressed: () {
+          setState(() => _isRentangExpanded = !_isRentangExpanded);
+        },
+        icon: Icon(
+          _isRentangExpanded ? CupertinoIcons.chevron_up : CupertinoIcons.chevron_down,
+          size: 16,
+        ),
+        label: Text(_isRentangExpanded ? 'Tutup' : 'Lihat'),
+      ),
+      child: _isRentangExpanded
+          ? AppListGroup.from([
+              for (final r in rincian.rentangNilai)
+                AppListRow(
+                  leading: AppGradeBadge(grade: _gradeLabel(r.huruf), size: 30),
+                  title: r.rentang,
+                  subtitle: r.bobot.isNotEmpty ? 'Bobot ${r.bobot}' : null,
+                ),
+            ])
+          : const SizedBox.shrink(),
     );
+  }
+
+  // ── Daftar rincian per mata kuliah ───────────────────────────────────────
+
+  Widget _buildRincianBody() {
+    if (_loadingRincian) {
+      return const AppLoading(message: 'Memuat rincian nilai…');
+    }
+    if (_error != null) {
+      return AppErrorState(
+        message: _error!,
+        onRetry: _fetchRincian,
+      );
+    }
+    final rincian = _rincian;
+    if (rincian == null) {
+      return _buildEmptyState(
+        'Pilih tahun akademik dan semester untuk melihat rincian nilai.',
+      );
+    }
+    return _buildRincianList(rincian);
   }
 
   Widget _buildRincianList(RincianNilaiResponse rincian) {
@@ -661,240 +522,75 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
   Widget _buildKelompokSection(KelompokNilaiItem kelompok) {
     final isReguler = kelompok.jenis.toLowerCase() == 'reguler';
     final sectionTitle = isReguler ? 'Mata Kuliah Reguler' : 'Mata Kuliah MBKM';
-    final sectionIcon = isReguler
-        ? CupertinoIcons.book_fill
-        : CupertinoIcons.star_circle_fill;
-    final sectionColor = isReguler
-        ? const Color(0xFF501F66)
-        : const Color(0xFFE65100);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, top: 8, bottom: 8),
-          child: Row(
-            children: [
-              Icon(sectionIcon, size: 18, color: sectionColor),
-              const SizedBox(width: 8),
-              Text(
-                sectionTitle,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: sectionColor,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: sectionColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '${kelompok.matkul.length} Matkul',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: sectionColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (kelompok.matkul.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Center(
+    return AppSection(
+      title: sectionTitle,
+      trailing: AppPill(
+        '${kelompok.matkul.length} matkul',
+        tone: isReguler ? AppPillTone.neutral : AppPillTone.warning,
+      ),
+      child: kelompok.matkul.isEmpty
+          ? AppSurface(
               child: Text(
                 'Tidak ada mata kuliah pada kategori ini.',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                style: AppText.bodySm,
               ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final matkul in kelompok.matkul)
+                  _buildMatkulBlock(matkul, kelompok.kolom),
+              ],
             ),
-          )
-        else
-          ...kelompok.matkul.map((matkul) {
-            return _buildMatkulCard(matkul, kelompok.kolom);
-          }),
-        const SizedBox(height: 12),
-      ],
     );
   }
 
-  Widget _buildMatkulCard(MatkulNilaiItem matkul, List<String> kolomList) {
-    final gradeColor = _getGradeColor(matkul.nilaiHuruf);
+  Widget _buildMatkulBlock(MatkulNilaiItem matkul, List<String> kolomList) {
+    final komponen = _komponenList(matkul, kolomList);
 
-    // Dapatkan daftar komponen nilai yang valid
-    final dynamicColumns = <MapEntry<String, dynamic>>[];
-    if (kolomList.isNotEmpty) {
-      for (final col in kolomList) {
-        final val = matkul.nilai[col] ?? matkul.nilai[col.toLowerCase()] ?? '-';
-        dynamicColumns.add(MapEntry(col, val));
-      }
-    } else if (matkul.nilai.isNotEmpty) {
-      matkul.nilai.forEach((k, v) {
-        dynamicColumns.add(MapEntry(k, v));
-      });
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: GlassCard(
-        borderRadius: 20,
-        padding: const EdgeInsets.all(16),
+    return AppSection(
+      title: matkul.nama.isNotEmpty ? matkul.nama : 'Tanpa Nama Mata Kuliah',
+      topGap: AppSpacing.lg,
+      trailing: AppGradeBadge(grade: _gradeLabel(matkul.nilaiHuruf)),
+      child: AppSurface(
+        padding: EdgeInsets.zero,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Baris Header: Kode & Nama + Badge Nilai Huruf & Akhir
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (matkul.kode.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          margin: const EdgeInsets.only(bottom: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF501F66).withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            matkul.kode,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF501F66),
-                            ),
-                          ),
-                        ),
-                      Text(
-                        matkul.nama.isNotEmpty ? matkul.nama : 'Tanpa Nama Mata Kuliah',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ],
+            Padding(
+              padding: AppSpacing.card,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (matkul.kode.isNotEmpty)
+                    AppKeyValue(label: 'Kode MK', value: matkul.kode),
+                  AppKeyValue(
+                    label: 'Nilai Akhir',
+                    value: matkul.nilaiAkhir.isNotEmpty ? matkul.nilaiAkhir : '—',
+                    emphasize: true,
                   ),
-                ),
-                const SizedBox(width: 12),
-                // Badge Nilai Akhir & Nilai Huruf
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        gradeColor.withValues(alpha: 0.9),
-                        gradeColor,
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: gradeColor.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        matkul.nilaiHuruf.isNotEmpty ? matkul.nilaiHuruf : '-',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
-                      ),
-                      if (matkul.nilaiAkhir.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          'NA: ${matkul.nilaiAkhir}',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            // Tabel / Kartu Komponen Penilaian Dinamis
-            if (dynamicColumns.isNotEmpty) ...[
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.75),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                padding: const EdgeInsets.all(10),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: dynamicColumns.map((entry) {
-                      return Container(
-                        constraints: const BoxConstraints(minWidth: 68),
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFAFCFF),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              entry.key,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade700,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              entry.value?.toString() ?? '-',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF501F66),
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
+                ],
               ),
-            ] else ...[
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
+            ),
+            if (komponen.isNotEmpty)
+              AppListGroup.from([
+                for (final entry in komponen)
+                  AppListRow(
+                    title: entry.key,
+                    trailing: Text(
+                      entry.value?.toString() ?? '-',
+                      style: AppText.h3,
+                    ),
+                  ),
+              ])
+            else ...[
+              const Divider(height: 1, thickness: 1, color: AppColors.border),
+              Padding(
+                padding: AppSpacing.card,
+                child: Text(
                   'Komponen rincian nilai belum diumumkan.',
-                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                  style: AppText.bodySm,
                 ),
               ),
             ],
@@ -904,68 +600,13 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
     );
   }
 
-  Widget _buildEmptyState(String message) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              CupertinoIcons.doc_text_search,
-              size: 64,
-              color: const Color(0xFF501F66).withValues(alpha: 0.3),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade700,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // ── Keadaan kosong ───────────────────────────────────────────────────────
 
-  Widget _buildErrorState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
-        child: Column(
-          children: [
-            const Icon(
-              CupertinoIcons.exclamationmark_triangle_fill,
-              size: 54,
-              color: Colors.redAccent,
-            ).animate().shake(),
-            const SizedBox(height: 14),
-            Text(
-              _error ?? 'Terjadi kesalahan saat memuat nilai',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14, color: Colors.black87),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: _fetchRincian,
-              icon: const Icon(CupertinoIcons.refresh, size: 18),
-              label: const Text('Coba Lagi'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF501F66),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              ),
-            ),
-          ],
-        ),
-      ),
+  Widget _buildEmptyState(String message) {
+    return AppEmptyState(
+      title: 'Belum ada rincian nilai',
+      message: message,
+      icon: CupertinoIcons.doc_text_search,
     );
   }
 }

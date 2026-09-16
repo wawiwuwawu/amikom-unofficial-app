@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+
 import '../models/pengumuman.dart';
 import '../services/pengumuman_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 import 'pengumuman_detail_page.dart';
 
+/// Daftar Pengumuman Akademik.
+///
+/// Pengumuman tidak punya gambar dan isinya berupa judul + tanggal, jadi
+/// disajikan sebagai DAFTAR (bukan kartu per item) — lebih ringkas dan lebih
+/// cepat dipindai mata dibanding satu kartu besar per pengumuman.
 class PengumumanListPage extends StatefulWidget {
   const PengumumanListPage({super.key});
 
@@ -42,87 +51,72 @@ class _PengumumanListPageState extends State<PengumumanListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Pengumuman Akademik')),
-      body: _buildBody(),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _load, child: const Text('Coba Lagi')),
-          ],
+    return AppScaffold(
+      title: 'Pengumuman Akademik',
+      subtitle: 'Informasi resmi dari bagian akademik',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      body: RefreshIndicator(
+        onRefresh: _load,
+        color: AppColors.primary,
+        child: AppAsyncView<List<PengumumanItem>>(
+          loading: _loading,
+          error: _error,
+          data: _list,
+          onRetry: _load,
+          loadingMessage: 'Memuat pengumuman…',
+          emptyTitle: 'Belum ada pengumuman',
+          emptyMessage: 'Pengumuman baru akan muncul di sini.',
+          emptyIcon: CupertinoIcons.speaker_2_fill,
+          isEmpty: (data) => data.isEmpty,
+          builder: (data) => ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.xxl,
+            ),
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              Text(
+                '${data.length} PENGUMUMAN',
+                style: AppText.overline,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              AppListGroup.from([
+                for (final item in data) _row(item),
+              ]),
+            ],
+          ),
         ),
-      );
-    }
-    if (_list.isEmpty) {
-      return const Center(child: Text('Tidak ada pengumuman'));
-    }
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(8),
-        itemCount: _list.length,
-        itemBuilder: (_, i) => _card(_list[i]),
       ),
     );
   }
 
-  Widget _card(PengumumanItem item) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: InkWell(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PengumumanDetailPage(id: item.id),
-          ),
+  Widget _row(PengumumanItem item) {
+    return AppListRow(
+      leading: Container(
+        width: 38,
+        height: 38,
+        alignment: Alignment.center,
+        decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+        child: const Icon(
+          CupertinoIcons.speaker_2_fill,
+          size: 19,
+          color: AppColors.primary,
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.indigo.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.campaign, color: Colors.indigo),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.judul,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 14),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(item.tanggal,
-                        style: const TextStyle(
-                            color: Colors.grey, fontSize: 12)),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
-            ],
-          ),
+      ),
+      title: item.judul,
+      subtitle: item.tanggal.isEmpty ? null : item.tanggal,
+      trailing: const Icon(
+        CupertinoIcons.chevron_forward,
+        size: 17,
+        color: AppColors.textMuted,
+      ),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PengumumanDetailPage(id: item.id),
         ),
       ),
     );

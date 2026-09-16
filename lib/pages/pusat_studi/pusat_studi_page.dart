@@ -1,10 +1,9 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../../models/pusat_studi.dart';
 import '../../services/pusat_studi_service.dart';
-import '../../widgets/glass_card.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/app_kit.dart';
 import 'pusat_studi_detail_page.dart';
 import 'pusat_studi_joined_page.dart';
 
@@ -45,7 +44,7 @@ class _PusatStudiPageState extends State<PusatStudiPage> {
 
       if (_activeTab == 'semua') {
         final all = await _service.getPusatStudiList();
-        
+
         // Gabungkan karena endpoint 'semua' mungkin mengecualikan yang sudah di-join
         final Map<String, PusatStudi> combinedMap = {};
         for (var ps in all) {
@@ -69,92 +68,59 @@ class _PusatStudiPageState extends State<PusatStudiPage> {
 
   @override
   Widget build(BuildContext context) {
+    return AppScaffold(
+      title: 'Pusat Studi',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.lg,
+              AppSpacing.xs,
+            ),
+            child: _buildToggle(),
+          ),
+          Expanded(child: _buildBody()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) return const AppLoading();
+
+    if (_error.isNotEmpty) {
+      return Padding(
+        padding: AppSpacing.page,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: AppErrorState(message: _error, onRetry: _loadData),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: _activeTab == 'semua' ? _buildListSemua() : _buildListJoined(),
+    );
+  }
+
+  /// Pengalih "Semua / Tergabung" — sebelumnya kartu kaca, kini segmen ringkas.
+  Widget _buildToggle() {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFAFCFF), // Pearl White
-            Color(0xFFE3F2FD), // Ice Blue
-          ],
-        ),
+      padding: const EdgeInsets.all(AppSpacing.xs),
+      decoration: AppDeco.listGroup(),
+      child: Row(
+        children: [
+          Expanded(child: _buildTabButton('Semua', 'semua')),
+          Expanded(child: _buildTabButton('Tergabung', 'tergabung')),
+        ],
       ),
-      child: Scaffold(
-        extendBodyBehindAppBar: true,
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: widget.onBack != null
-              ? IconButton(
-                  icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-                  onPressed: widget.onBack,
-                )
-              : null,
-          title: const Text(
-            'Pusat Studi',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: Colors.white.withValues(alpha: 0.5),
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          flexibleSpace: ClipRRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(color: Colors.transparent),
-            ),
-          ),
-        ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Toggle
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: GlassCard(
-                borderRadius: 25,
-                padding: const EdgeInsets.all(4),
-                child: Row(
-                  children: [
-                    Expanded(child: _buildTabButton('Semua', 'semua')),
-                    Expanded(child: _buildTabButton('Tergabung', 'tergabung')),
-                  ],
-                ),
-              ),
-            ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.1),
-            
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)))
-                  : _error.isNotEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(CupertinoIcons.exclamationmark_triangle, size: 50, color: Colors.red),
-                              const SizedBox(height: 16),
-                              Text(_error, style: const TextStyle(color: Colors.black54)),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: _loadData,
-                                child: const Text('Coba Lagi'),
-                              )
-                            ],
-                          ),
-                        )
-                      : RefreshIndicator(
-                          onRefresh: _loadData,
-                          color: const Color(0xFF501F66),
-                          child: _activeTab == 'semua' 
-                              ? _buildListSemua() 
-                              : _buildListJoined(),
-                        ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildTabButton(String title, String type) {
     final isSelected = _activeTab == type;
@@ -169,17 +135,16 @@ class _PusatStudiPageState extends State<PusatStudiPage> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF501F66) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
         ),
         child: Center(
           child: Text(
             title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isSelected ? Colors.white : Colors.black54,
+            style: AppText.button.copyWith(
+              color: isSelected ? Colors.white : AppColors.textSecondary,
             ),
           ),
         ),
@@ -187,79 +152,69 @@ class _PusatStudiPageState extends State<PusatStudiPage> {
     );
   }
 
+  EdgeInsetsGeometry _buildBodyPadding() {
+    return EdgeInsets.fromLTRB(
+      AppSpacing.lg,
+      AppSpacing.md,
+      AppSpacing.lg,
+      MediaQuery.of(context).padding.bottom + AppSpacing.xxl,
+    );
+  }
+
   Widget _buildListSemua() {
     if (_listSemua.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-          const Center(
-            child: Text('Tidak ada daftar pusat studi.', style: TextStyle(color: Colors.black54)),
+        children: const [
+          AppEmptyState(
+            title: 'Tidak ada daftar pusat studi.',
+            icon: CupertinoIcons.building_2_fill,
           ),
         ],
       );
     }
-    return ListView.builder(
-      padding: EdgeInsets.only(
-        left: 16, right: 16, top: 16,
-        bottom: MediaQuery.of(context).padding.bottom + 120,
-      ),
+    return ListView(
+      padding: _buildBodyPadding(),
       physics: const AlwaysScrollableScrollPhysics(),
-      itemCount: _listSemua.length,
-      itemBuilder: (context, index) {
-        final ps = _listSemua[index];
-        final isJoined = _joinedIds.contains(ps.id);
-        
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: GlassCard(
-            padding: const EdgeInsets.all(16),
-            borderRadius: 16,
-            opacity: 0.8,
-            child: InkWell(
-              onTap: () {
-                // Selalu buka Detail Page dari tab Semua, berikan parameter isJoined agar FAB di-hide
-                Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => PusatStudiDetailPage(pusatStudi: ps, isJoined: isJoined),
-                )).then((joined) {
-                  if (joined == true) _loadData(); // Refresh jika user barusan gabung
-                });
-              },
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isJoined ? Colors.green.withValues(alpha: 0.1) : const Color(0xFF501F66).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      isJoined ? CupertinoIcons.checkmark_seal_fill : CupertinoIcons.building_2_fill, 
-                      color: isJoined ? Colors.green.shade700 : const Color(0xFF501F66)
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          ps.nama,
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isJoined ? Colors.green.shade700 : const Color(0xFF501F66)),
-                        ),
-                        if (isJoined) ...[
-                          const SizedBox(height: 4),
-                          Text('Tergabung', style: TextStyle(fontSize: 12, color: Colors.green.shade700)),
-                        ]
-                      ],
-                    ),
-                  ),
-                  const Icon(CupertinoIcons.chevron_right, color: Colors.grey),
-                ],
-              ),
-            ),
-          ),
-        ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.1);
+      children: [
+        AppListGroup.from([
+          for (final ps in _listSemua) _buildSemuaRow(ps),
+        ]),
+      ],
+    );
+  }
+
+  /// Baris daftar (bukan kartu per item) — status tergabung jadi pil.
+  Widget _buildSemuaRow(PusatStudi ps) {
+    final isJoined = _joinedIds.contains(ps.id);
+    return AppListRow(
+      leading: Container(
+        width: AppSpacing.xxl + AppSpacing.sm,
+        height: AppSpacing.xxl + AppSpacing.sm,
+        alignment: Alignment.center,
+        decoration: isJoined
+            ? BoxDecoration(
+                color: AppColors.successBg,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              )
+            : AppDeco.softPrimary(radius: AppRadius.sm),
+        child: Icon(
+          isJoined ? CupertinoIcons.checkmark_seal_fill : CupertinoIcons.building_2_fill,
+          size: 20,
+          color: isJoined ? AppColors.success : AppColors.primary,
+        ),
+      ),
+      title: ps.nama,
+      trailing: isJoined
+          ? const AppPill('Tergabung', tone: AppPillTone.success)
+          : const Icon(CupertinoIcons.chevron_right, size: 18, color: AppColors.textMuted),
+      onTap: () {
+        // Selalu buka Detail Page dari tab Semua, berikan parameter isJoined agar FAB di-hide
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => PusatStudiDetailPage(pusatStudi: ps, isJoined: isJoined),
+        )).then((joined) {
+          if (joined == true) _loadData(); // Refresh jika user barusan gabung
+        });
       },
     );
   }
@@ -268,68 +223,52 @@ class _PusatStudiPageState extends State<PusatStudiPage> {
     if (_listJoined.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-          const Center(
-            child: Text('Anda belum tergabung di pusat studi manapun.', style: TextStyle(color: Colors.black54)),
+        children: const [
+          AppEmptyState(
+            title: 'Anda belum tergabung di pusat studi manapun.',
+            icon: CupertinoIcons.checkmark_seal,
           ),
         ],
       );
     }
-    return ListView.builder(
-      padding: EdgeInsets.only(
-        left: 16, right: 16, top: 16,
-        bottom: MediaQuery.of(context).padding.bottom + 120,
-      ),
+    return ListView(
+      padding: _buildBodyPadding(),
       physics: const AlwaysScrollableScrollPhysics(),
-      itemCount: _listJoined.length,
-      itemBuilder: (context, index) {
-        final ps = _listJoined[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: GlassCard(
-            padding: const EdgeInsets.all(16),
-            borderRadius: 16,
-            opacity: 0.8,
-            child: InkWell(
+      children: [
+        AppListGroup.from([
+          for (final ps in _listJoined)
+            AppListRow(
+              leading: Container(
+                width: AppSpacing.xxl + AppSpacing.sm,
+                height: AppSpacing.xxl + AppSpacing.sm,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.successBg,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: const Icon(
+                  CupertinoIcons.checkmark_seal_fill,
+                  size: 20,
+                  color: AppColors.success,
+                ),
+              ),
+              title: ps.nama,
+              subtitle: (ps.grupWa != null && ps.grupWa!.isNotEmpty)
+                  ? 'Grup WA tersedia'
+                  : null,
+              trailing: const Icon(
+                CupertinoIcons.chevron_right,
+                size: 18,
+                color: AppColors.textMuted,
+              ),
               onTap: () {
                 Navigator.push(context, MaterialPageRoute(
                   builder: (_) => PusatStudiJoinedPage(pusatStudi: ps),
                 ));
               },
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(CupertinoIcons.checkmark_seal_fill, color: Colors.green.shade700),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          ps.nama,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF501F66)),
-                        ),
-                        if (ps.grupWa != null && ps.grupWa!.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text('Grup WA tersedia', style: TextStyle(fontSize: 12, color: Colors.green.shade700)),
-                        ]
-                      ],
-                    ),
-                  ),
-                  const Icon(CupertinoIcons.chevron_right, color: Colors.grey),
-                ],
-              ),
             ),
-          ),
-        ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.1);
-      },
+        ]),
+      ],
     );
   }
 }

@@ -3,6 +3,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dio/dio.dart';
 import '../services/api_client.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -88,87 +90,80 @@ class _SplashPageState extends State<SplashPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
+      backgroundColor: AppColors.scaffold,
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          // Gradasi lembut dari primary brand — serasi dengan native splash.
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFFE3F2FD), // Ice Blue
-              Color(0xFFFAFCFF), // Pearl White
-              Color(0xFFBBDEFB), // Ice Blue Deep
+              AppColors.primary.withValues(alpha: 0.14),
+              AppColors.scaffold,
+              AppColors.primary.withValues(alpha: 0.06),
             ],
-            stops: [0.0, 0.5, 1.0],
+            stops: const [0.0, 0.45, 1.0],
           ),
         ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.3),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  CupertinoIcons.book_fill,
-                  size: 64,
-                  color: Color(0xFF501F66),
-                ),
-              ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
-              const SizedBox(height: 24),
-              const Text(
-                'Ini Amikom?',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF501F66),
-                  letterSpacing: -0.5,
-                ),
-              ).animate().fadeIn(delay: 300.ms),
-              const SizedBox(height: 8),
-              const Text(
-                'Unofficial App',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.black54,
-                  fontWeight: FontWeight.w500,
-                ),
-              ).animate().fadeIn(delay: 500.ms),
-              const SizedBox(height: 32),
-              if (_serverError != null)
-                Column(
-                  children: [
-                    Text(
-                      _serverError!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                      ),
+        child: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.xl),
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF501F66),
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: _checkSession,
-                      child: const Text('Coba Lagi'),
+                    child: const Icon(
+                      CupertinoIcons.book_fill,
+                      size: 52,
+                      color: Colors.white,
                     ),
-                  ],
-                ).animate().fadeIn()
-              else
-                const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Color(0xFF501F66),
-                  ),
-                ).animate().fadeIn(delay: 700.ms),
-            ],
+                  ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
+                  const SizedBox(height: AppSpacing.lg),
+                  Text(
+                    'Ini Amikom?',
+                    textAlign: TextAlign.center,
+                    style: AppText.display.copyWith(color: AppColors.primary),
+                  ).animate().fadeIn(delay: 300.ms),
+                  const SizedBox(height: AppSpacing.sm),
+                  const AppPill('Unofficial App').animate().fadeIn(delay: 500.ms),
+                  const SizedBox(height: AppSpacing.xxl),
+                  if (_serverError != null)
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 360),
+                      child: AppSurface(
+                        variant: AppSurfaceVariant.danger,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _serverError!,
+                              textAlign: TextAlign.center,
+                              style: AppText.body.copyWith(
+                                color: AppColors.danger,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            FilledButton.icon(
+                              onPressed: _checkSession,
+                              icon: const Icon(Icons.refresh, size: 18),
+                              label: const Text('Coba Lagi'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ).animate().fadeIn()
+                  else
+                    const AppLoading().animate().fadeIn(delay: 700.ms),
+                ],
+              ),
+            ),
           ),
         ),
       ),

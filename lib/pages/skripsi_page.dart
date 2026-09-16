@@ -1,14 +1,28 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../models/skripsi.dart';
 import '../services/skripsi_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
+/// Halaman Skripsi & Tugas Akhir.
+///
+/// Redesign memakai design system: tiap tahapan (proposal, bimbingan, ujian,
+/// plagiarisme) dipisah oleh [AppSection]; data tahapan disajikan sebagai baris
+/// [AppListRow] di dalam satu [AppListGroup] per tahap; status/aktivasi
+/// dipadatkan jadi [AppPill]; pasangan label-nilai memakai [AppKeyValue].
+/// Kartu ([AppSurface]) hanya untuk ringkasan tahap saat ini dan banner
+/// peringatan. Bagian yang belum relevan disembunyikan lewat kondisi yang sudah
+/// ada (mis. `canDownload`, `tglUjian`, `isDitolak`).
+///
+/// Tombol kembali disediakan otomatis oleh [AppScaffold] mengikuti route,
+/// sehingga `onBack` dipertahankan hanya untuk kompatibilitas pemanggil lama.
 class SkripsiPage extends StatefulWidget {
   final VoidCallback? onBack;
 
@@ -18,7 +32,8 @@ class SkripsiPage extends StatefulWidget {
   State<SkripsiPage> createState() => _SkripsiPageState();
 }
 
-class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStateMixin {
+class _SkripsiPageState extends State<SkripsiPage>
+    with SingleTickerProviderStateMixin {
   final SkripsiService _service = SkripsiService();
   late TabController _tabController;
 
@@ -187,42 +202,30 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFAFCFF),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(CupertinoIcons.arrow_left, color: Color(0xFF501F66)),
-          onPressed: () {
-            if (widget.onBack != null) {
-              widget.onBack!();
-            } else {
-              Navigator.pop(context);
-            }
-          },
+    return AppScaffold(
+      title: 'Skripsi & Tugas Akhir 🎓',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      actions: [
+        IconButton(
+          icon: const Icon(CupertinoIcons.gear_alt_fill),
+          tooltip: 'Pasca Ujian (Judul & Berkas)',
+          onPressed: _showPascaUjianMenu,
         ),
-        title: const Text(
-          'Skripsi & Tugas Akhir 🎓',
-          style: TextStyle(color: Color(0xFF501F66), fontWeight: FontWeight.bold, fontSize: 18),
+        IconButton(
+          icon: const Icon(CupertinoIcons.refresh),
+          onPressed: _loadAllData,
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(CupertinoIcons.gear_alt_fill, color: Color(0xFF501F66)),
-            tooltip: 'Pasca Ujian (Judul & Berkas)',
-            onPressed: _showPascaUjianMenu,
-          ),
-          IconButton(
-            icon: const Icon(CupertinoIcons.refresh, color: Color(0xFF501F66)),
-            onPressed: _loadAllData,
-          ),
-        ],
-      ),
+      ],
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.sm,
+                ),
                 child: _buildHeaderCard(),
               ),
             ),
@@ -232,11 +235,6 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                 TabBar(
                   controller: _tabController,
                   isScrollable: true,
-                  labelColor: const Color(0xFF501F66),
-                  unselectedLabelColor: Colors.grey.shade600,
-                  indicatorColor: const Color(0xFF501F66),
-                  indicatorWeight: 3,
-                  labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                   tabs: const [
                     Tab(text: '📄 Proposal'),
                     Tab(text: '📝 Bimbingan'),
@@ -261,708 +259,566 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
     );
   }
 
+  // --- HELPERS ---
+
+  /// Tinggi ruang aman bawah untuk daftar (menghindari navigasi bawah aplikasi).
+  double get _listBottomPadding =>
+      MediaQuery.of(context).padding.bottom + AppSpacing.xxl * 4;
+
+  AppPillTone _proposalTone(String status) {
+    final s = status.toLowerCase();
+    if (s.contains('terima') || s.contains('setuju')) return AppPillTone.success;
+    if (s.contains('tolak')) return AppPillTone.danger;
+    return AppPillTone.warning;
+  }
+
+  Widget _tabError(String message, VoidCallback onRetry) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: AppErrorState(message: message, onRetry: onRetry),
+      ),
+    );
+  }
+
+  Widget _rowIcon(IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+      child: Icon(icon, size: 18, color: AppColors.primary),
+    );
+  }
+
   // --- HEADER & MAIN INFO ---
   Widget _buildHeaderCard() {
     if (_isLoadingMain) {
-      return const GlassCard(
-        padding: EdgeInsets.all(16),
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return const AppLoading();
     }
     if (_errorMain != null) {
-      return GlassCard(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Text(_errorMain!, style: const TextStyle(color: Colors.redAccent)),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _fetchMainInfo,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66)),
-              child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      );
+      return AppErrorState(message: _errorMain!, onRetry: _fetchMainInfo);
     }
 
     final main = _mainData;
     if (main == null) return const SizedBox.shrink();
 
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      borderRadius: 20,
-      opacity: 0.8,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppSurface(
+          variant: AppSurfaceVariant.hero,
+          radius: AppRadius.lg,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE3F2FD),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(CupertinoIcons.book_circle_fill, color: Color(0xFF501F66), size: 28),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Status Pembimbing Skripsi',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF501F66)),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: AppDeco.softPrimary(radius: AppRadius.md),
+                    child: const Icon(
+                      CupertinoIcons.book_circle_fill,
+                      color: AppColors.primary,
+                      size: 26,
                     ),
-                    const SizedBox(height: 2),
-                    Row(
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          main.dospemAssigned ? CupertinoIcons.checkmark_circle_fill : CupertinoIcons.exclamationmark_triangle_fill,
-                          size: 16,
-                          color: main.dospemAssigned ? Colors.green : Colors.orange,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          main.dospemAssigned ? 'Dosen Pembimbing Terdaftar' : 'Belum Ada Dosen Pembimbing',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: main.dospemAssigned ? Colors.green.shade800 : Colors.orange.shade800,
+                        Text('Status Pembimbing Skripsi', style: AppText.h3),
+                        const SizedBox(height: AppSpacing.sm),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: AppPill(
+                            main.dospemAssigned
+                                ? 'Dosen Pembimbing Terdaftar'
+                                : 'Belum Ada Dosen Pembimbing',
+                            tone: main.dospemAssigned
+                                ? AppPillTone.success
+                                : AppPillTone.warning,
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+              if (main.informasi.isNotEmpty) ...[
+                const Divider(height: AppSpacing.xl),
+                Text('📢 Petunjuk & Pengumuman BAP:', style: AppText.h3),
+                const SizedBox(height: AppSpacing.sm),
+                ...main.informasi.map(
+                  (info) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: 6),
+                          child: Icon(
+                            CupertinoIcons.circle_fill,
+                            size: 6,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(child: Text(info, style: AppText.bodySm)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              if (main.tataCaraDownloadUrl != null &&
+                  main.tataCaraDownloadUrl!.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openUrl(main.tataCaraDownloadUrl!),
+                    icon: const Icon(CupertinoIcons.doc_text_fill, size: 16),
+                    label: const Text('Download Panduan & Tata Cara'),
+                  ),
+                ),
+              ],
             ],
           ),
-          if (main.dospemWarning != null && main.dospemWarning!.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.orange.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.shade200),
-              ),
-              child: Text(
-                main.dospemWarning!,
-                style: TextStyle(fontSize: 12, color: Colors.orange.shade900),
-              ),
-            ),
-          ],
-          if (main.informasi.isNotEmpty) ...[
-            const Divider(height: 24),
-            const Text(
-              '📢 Petunjuk & Pengumuman BAP:',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
-            ),
-            const SizedBox(height: 6),
-            ...main.informasi.map(
-              (info) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('• ', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
-                    Expanded(child: Text(info, style: const TextStyle(fontSize: 12, color: Colors.black54))),
-                  ],
-                ),
-              ),
-            ),
-          ],
-          if (main.tataCaraDownloadUrl != null && main.tataCaraDownloadUrl!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _openUrl(main.tataCaraDownloadUrl!),
-                icon: const Icon(CupertinoIcons.doc_text_fill, size: 16, color: Color(0xFF501F66)),
-                label: const Text('Download Panduan & Tata Cara', style: TextStyle(color: Color(0xFF501F66), fontSize: 12)),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF501F66)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    ).animate().fadeIn(duration: 400.ms);
-  }
-
-  // --- TAB 1: PROPOSAL ---
-  Widget _buildProposalTab() {
-    final bottomPadding = MediaQuery.of(context).padding.bottom + 130;
-
-    if (_isLoadingProposal) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_errorProposal != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(_errorProposal!, style: const TextStyle(color: Colors.redAccent)),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _fetchProposals,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66)),
-              child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
-            ),
-          ],
         ),
-      );
-    }
-
-    return ListView(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPadding),
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Riwayat Proposal Skripsi',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF501F66)),
-            ),
-            ElevatedButton.icon(
-              onPressed: _showFormProposalBaru,
-              icon: const Icon(CupertinoIcons.add, size: 16, color: Colors.white),
-              label: const Text('Ajukan Proposal', style: TextStyle(fontSize: 12, color: Colors.white)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF501F66),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (_proposals.isEmpty)
-          const GlassCard(
-            padding: EdgeInsets.all(24),
-            child: Column(
+        if (main.dospemWarning != null && main.dospemWarning!.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.md),
+          AppSurface(
+            variant: AppSurfaceVariant.warning,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(CupertinoIcons.doc_plaintext, size: 48, color: Colors.grey),
-                SizedBox(height: 8),
-                Text('Belum ada riwayat pengajuan proposal', style: TextStyle(color: Colors.grey)),
+                const Icon(
+                  CupertinoIcons.exclamationmark_triangle_fill,
+                  size: 20,
+                  color: AppColors.warning,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    main.dospemWarning!,
+                    style: AppText.bodySm.copyWith(color: AppColors.warning),
+                  ),
+                ),
               ],
             ),
-          )
-        else
-          ..._proposals.map((item) => _buildProposalCard(item)),
+          ),
+        ],
       ],
     );
   }
 
-  Widget _buildProposalCard(SkripsiProposalItem item) {
-    Color statusColor = Colors.orange;
-    if (item.status.toLowerCase().contains('terima') || item.status.toLowerCase().contains('setuju')) {
-      statusColor = Colors.green;
-    } else if (item.status.toLowerCase().contains('tolak')) {
-      statusColor = Colors.red;
+  // --- TAB 1: PROPOSAL ---
+  Widget _buildProposalTab() {
+    final bottomPadding = _listBottomPadding;
+
+    if (_isLoadingProposal) {
+      return const AppLoading();
+    }
+    if (_errorProposal != null) {
+      return _tabError(_errorProposal!, _fetchProposals);
     }
 
+    return ListView(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        bottomPadding,
+      ),
+      children: [
+        AppSection(
+          title: 'Riwayat Proposal Skripsi',
+          topGap: 0,
+          trailing: FilledButton.icon(
+            onPressed: _showFormProposalBaru,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, 36),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            ),
+            icon: const Icon(CupertinoIcons.add, size: 16),
+            label: const Text('Ajukan Proposal'),
+          ),
+          child: _proposals.isEmpty
+              ? const AppEmptyState(
+                  title: 'Belum ada riwayat pengajuan proposal',
+                  icon: CupertinoIcons.doc_plaintext,
+                )
+              : AppListGroup.from([
+                  for (final item in _proposals) _buildProposalItem(item),
+                ]),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProposalItem(SkripsiProposalItem item) {
     final isDitolak = item.status.toLowerCase().contains('tolak');
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: GlassCard(
-        padding: const EdgeInsets.all(16),
-        borderRadius: 16,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Pengajuan #${item.no}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    item.status,
-                    style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppListRow(
+          leading: _rowIcon(CupertinoIcons.doc_plaintext),
+          title: item.judul,
+          subtitle: 'Pengajuan #${item.no}',
+          trailing: AppPill(item.status, tone: _proposalTone(item.status)),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            0,
+            AppSpacing.lg,
+            AppSpacing.md,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppKeyValue(
+                label: 'Reviewer',
+                value: item.dosen ?? 'Reviewer belum ditentukan',
+              ),
+              AppKeyValue(label: 'Tanggal', value: item.tglPengajuan),
+              if (item.review != null && item.review!.isNotEmpty)
+                AppKeyValue(label: 'Catatan Reviewer', value: item.review!),
+              if (isDitolak) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => _showFormProposalUlang(item),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, 40),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                          ),
+                          textStyle: AppText.label.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        child: const Text('Proposal Ulang'),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => _handleTemaUlang(item),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.warning,
+                          side: const BorderSide(color: AppColors.warning),
+                          minimumSize: const Size(0, 40),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                          ),
+                          textStyle: AppText.label.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        child: const Text('Tema Ulang (Pusat Studi)'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              item.judul,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF501F66)),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                const Icon(CupertinoIcons.person_fill, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(item.dosen ?? 'Reviewer belum ditentukan', style: const TextStyle(fontSize: 12, color: Colors.black87)),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(CupertinoIcons.calendar, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text('Tanggal: ${item.tglPengajuan}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              ],
-            ),
-            if (item.review != null && item.review!.isNotEmpty) ...[
-              const Divider(height: 16),
-              Text('Catatan Reviewer: ${item.review}', style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.redAccent)),
             ],
-            if (isDitolak) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => _showFormProposalUlang(item),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFF501F66)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: const Text('Proposal Ulang', style: TextStyle(fontSize: 11, color: Color(0xFF501F66))),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => _handleTemaUlang(item),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.orange),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: const Text('Tema Ulang (Pusat Studi)', style: TextStyle(fontSize: 11, color: Colors.orange)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
   // --- TAB 2: BIMBINGAN ---
   Widget _buildBimbinganTab() {
-    final bottomPadding = MediaQuery.of(context).padding.bottom + 130;
+    final bottomPadding = _listBottomPadding;
 
     if (_isLoadingBimbingan) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppLoading();
     }
     if (_errorBimbingan != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(_errorBimbingan!, style: const TextStyle(color: Colors.redAccent)),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _fetchBimbingans,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66)),
-              child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      );
+      return _tabError(_errorBimbingan!, _fetchBimbingans);
     }
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPadding),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        bottomPadding,
+      ),
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Kartu Bimbingan Skripsi',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF501F66)),
-            ),
-            Row(
-              children: [
-                if (_bimbingans.isNotEmpty)
-                  IconButton(
-                    icon: const Icon(CupertinoIcons.arrow_down_doc_fill, color: Color(0xFF501F66)),
-                    tooltip: 'Cetak Kartu Bimbingan PDF',
-                    onPressed: () => _handleDownloadKartuBimbingan(_bimbingans.first.id),
-                  ),
-                ElevatedButton.icon(
-                  onPressed: _showFormBimbingan,
-                  icon: const Icon(CupertinoIcons.add, size: 16, color: Colors.white),
-                  label: const Text('Catatan Baru', style: TextStyle(fontSize: 12, color: Colors.white)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF501F66),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        AppSection(
+          title: 'Kartu Bimbingan Skripsi',
+          topGap: 0,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_bimbingans.isNotEmpty)
+                IconButton(
+                  icon: const Icon(CupertinoIcons.arrow_down_doc_fill),
+                  tooltip: 'Cetak Kartu Bimbingan PDF',
+                  onPressed: () =>
+                      _handleDownloadKartuBimbingan(_bimbingans.first.id),
+                ),
+              FilledButton.icon(
+                onPressed: _showFormBimbingan,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
                   ),
                 ),
-              ],
-            ),
-          ],
+                icon: const Icon(CupertinoIcons.add, size: 16),
+                label: const Text('Catatan Baru'),
+              ),
+            ],
+          ),
+          child: _bimbingans.isEmpty
+              ? const AppEmptyState(
+                  title: 'Belum ada catatan bimbingan skripsi',
+                  icon: CupertinoIcons.doc_text,
+                )
+              : AppListGroup.from([
+                  for (final item in _bimbingans) _buildBimbinganItem(item),
+                ]),
         ),
-        const SizedBox(height: 12),
-        if (_bimbingans.isEmpty)
-          const GlassCard(
-            padding: EdgeInsets.all(24),
-            child: Column(
-              children: [
-                Icon(CupertinoIcons.doc_text, size: 48, color: Colors.grey),
-                SizedBox(height: 8),
-                Text('Belum ada catatan bimbingan skripsi', style: TextStyle(color: Colors.grey)),
-              ],
-            ),
-          )
-        else
-          ..._bimbingans.map((item) => _buildBimbinganCard(item)),
       ],
     );
   }
 
-  Widget _buildBimbinganCard(SkripsiBimbinganItem item) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: GlassCard(
-        padding: const EdgeInsets.all(16),
-        borderRadius: 16,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE3F2FD),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    item.progres,
-                    style: const TextStyle(color: Color(0xFF501F66), fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                ),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(CupertinoIcons.pencil, size: 18, color: Color(0xFF501F66)),
-                      onPressed: () => _showFormBimbingan(item: item),
-                    ),
-                    IconButton(
-                      icon: const Icon(CupertinoIcons.arrow_down_doc, size: 18, color: Color(0xFF501F66)),
-                      onPressed: () => _handleDownloadKartuBimbingan(item.id),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                const Icon(CupertinoIcons.calendar, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text('Tanggal: ${item.tanggal}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              item.keterangan,
-              style: const TextStyle(fontSize: 13, color: Colors.black87),
-            ),
-          ],
-        ),
+  Widget _buildBimbinganItem(SkripsiBimbinganItem item) {
+    return AppListRow(
+      leading: AppPill(item.progres, tone: AppPillTone.info),
+      title: 'Tanggal: ${item.tanggal}',
+      subtitle: item.keterangan,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(CupertinoIcons.pencil, size: 18),
+            onPressed: () => _showFormBimbingan(item: item),
+          ),
+          IconButton(
+            icon: const Icon(CupertinoIcons.arrow_down_doc, size: 18),
+            onPressed: () => _handleDownloadKartuBimbingan(item.id),
+          ),
+        ],
       ),
     );
   }
 
   // --- TAB 3: PENDAFTARAN & UJIAN ---
   Widget _buildPendaftaranTab() {
-    final bottomPadding = MediaQuery.of(context).padding.bottom + 130;
+    final bottomPadding = _listBottomPadding;
 
     if (_isLoadingPendaftaran) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppLoading();
     }
     if (_errorPendaftaran != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(_errorPendaftaran!, style: const TextStyle(color: Colors.redAccent)),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _fetchPendaftarans,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66)),
-              child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      );
+      return _tabError(_errorPendaftaran!, _fetchPendaftarans);
     }
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPadding),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        bottomPadding,
+      ),
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Pengajuan Ujian Skripsi',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF501F66)),
+        AppSection(
+          title: 'Pengajuan Ujian Skripsi',
+          topGap: 0,
+          trailing: FilledButton.icon(
+            onPressed: _showFormPendaftaranUjian,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, 36),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             ),
-            ElevatedButton.icon(
-              onPressed: _showFormPendaftaranUjian,
-              icon: const Icon(CupertinoIcons.add, size: 16, color: Colors.white),
-              label: const Text('Daftar Ujian', style: TextStyle(fontSize: 12, color: Colors.white)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF501F66),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ],
+            icon: const Icon(CupertinoIcons.add, size: 16),
+            label: const Text('Daftar Ujian'),
+          ),
+          child: _pendaftarans.isEmpty
+              ? const AppEmptyState(
+                  title: 'Belum ada riwayat pendaftaran ujian skripsi',
+                  icon: CupertinoIcons.person_2_square_stack,
+                )
+              : AppListGroup.from([
+                  for (final item in _pendaftarans) _buildPendaftaranItem(item),
+                ]),
         ),
-        const SizedBox(height: 12),
-        if (_pendaftarans.isEmpty)
-          const GlassCard(
-            padding: EdgeInsets.all(24),
-            child: Column(
-              children: [
-                Icon(CupertinoIcons.person_2_square_stack, size: 48, color: Colors.grey),
-                SizedBox(height: 8),
-                Text('Belum ada riwayat pendaftaran ujian skripsi', style: TextStyle(color: Colors.grey)),
-              ],
-            ),
-          )
-        else
-          ..._pendaftarans.map((item) => _buildPendaftaranCard(item)),
       ],
     );
   }
 
-  Widget _buildPendaftaranCard(SkripsiPendaftaranItem item) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: GlassCard(
-        padding: const EdgeInsets.all(16),
-        borderRadius: 16,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: item.aktivasi == 1 ? Colors.green.withValues(alpha: 0.15) : Colors.orange.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    item.aktivasi == 1 ? 'Terverifikasi / Aktif' : 'Menunggu Verifikasi',
-                    style: TextStyle(
-                      color: item.aktivasi == 1 ? Colors.green : Colors.orange,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                if (item.canDelete)
-                  IconButton(
-                    icon: const Icon(CupertinoIcons.trash, size: 18, color: Colors.redAccent),
-                    onPressed: () => _handleDeletePendaftaran(item.idPengajuan),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              item.judul,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF501F66)),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                const Icon(CupertinoIcons.calendar_badge_plus, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text('Tgl Daftar: ${item.tglDaftar}', style: const TextStyle(fontSize: 12, color: Colors.black87)),
-              ],
-            ),
-            if (item.tglUjian != null && item.tglUjian!.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  const Icon(CupertinoIcons.clock_fill, size: 14, color: Color(0xFF501F66)),
-                  const SizedBox(width: 4),
-                  Text('Jadwal Ujian: ${item.tglUjian} (${item.jam ?? '-'})', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
-                ],
+  Widget _buildPendaftaranItem(SkripsiPendaftaranItem item) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppListRow(
+          leading: _rowIcon(CupertinoIcons.person_2_square_stack),
+          title: item.judul,
+          subtitle: 'Tgl Daftar: ${item.tglDaftar}',
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppPill(
+                item.aktivasi == 1
+                    ? 'Terverifikasi / Aktif'
+                    : 'Menunggu Verifikasi',
+                tone: item.aktivasi == 1
+                    ? AppPillTone.success
+                    : AppPillTone.warning,
               ),
-              if (item.ruang != null && item.ruang!.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(CupertinoIcons.location_fill, size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Text('Ruang: ${item.ruang}', style: const TextStyle(fontSize: 12, color: Colors.black87)),
-                  ],
-                ),
-              ],
-            ],
-            if (item.canDownload) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _handleDownloadFormulirPendaftaran(item.idPengajuan),
-                  icon: const Icon(CupertinoIcons.arrow_down_doc, size: 16, color: Color(0xFF501F66)),
-                  label: const Text('Download Formulir Pendaftaran PDF', style: TextStyle(color: Color(0xFF501F66), fontSize: 12)),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF501F66)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              if (item.canDelete)
+                IconButton(
+                  icon: const Icon(
+                    CupertinoIcons.trash,
+                    size: 18,
+                    color: AppColors.danger,
                   ),
+                  onPressed: () =>
+                      _handleDeletePendaftaran(item.idPengajuan),
                 ),
-              ),
             ],
-          ],
+          ),
         ),
-      ),
+        if (item.tglUjian != null && item.tglUjian!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              0,
+              AppSpacing.lg,
+              AppSpacing.md,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppKeyValue(
+                  label: 'Jadwal Ujian',
+                  value: '${item.tglUjian} (${item.jam ?? '-'})',
+                  emphasize: true,
+                ),
+                if (item.ruang != null && item.ruang!.isNotEmpty)
+                  AppKeyValue(label: 'Ruang', value: item.ruang!),
+              ],
+            ),
+          ),
+        if (item.canDownload)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              0,
+              AppSpacing.lg,
+              AppSpacing.md,
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () =>
+                    _handleDownloadFormulirPendaftaran(item.idPengajuan),
+                icon: const Icon(CupertinoIcons.arrow_down_doc, size: 16),
+                label: const Text('Download Formulir Pendaftaran PDF'),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
   // --- TAB 4: CEK PLAGIARISME ---
   Widget _buildPlagiarismeTab() {
-    final bottomPadding = MediaQuery.of(context).padding.bottom + 130;
+    final bottomPadding = _listBottomPadding;
 
     if (_isLoadingPlagiarisme) {
-      return const Center(child: CircularProgressIndicator());
+      return const AppLoading();
     }
     if (_errorPlagiarisme != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(_errorPlagiarisme!, style: const TextStyle(color: Colors.redAccent)),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _fetchPlagiarsmes,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66)),
-              child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      );
+      return _tabError(_errorPlagiarisme!, _fetchPlagiarsmes);
     }
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPadding),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        bottomPadding,
+      ),
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Status Cek Plagiarisme',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF501F66)),
+        AppSection(
+          title: 'Status Cek Plagiarisme',
+          topGap: 0,
+          trailing: FilledButton.icon(
+            onPressed: _handleUploadPlagiarisme,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, 36),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             ),
-            ElevatedButton.icon(
-              onPressed: _handleUploadPlagiarisme,
-              icon: const Icon(CupertinoIcons.cloud_upload_fill, size: 16, color: Colors.white),
-              label: const Text('Upload File (.doc/.docx)', style: TextStyle(fontSize: 12, color: Colors.white)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF501F66),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ],
+            icon: const Icon(CupertinoIcons.cloud_upload_fill, size: 16),
+            label: const Text('Upload File (.doc/.docx)'),
+          ),
+          child: _plagiarsmes.isEmpty
+              ? const AppEmptyState(
+                  title: 'Belum ada dokumen cek plagiarisme',
+                  icon: CupertinoIcons.doc_text_search,
+                )
+              : AppListGroup.from([
+                  for (final item in _plagiarsmes) _buildPlagiarismeItem(item),
+                ]),
         ),
-        const SizedBox(height: 12),
-        if (_plagiarsmes.isEmpty)
-          const GlassCard(
-            padding: EdgeInsets.all(24),
-            child: Column(
-              children: [
-                Icon(CupertinoIcons.doc_text_search, size: 48, color: Colors.grey),
-                SizedBox(height: 8),
-                Text('Belum ada dokumen cek plagiarisme', style: TextStyle(color: Colors.grey)),
-              ],
-            ),
-          )
-        else
-          ..._plagiarsmes.map((item) => _buildPlagiarismeCard(item)),
       ],
     );
   }
 
-  Widget _buildPlagiarismeCard(SkripsiPlagiarismeItem item) {
+  Widget _buildPlagiarismeItem(SkripsiPlagiarismeItem item) {
     final isLolos = item.status.toLowerCase().contains('lolos');
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: GlassCard(
-        padding: const EdgeInsets.all(16),
-        borderRadius: 16,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isLolos ? Colors.green.withValues(alpha: 0.15) : Colors.orange.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'Status: ${item.status}',
-                    style: TextStyle(
-                      color: isLolos ? Colors.green : Colors.orange,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppListRow(
+          leading: _rowIcon(CupertinoIcons.doc_text_search),
+          title: item.judulSkripsi,
+          subtitle: 'Persentase Similarity: ${item.persentase}',
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppPill(
+                'Status: ${item.status}',
+                tone: isLolos ? AppPillTone.success : AppPillTone.warning,
+              ),
+              IconButton(
+                icon: const Icon(
+                  CupertinoIcons.trash,
+                  size: 18,
+                  color: AppColors.danger,
                 ),
-                IconButton(
-                  icon: const Icon(CupertinoIcons.trash, size: 18, color: Colors.redAccent),
-                  onPressed: () => _handleDeletePlagiarisme(item.id),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              item.judulSkripsi,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF501F66)),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                const Icon(CupertinoIcons.percent, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(
-                  'Persentase Similarity: ${item.persentase}',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
-                ),
-              ],
-            ),
-            if (item.laporanHasilCek != null && item.laporanHasilCek!.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _openUrl(item.laporanHasilCek!),
-                  icon: const Icon(CupertinoIcons.doc_text_search, size: 16, color: Color(0xFF501F66)),
-                  label: const Text('Lihat Laporan Hasil Cek Plagiarisme', style: TextStyle(color: Color(0xFF501F66), fontSize: 12)),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF501F66)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
+                onPressed: () => _handleDeletePlagiarisme(item.id),
               ),
             ],
-          ],
+          ),
         ),
-      ),
+        if (item.laporanHasilCek != null && item.laporanHasilCek!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              0,
+              AppSpacing.lg,
+              AppSpacing.md,
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _openUrl(item.laporanHasilCek!),
+                icon: const Icon(CupertinoIcons.doc_text_search, size: 16),
+                label: const Text('Lihat Laporan Hasil Cek Plagiarisme'),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -987,7 +843,7 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
     }
 
     String? validateFile(String name, int size) {
-      if (RegExp(r'''[&"'<>]''').hasMatch(name)) {
+      if (RegExp(r'''[&\"'<>]''').hasMatch(name)) {
         return 'Nama berkas tidak boleh memuat karakter khusus (&, ", \', <, >)';
       }
       if (size > 3 * 1024 * 1024) {
@@ -1008,7 +864,9 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                 type: FileType.custom,
                 allowedExtensions: ['pdf'],
               );
-              if (result != null && result.files.isNotEmpty && result.files.single.path != null) {
+              if (result != null &&
+                  result.files.isNotEmpty &&
+                  result.files.single.path != null) {
                 final file = File(result.files.single.path!);
                 final name = result.files.single.name;
                 final size = result.files.single.size;
@@ -1035,10 +893,17 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
             constraints: BoxConstraints(
               maxHeight: MediaQuery.of(ctx).size.height * 0.85,
             ),
-            padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.xl,
+              AppSpacing.xl,
+              AppSpacing.xl,
+              MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl,
+            ),
             decoration: const BoxDecoration(
-              color: Color(0xFFFAFCFF),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              color: AppColors.scaffold,
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(AppRadius.lg),
+              ),
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -1048,58 +913,58 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'Ajukan Proposal Skripsi Baru',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF501F66),
-                        ),
+                        style: AppText.h3.copyWith(color: AppColors.primary),
                       ),
                       IconButton(
-                        icon: const Icon(CupertinoIcons.xmark_circle_fill, color: Colors.grey, size: 22),
+                        icon: const Icon(
+                          CupertinoIcons.xmark_circle_fill,
+                          color: AppColors.textMuted,
+                          size: 22,
+                        ),
                         onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                   if (hasDospemWarning) ...[
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.amber.shade300),
-                      ),
+                    AppSurface(
+                      variant: AppSurfaceVariant.warning,
+                      padding: const EdgeInsets.all(AppSpacing.md),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
+                          const Icon(
                             CupertinoIcons.exclamationmark_triangle_fill,
-                            color: Colors.amber.shade800,
+                            color: AppColors.warning,
                             size: 20,
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: AppSpacing.sm),
                           Expanded(
                             child: Text(
-                              (_mainData?.dospemWarning != null && _mainData!.dospemWarning!.isNotEmpty)
+                              (_mainData?.dospemWarning != null &&
+                                      _mainData!.dospemWarning!.isNotEmpty)
                                   ? _mainData!.dospemWarning!
                                   : 'Dosen Pembimbing belum terdaftar. Pastikan Anda telah memenuhi persyaratan pengajuan proposal skripsi.',
-                              style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.3),
+                              style: AppText.bodySm.copyWith(
+                                color: AppColors.warning,
+                                height: 1.3,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
+                    const SizedBox(height: AppSpacing.lg),
                   ],
-                  const Text(
+                  Text(
                     'Judul Proposal',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF501F66)),
+                    style: AppText.label.copyWith(color: AppColors.primary),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AppSpacing.sm),
                   TextField(
                     controller: judulCtrl,
                     minLines: 2,
@@ -1107,44 +972,51 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                     enabled: !isSubmitting,
                     decoration: const InputDecoration(
                       hintText: 'Masukkan judul skripsi yang diajukan...',
-                      border: OutlineInputBorder(),
                       alignLabelWithHint: true,
                     ),
                     onChanged: (_) => setBsState(() {}),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  const SizedBox(height: AppSpacing.lg),
+                  Text(
                     'Berkas Proposal (PDF)',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF501F66)),
+                    style: AppText.label.copyWith(color: AppColors.primary),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AppSpacing.sm),
                   if (pickedFile == null)
                     InkWell(
                       onTap: isSubmitting ? null : pickPdfFile,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.xl,
+                          horizontal: AppSpacing.lg,
+                        ),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(12),
+                          color: AppColors.surfaceMuted,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                           border: Border.all(
-                            color: fileError != null ? Colors.red.shade300 : Colors.grey.shade300,
+                            color: fileError != null
+                                ? AppColors.danger
+                                : AppColors.border,
                             width: 1.5,
                           ),
                         ),
                         child: Column(
                           children: [
-                            const Icon(CupertinoIcons.doc_text, size: 36, color: Color(0xFF501F66)),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Pilih Berkas Proposal (PDF)',
-                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF501F66)),
+                            const Icon(
+                              CupertinoIcons.doc_text,
+                              size: 36,
+                              color: AppColors.primary,
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: AppSpacing.sm),
+                            Text('Pilih Berkas Proposal (PDF)', style: AppText.h3),
+                            const SizedBox(height: AppSpacing.xs),
                             Text(
                               'Format PDF, maksimal 3 MB',
-                              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                              style: AppText.label.copyWith(
+                                color: AppColors.textMuted,
+                              ),
                             ),
                           ],
                         ),
@@ -1152,40 +1024,51 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                     )
                   else
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(AppSpacing.md),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                         border: Border.all(
-                          color: fileError != null ? Colors.red.shade400 : Colors.grey.shade300,
+                          color: fileError != null
+                              ? AppColors.danger
+                              : AppColors.border,
                           width: 1.5,
                         ),
                       ),
                       child: Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(AppSpacing.sm),
                             decoration: BoxDecoration(
-                              color: Colors.red.shade50,
-                              borderRadius: BorderRadius.circular(8),
+                              color: AppColors.dangerBg,
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.sm),
                             ),
-                            child: Icon(CupertinoIcons.doc_text_fill, color: Colors.red.shade700, size: 28),
+                            child: const Icon(
+                              CupertinoIcons.doc_text_fill,
+                              color: AppColors.danger,
+                              size: 28,
+                            ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: AppSpacing.md),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   fileName ?? 'Berkas PDF',
-                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                  style: AppText.body.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   formatFileSize(fileSize),
-                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                  style: AppText.label.copyWith(
+                                    color: AppColors.textMuted,
+                                  ),
                                 ),
                               ],
                             ),
@@ -1193,12 +1076,19 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                           if (!isSubmitting) ...[
                             IconButton(
                               tooltip: 'Ganti Berkas',
-                              icon: const Icon(CupertinoIcons.arrow_2_squarepath, size: 18, color: Color(0xFF501F66)),
+                              icon: const Icon(
+                                CupertinoIcons.arrow_2_squarepath,
+                                size: 18,
+                              ),
                               onPressed: pickPdfFile,
                             ),
                             IconButton(
                               tooltip: 'Hapus Berkas',
-                              icon: const Icon(CupertinoIcons.trash, size: 18, color: Colors.red),
+                              icon: const Icon(
+                                CupertinoIcons.trash,
+                                size: 18,
+                                color: AppColors.danger,
+                              ),
                               onPressed: () {
                                 setBsState(() {
                                   pickedFile = null;
@@ -1213,49 +1103,52 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                       ),
                     ),
                   if (fileError != null) ...[
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpacing.sm),
                     Row(
                       children: [
-                        const Icon(CupertinoIcons.exclamationmark_circle, color: Colors.red, size: 14),
-                        const SizedBox(width: 6),
+                        const Icon(
+                          CupertinoIcons.exclamationmark_circle,
+                          color: AppColors.danger,
+                          size: 14,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: Text(
                             fileError!,
-                            style: const TextStyle(color: Colors.red, fontSize: 12),
+                            style: AppText.bodySm.copyWith(
+                              color: AppColors.danger,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ],
                   if (isSubmitting) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     LinearProgressIndicator(
                       value: uploadProgress > 0 ? uploadProgress : null,
-                      backgroundColor: Colors.purple.shade50,
-                      color: const Color(0xFF501F66),
+                      backgroundColor: AppColors.surfaceMuted,
+                      color: AppColors.primary,
                       minHeight: 6,
                       borderRadius: BorderRadius.circular(3),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpacing.sm),
                     Center(
                       child: Text(
                         uploadProgress > 0
                             ? 'Mengunggah: ${(uploadProgress * 100).toInt()}%'
                             : 'Menyiapkan berkas...',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF501F66)),
+                        style: AppText.label.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpacing.xl),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF501F66),
-                        disabledBackgroundColor: Colors.grey.shade300,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
+                    child: FilledButton(
                       onPressed: (!isFormValid || isSubmitting)
                           ? null
                           : () async {
@@ -1279,7 +1172,9 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                                   Navigator.pop(ctx);
                                 }
                                 _showSnackBar(
-                                  res.message.isNotEmpty ? res.message : 'Proposal berhasil diajukan',
+                                  res.message.isNotEmpty
+                                      ? res.message
+                                      : 'Proposal berhasil diajukan',
                                   isSuccess: true,
                                 );
                                 _fetchProposals();
@@ -1290,19 +1185,22 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                                     uploadProgress = 0.0;
                                   });
                                 }
-                                _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
+                                _showSnackBar(
+                                  e.toString().replaceFirst('Exception: ', ''),
+                                  isError: true,
+                                );
                               }
                             },
                       child: isSubmitting
                           ? const SizedBox(
-                              height: 20,
                               width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
-                          : const Text(
-                              'Kirim Pengajuan Proposal',
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
+                          : const Text('Kirim Pengajuan Proposal'),
                     ),
                   ),
                 ],
@@ -1326,18 +1224,25 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Judul: ${item.judul}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
+            Text(
+              'Judul: ${item.judul}',
+              style: AppText.body.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: reviewerCtrl,
-              decoration: const InputDecoration(labelText: 'ID Reviewer Baru / Pilihan', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'ID Reviewer Baru / Pilihan',
+              ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
               try {
@@ -1348,10 +1253,13 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                 _showSnackBar(res['message'] ?? 'Proposal ulang diajukan');
                 _fetchProposals();
               } catch (e) {
-                _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
+                _showSnackBar(
+                  e.toString().replaceFirst('Exception: ', ''),
+                  isError: true,
+                );
               }
             },
-            child: const Text('Kirim Proposal Ulang', style: TextStyle(color: Colors.white)),
+            child: const Text('Kirim Proposal Ulang'),
           ),
         ],
       ),
@@ -1363,13 +1271,18 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Konfirmasi Tema Ulang'),
-        content: const Text('Apakah Anda yakin ingin mengajukan ulang tema skripsi ke Pusat Studi?'),
+        content: const Text(
+          'Apakah Anda yakin ingin mengajukan ulang tema skripsi ke Pusat Studi?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.warning),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Ya, Ajukan Tema Ulang', style: TextStyle(color: Colors.white)),
+            child: const Text('Ya, Ajukan Tema Ulang'),
           ),
         ],
       ),
@@ -1381,14 +1294,19 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
         _showSnackBar(res['message'] ?? 'Tema ulang berhasil diajukan');
         _fetchProposals();
       } catch (e) {
-        _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
+        _showSnackBar(
+          e.toString().replaceFirst('Exception: ', ''),
+          isError: true,
+        );
       }
     }
   }
 
   void _showFormBimbingan({SkripsiBimbinganItem? item}) {
     final isEdit = item != null;
-    final tanggalCtrl = TextEditingController(text: item?.tanggal ?? DateTime.now().toString().split(' ').first);
+    final tanggalCtrl = TextEditingController(
+      text: item?.tanggal ?? DateTime.now().toString().split(' ').first,
+    );
     final progresCtrl = TextEditingController(text: item?.progres ?? '');
     final keteranganCtrl = TextEditingController(text: item?.keterangan ?? '');
 
@@ -1397,37 +1315,52 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.xl,
+          AppSpacing.xl,
+          MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl,
+        ),
         decoration: const BoxDecoration(
-          color: Color(0xFFFAFCFF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          color: AppColors.scaffold,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.lg),
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(isEdit ? 'Edit Catatan Bimbingan' : 'Tambah Catatan Bimbingan', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
-            const SizedBox(height: 16),
+            Text(
+              isEdit ? 'Edit Catatan Bimbingan' : 'Tambah Catatan Bimbingan',
+              style: AppText.h3.copyWith(color: AppColors.primary),
+            ),
+            const SizedBox(height: AppSpacing.lg),
             TextField(
               controller: tanggalCtrl,
-              decoration: const InputDecoration(labelText: 'Tanggal (YYYY-MM-DD)', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Tanggal (YYYY-MM-DD)',
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: progresCtrl,
-              decoration: const InputDecoration(labelText: 'Progres (misal: BAB 1 / BAB 2)', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Progres (misal: BAB 1 / BAB 2)',
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: keteranganCtrl,
-              decoration: const InputDecoration(labelText: 'Keterangan / Catatan Revisi', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Keterangan / Catatan Revisi',
+              ),
               maxLines: 3,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66), padding: const EdgeInsets.symmetric(vertical: 14)),
+              child: FilledButton(
                 onPressed: () async {
                   if (progresCtrl.text.trim().isEmpty) return;
                   Navigator.pop(ctx);
@@ -1439,7 +1372,9 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                         progres: progresCtrl.text.trim(),
                         keterangan: keteranganCtrl.text.trim(),
                       );
-                      _showSnackBar(res['message'] ?? 'Catatan bimbingan berhasil diperbarui');
+                      _showSnackBar(
+                        res['message'] ?? 'Catatan bimbingan berhasil diperbarui',
+                      );
                     } else {
                       final res = await _service.submitBimbingan(
                         tanggal: tanggalCtrl.text.trim(),
@@ -1452,10 +1387,13 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                     }
                     _fetchBimbingans();
                   } catch (e) {
-                    _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
+                    _showSnackBar(
+                      e.toString().replaceFirst('Exception: ', ''),
+                      isError: true,
+                    );
                   }
                 },
-                child: Text(isEdit ? 'Simpan Perubahan' : 'Tambah Bimbingan', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: Text(isEdit ? 'Simpan Perubahan' : 'Tambah Bimbingan'),
               ),
             ),
           ],
@@ -1485,26 +1423,36 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setBsState) => Container(
-          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.xl,
+            AppSpacing.xl,
+            AppSpacing.xl,
+            MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl,
+          ),
           decoration: const BoxDecoration(
-            color: Color(0xFFFAFCFF),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            color: AppColors.scaffold,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(AppRadius.lg),
+            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Form Pendaftaran Ujian Skripsi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
-              const SizedBox(height: 16),
+              Text(
+                'Form Pendaftaran Ujian Skripsi',
+                style: AppText.h3.copyWith(color: AppColors.primary),
+              ),
+              const SizedBox(height: AppSpacing.lg),
               TextField(
                 controller: judulCtrl,
-                decoration: const InputDecoration(labelText: 'Judul Skripsi', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Judul Skripsi'),
                 maxLines: 2,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               DropdownButtonFormField<String>(
                 initialValue: ukuranToga,
-                decoration: const InputDecoration(labelText: 'Ukuran Toga', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Ukuran Toga'),
                 items: const [
                   DropdownMenuItem(value: 'S', child: Text('S')),
                   DropdownMenuItem(value: 'M', child: Text('M')),
@@ -1514,11 +1462,10 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                 ],
                 onChanged: (val) => setBsState(() => ukuranToga = val ?? 'L'),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66), padding: const EdgeInsets.symmetric(vertical: 14)),
+                child: FilledButton(
                   onPressed: () async {
                     if (judulCtrl.text.trim().isEmpty) return;
                     Navigator.pop(ctx);
@@ -1527,13 +1474,19 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                         judul: judulCtrl.text.trim(),
                         ukuranToga: ukuranToga,
                       );
-                      _showSnackBar(res['message'] ?? 'Pendaftaran ujian skripsi berhasil diajukan');
+                      _showSnackBar(
+                        res['message'] ??
+                            'Pendaftaran ujian skripsi berhasil diajukan',
+                      );
                       _fetchPendaftarans();
                     } catch (e) {
-                      _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
+                      _showSnackBar(
+                        e.toString().replaceFirst('Exception: ', ''),
+                        isError: true,
+                      );
                     }
                   },
-                  child: const Text('Daftar Ujian Skripsi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: const Text('Daftar Ujian Skripsi'),
                 ),
               ),
             ],
@@ -1548,13 +1501,18 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Batal Pengajuan Ujian'),
-        content: const Text('Apakah Anda yakin ingin membatalkan pengajuan ujian skripsi ini?'),
+        content: const Text(
+          'Apakah Anda yakin ingin membatalkan pengajuan ujian skripsi ini?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+            child: const Text('Hapus'),
           ),
         ],
       ),
@@ -1566,7 +1524,10 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
         _showSnackBar(res['message'] ?? 'Pendaftaran dibatalkan');
         _fetchPendaftarans();
       } catch (e) {
-        _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
+        _showSnackBar(
+          e.toString().replaceFirst('Exception: ', ''),
+          isError: true,
+        );
       }
     }
   }
@@ -1602,7 +1563,10 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
         _showSnackBar(res['message'] ?? 'Dokumen berhasil diunggah');
         _fetchPlagiarsmes();
       } catch (e) {
-        _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
+        _showSnackBar(
+          e.toString().replaceFirst('Exception: ', ''),
+          isError: true,
+        );
       }
     }
   }
@@ -1612,13 +1576,18 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Hapus Dokumen Plagiarisme'),
-        content: const Text('Apakah Anda yakin ingin menghapus dokumen plagiarisme ini?'),
+        content: const Text(
+          'Apakah Anda yakin ingin menghapus dokumen plagiarisme ini?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+            child: const Text('Hapus'),
           ),
         ],
       ),
@@ -1630,7 +1599,10 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
         _showSnackBar(res['message'] ?? 'Dokumen berhasil dihapus');
         _fetchPlagiarsmes();
       } catch (e) {
-        _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
+        _showSnackBar(
+          e.toString().replaceFirst('Exception: ', ''),
+          isError: true,
+        );
       }
     }
   }
@@ -1640,32 +1612,46 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         decoration: const BoxDecoration(
-          color: Color(0xFFFAFCFF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.lg),
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Menu Pasca Ujian Skripsi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(CupertinoIcons.text_quote, color: Color(0xFF501F66)),
-              title: const Text('Update Judul Skripsi (ID & EN)'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _showFormUpdateJudul();
-              },
+            Text(
+              'Menu Pasca Ujian Skripsi',
+              style: AppText.h3.copyWith(color: AppColors.primary),
             ),
-            ListTile(
-              leading: const Icon(CupertinoIcons.link, color: Color(0xFF501F66)),
-              title: const Text('Simpan Link Berkas Pasca Ujian'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _showFormSubmitLink();
-              },
-            ),
+            const SizedBox(height: AppSpacing.lg),
+            AppListGroup.from([
+              AppListRow(
+                leading: const Icon(
+                  CupertinoIcons.text_quote,
+                  color: AppColors.primary,
+                ),
+                title: 'Update Judul Skripsi (ID & EN)',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showFormUpdateJudul();
+                },
+              ),
+              AppListRow(
+                leading: const Icon(
+                  CupertinoIcons.link,
+                  color: AppColors.primary,
+                ),
+                title: 'Simpan Link Berkas Pasca Ujian',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showFormSubmitLink();
+                },
+              ),
+            ]),
           ],
         ),
       ),
@@ -1681,47 +1667,68 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.xl,
+          AppSpacing.xl,
+          MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl,
+        ),
         decoration: const BoxDecoration(
-          color: Color(0xFFFAFCFF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          color: AppColors.scaffold,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.lg),
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Update Judul Skripsi (ID & EN)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
-            const SizedBox(height: 16),
+            Text(
+              'Update Judul Skripsi (ID & EN)',
+              style: AppText.h3.copyWith(color: AppColors.primary),
+            ),
+            const SizedBox(height: AppSpacing.lg),
             TextField(
               controller: judulIdCtrl,
-              decoration: const InputDecoration(labelText: 'Judul Bahasa Indonesia', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Judul Bahasa Indonesia',
+              ),
               maxLines: 2,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: judulEnCtrl,
-              decoration: const InputDecoration(labelText: 'Judul Bahasa Inggris (EN)', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Judul Bahasa Inggris (EN)',
+              ),
               maxLines: 2,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66), padding: const EdgeInsets.symmetric(vertical: 14)),
+              child: FilledButton(
                 onPressed: () async {
-                  if (judulIdCtrl.text.trim().isEmpty || judulEnCtrl.text.trim().isEmpty) return;
+                  if (judulIdCtrl.text.trim().isEmpty ||
+                      judulEnCtrl.text.trim().isEmpty) {
+                    return;
+                  }
                   Navigator.pop(ctx);
                   try {
                     final res = await _service.updateJudulSkripsi(
                       judulId: judulIdCtrl.text.trim(),
                       judulEn: judulEnCtrl.text.trim(),
                     );
-                    _showSnackBar(res['message'] ?? 'Judul skripsi berhasil diperbarui');
+                    _showSnackBar(
+                      res['message'] ?? 'Judul skripsi berhasil diperbarui',
+                    );
                   } catch (e) {
-                    _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
+                    _showSnackBar(
+                      e.toString().replaceFirst('Exception: ', ''),
+                      isError: true,
+                    );
                   }
                 },
-                child: const Text('Simpan Judul', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: const Text('Simpan Judul'),
               ),
             ),
           ],
@@ -1739,31 +1746,42 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.xl,
+          AppSpacing.xl,
+          MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl,
+        ),
         decoration: const BoxDecoration(
-          color: Color(0xFFFAFCFF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          color: AppColors.scaffold,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.lg),
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Simpan Link Berkas Pasca Ujian', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
-            const SizedBox(height: 16),
+            Text(
+              'Simpan Link Berkas Pasca Ujian',
+              style: AppText.h3.copyWith(color: AppColors.primary),
+            ),
+            const SizedBox(height: AppSpacing.lg),
             TextField(
               controller: jenisCtrl,
-              decoration: const InputDecoration(labelText: 'ID Jenis Berkas', border: OutlineInputBorder()),
+              decoration: const InputDecoration(labelText: 'ID Jenis Berkas'),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: linkCtrl,
-              decoration: const InputDecoration(labelText: 'Link File (Drive / URL)', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Link File (Drive / URL)',
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66), padding: const EdgeInsets.symmetric(vertical: 14)),
+              child: FilledButton(
                 onPressed: () async {
                   if (linkCtrl.text.trim().isEmpty) return;
                   Navigator.pop(ctx);
@@ -1772,12 +1790,17 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
                       idJenis: jenisCtrl.text.trim(),
                       linkFile: linkCtrl.text.trim(),
                     );
-                    _showSnackBar(res['message'] ?? 'Link berkas berhasil disimpan');
+                    _showSnackBar(
+                      res['message'] ?? 'Link berkas berhasil disimpan',
+                    );
                   } catch (e) {
-                    _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
+                    _showSnackBar(
+                      e.toString().replaceFirst('Exception: ', ''),
+                      isError: true,
+                    );
                   }
                 },
-                child: const Text('Simpan Link Berkas', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: const Text('Simpan Link Berkas'),
               ),
             ),
           ],
@@ -1801,8 +1824,8 @@ class _SkripsiPageState extends State<SkripsiPage> with SingleTickerProviderStat
       SnackBar(
         content: Text(message),
         backgroundColor: isError
-            ? Colors.redAccent
-            : (isSuccess ? const Color(0xFF2E7D32) : const Color(0xFF501F66)),
+            ? AppColors.danger
+            : (isSuccess ? AppColors.success : AppColors.primary),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -1823,7 +1846,7 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      color: const Color(0xFFFAFCFF),
+      color: AppColors.scaffold,
       child: _tabBar,
     );
   }

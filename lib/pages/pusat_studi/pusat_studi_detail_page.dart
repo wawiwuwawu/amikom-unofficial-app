@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_html/flutter_html.dart';
 import '../../models/pusat_studi.dart';
 import '../../services/pusat_studi_service.dart';
-import '../../widgets/glass_card.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/app_kit.dart';
 import '../../widgets/expandable_html.dart';
 
 class PusatStudiDetailPage extends StatefulWidget {
@@ -57,14 +57,14 @@ class _PusatStudiDetailPageState extends State<PusatStudiDetailPage> {
       await _service.joinPusatStudi(widget.pusatStudi.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Berhasil bergabung dengan Pusat Studi!'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Berhasil bergabung dengan Pusat Studi!'), backgroundColor: AppColors.success),
         );
-        Navigator.pop(context, true); 
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: Colors.red),
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: AppColors.danger),
         );
       }
     } finally {
@@ -78,66 +78,69 @@ class _PusatStudiDetailPageState extends State<PusatStudiDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAFCFF),
-      appBar: AppBar(
-        title: Text(widget.pusatStudi.nama, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        backgroundColor: Colors.white.withValues(alpha: 0.9),
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF501F66)),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)))
-          : _error.isNotEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(CupertinoIcons.exclamationmark_triangle, size: 50, color: Colors.red),
-                      const SizedBox(height: 16),
-                      Text(_error, style: const TextStyle(color: Colors.black54)),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadData,
-                        child: const Text('Coba Lagi'),
-                      )
-                    ],
-                  ),
-                )
-              : _detail == null
-                  ? const Center(child: Text('Data tidak ditemukan'))
-                  : Column(
-                      children: [
-                        _buildTabToggle(),
-                        Expanded(
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            child: _buildActiveContent(),
-                          ),
-                        ),
-                      ],
-                    ),
+    return AppScaffold(
+      title: widget.pusatStudi.nama,
+      scrollable: false,
+      padding: EdgeInsets.zero,
       floatingActionButton: (!widget.isJoined && _detail != null)
           ? FloatingActionButton.extended(
               onPressed: _isJoining ? null : _join,
-              backgroundColor: const Color(0xFF501F66),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
               icon: _isJoining
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Icon(CupertinoIcons.person_add_solid, color: Colors.white),
-              label: Text(_isJoining ? 'Memproses...' : 'Gabung Pusat Studi', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ).animate().slideY(begin: 1.0, duration: 300.ms).fadeIn()
+                  : const Icon(CupertinoIcons.person_add_solid),
+              label: Text(_isJoining ? 'Memproses...' : 'Gabung Pusat Studi'),
+            )
           : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      body: _buildBody(),
     );
   }
 
+  Widget _buildBody() {
+    if (_isLoading) return const AppLoading();
+
+    if (_error.isNotEmpty) {
+      return Padding(
+        padding: AppSpacing.page,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: AppErrorState(message: _error, onRetry: _loadData),
+        ),
+      );
+    }
+
+    if (_detail == null) {
+      return const AppEmptyState(
+        title: 'Data tidak ditemukan',
+        icon: CupertinoIcons.info_circle,
+      );
+    }
+
+    return Column(
+      children: [
+        _buildTabToggle(),
+        Expanded(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: _buildActiveContent(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Pengalih seksi ringkas — memakai token, bukan kartu kaca.
   Widget _buildTabToggle() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: GlassCard(
-        borderRadius: 25,
-        padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.xs),
+        decoration: AppDeco.listGroup(),
         child: Row(
           children: [
             _buildTabButton('Profil', 'profil'),
@@ -162,16 +165,18 @@ class _PusatStudiDetailPageState extends State<PusatStudiDetailPage> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF501F66) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
         ),
         child: Text(
           title,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: isSelected ? Colors.white : Colors.black54,
+          style: AppText.button.copyWith(
+            color: isSelected ? Colors.white : AppColors.textSecondary,
           ),
         ),
       ),
@@ -193,166 +198,175 @@ class _PusatStudiDetailPageState extends State<PusatStudiDetailPage> {
     }
   }
 
+  EdgeInsetsGeometry get _sectionPadding => EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.xs,
+        AppSpacing.lg,
+        AppSpacing.xxl * 2,
+      );
+
+  /// Profil = data identitas → baris label/nilai di dalam satu permukaan.
   Widget _buildProfilSection() {
+    final profil = _detail!.profil;
     return ListView(
       key: const ValueKey('profil'),
-      padding: const EdgeInsets.all(16).copyWith(bottom: 100),
+      padding: _sectionPadding,
       children: [
-        GlassCard(
-          borderRadius: 16,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(CupertinoIcons.info_circle_fill, color: Color(0xFF501F66)),
-                  const SizedBox(width: 8),
-                  const Text('Profil Pusat Studi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF501F66))),
-                ],
-              ),
-              const Divider(),
-              Text(_detail!.profil.nama, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              const SizedBox(height: 8),
-              if (_detail!.profil.keterangan.isEmpty)
-                const Text('Tidak ada keterangan', style: TextStyle(color: Colors.black87))
-              else
-                Html(
-                  data: _detail!.profil.keterangan,
-                  style: {
-                    "body": Style(
-                      margin: Margins.zero, 
-                      padding: HtmlPaddings.zero,
-                      fontSize: FontSize(14),
-                      color: Colors.black87,
-                    ),
-                  },
-                ),
-            ],
+        AppSection(
+          title: 'Profil Pusat Studi',
+          topGap: 0,
+          child: AppSurface(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppKeyValue(label: 'Nama', value: profil.nama, emphasize: true),
+                const Divider(height: AppSpacing.xl, color: AppColors.border),
+                if (profil.keterangan.isEmpty)
+                  Text('Tidak ada keterangan', style: AppText.body)
+                else
+                  Html(
+                    data: profil.keterangan,
+                    style: {
+                      "body": Style(
+                        margin: Margins.zero,
+                        padding: HtmlPaddings.zero,
+                        fontSize: FontSize(14),
+                        color: AppColors.textPrimary,
+                      ),
+                    },
+                  ),
+              ],
+            ),
           ),
-        ).animate().fadeIn().slideY(begin: 0.1),
+        ),
       ],
     );
   }
 
   Widget _buildDosenSection() {
     if (_detail!.dosen.isEmpty) {
-      return Center(
-        key: const ValueKey('dosen-empty'),
-        child: const Text('Belum ada dosen pembimbing', style: TextStyle(color: Colors.black54)),
-      ).animate().fadeIn();
+      return const AppEmptyState(
+        key: ValueKey('dosen-empty'),
+        title: 'Belum ada dosen pembimbing',
+        icon: CupertinoIcons.person_2,
+      );
     }
-    return ListView.builder(
+    return ListView(
       key: const ValueKey('dosen'),
-      padding: const EdgeInsets.all(16).copyWith(bottom: 100),
-      itemCount: _detail!.dosen.length,
-      itemBuilder: (context, index) {
-        final dosen = _detail!.dosen[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: GlassCard(
-            borderRadius: 12,
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: const Color(0xFF501F66).withValues(alpha: 0.1),
-                child: Text(dosen.no, style: const TextStyle(color: Color(0xFF501F66))),
-              ),
-              title: Text(dosen.nama, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              subtitle: Text('NIK: ${dosen.nik}', style: const TextStyle(fontSize: 12)),
+      padding: _sectionPadding,
+      children: [
+        AppListGroup.from([
+          for (final dosen in _detail!.dosen)
+            AppListRow(
+              leading: _initialAvatar(dosen.no, AppColors.primary, AppColors.primary),
+              title: dosen.nama,
+              subtitle: 'NIK: ${dosen.nik}',
             ),
-          ),
-        ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.1);
-      },
+        ]),
+      ],
     );
   }
 
   Widget _buildMahasiswaSection() {
     if (_detail!.mahasiswa.isEmpty) {
-      return Center(
-        key: const ValueKey('mahasiswa-empty'),
-        child: const Text('Belum ada mahasiswa yang tergabung', style: TextStyle(color: Colors.black54)),
-      ).animate().fadeIn();
+      return const AppEmptyState(
+        key: ValueKey('mahasiswa-empty'),
+        title: 'Belum ada mahasiswa yang tergabung',
+        icon: CupertinoIcons.person_3,
+      );
     }
-    return ListView.builder(
+    return ListView(
       key: const ValueKey('mahasiswa'),
-      padding: const EdgeInsets.all(16).copyWith(bottom: 100),
-      itemCount: _detail!.mahasiswa.length,
-      itemBuilder: (context, index) {
-        final mhs = _detail!.mahasiswa[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: GlassCard(
-            borderRadius: 12,
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.blue.withValues(alpha: 0.1),
-                child: const Icon(CupertinoIcons.person_fill, color: Colors.blue, size: 20),
+      padding: _sectionPadding,
+      children: [
+        AppListGroup.from([
+          for (final mhs in _detail!.mahasiswa)
+            AppListRow(
+              leading: Container(
+                width: AppSpacing.xxl,
+                height: AppSpacing.xxl,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: AppColors.infoBg,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(CupertinoIcons.person_fill, color: AppColors.info, size: 16),
               ),
-              title: Text(mhs.nama, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              subtitle: Text('NPM: ${mhs.npm}\nJoin: ${mhs.tanggalJoin}', style: const TextStyle(fontSize: 12)),
-              isThreeLine: true,
+              title: mhs.nama,
+              subtitle: 'NPM: ${mhs.npm}\nJoin: ${mhs.tanggalJoin}',
             ),
-          ),
-        ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.1);
-      },
+        ]),
+      ],
     );
   }
 
+  /// Tema riset = konten panjang (HTML) → tetap berupa permukaan.
   Widget _buildTemaSection() {
     if (_detail!.tema.isEmpty) {
-      return Center(
-        key: const ValueKey('tema-empty'),
-        child: const Text('Belum ada tema riset', style: TextStyle(color: Colors.black54)),
-      ).animate().fadeIn();
+      return const AppEmptyState(
+        key: ValueKey('tema-empty'),
+        title: 'Belum ada tema riset',
+        icon: CupertinoIcons.doc_text,
+      );
     }
-    return ListView.builder(
+    return ListView(
       key: const ValueKey('tema'),
-      padding: const EdgeInsets.all(16).copyWith(bottom: 100),
-      itemCount: _detail!.tema.length,
-      itemBuilder: (context, index) {
-        final tema = _detail!.tema[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: GlassCard(
-            borderRadius: 16,
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(tema.judulTema, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                const SizedBox(height: 8),
-                ExpandableHtml(htmlData: tema.deskripsi),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Icon(CupertinoIcons.person_solid, size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Expanded(child: Text(tema.pengusul, style: const TextStyle(fontSize: 12, color: Colors.grey))),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  alignment: WrapAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF501F66).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text('Jenis: ${tema.jenisTema}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
-                    ),
-                    Text('Kuota: ${tema.kuota}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange)),
-                  ],
-                ),
-              ],
-            ),
+      padding: _sectionPadding,
+      children: [
+        for (final tema in _detail!.tema)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: _buildTemaCard(tema),
           ),
-        ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.1);
-      },
+      ],
+    );
+  }
+
+  Widget _buildTemaCard(TemaPusatStudi tema) {
+    return AppSurface(
+      radius: AppRadius.lg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(tema.judulTema, style: AppText.h3),
+          const SizedBox(height: AppSpacing.sm),
+          ExpandableHtml(htmlData: tema.deskripsi),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              const Icon(CupertinoIcons.person_solid, size: 14, color: AppColors.textMuted),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(child: Text(tema.pengusul, style: AppText.bodySm)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              AppPill('Jenis: ${tema.jenisTema}', tone: AppPillTone.info),
+              AppPill('Kuota: ${tema.kuota}', tone: AppPillTone.warning),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _initialAvatar(String text, Color foreground, Color accent) {
+    return Container(
+      width: AppSpacing.xxl,
+      height: AppSpacing.xxl,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.08),
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        text,
+        style: AppText.label.copyWith(color: foreground, fontWeight: FontWeight.w700),
+      ),
     );
   }
 }

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'glass_card.dart';
+import '../theme/app_theme.dart';
+import 'app_kit.dart';
 
 /// Widget tampilan isi penafian (disclaimer) AmiApp.
 /// Dipakai di [DisclaimerGatePage] (persetujuan pertama) dan menu "Penafian".
@@ -20,7 +21,7 @@ class DisclaimerView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -79,43 +80,37 @@ class DisclaimerView extends StatelessWidget {
                 'Tetap gunakan perangkat pribadi dan jangan pernah membagikan kredensial portal '
                 'kepada siapa pun.',
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             'Dengan melanjutkan menggunakan AmiApp, kamu dianggap telah membaca, memahami, '
             'dan menyetujui seluruh ketentuan di atas. Detail lengkap tersedia di Wiki proyek.',
-            style: TextStyle(fontSize: 12, color: Colors.black54, height: 1.5),
+            style: AppText.bodySm.copyWith(height: 1.5),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.md),
           Text(
             'Ketentuan ini dapat berubah sewaktu-waktu dan berlaku sejak dipublikasikan '
             'di Wiki proyek dan/atau disertakan dalam versi aplikasi terbaru; ketentuan '
             'pada versi sebelumnya gugur dan digantikan oleh versi terbaru.',
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.black45,
+            style: AppText.label.copyWith(
+              color: AppColors.textMuted,
               height: 1.5,
               fontStyle: FontStyle.italic,
             ),
           ),
           if (showAcceptButton) ...[
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xl),
             SizedBox(
               width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
+              child: FilledButton(
                 onPressed: onAccepted,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF501F66),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(56),
+                  textStyle: AppText.button.copyWith(fontSize: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                 ),
-                child: const Text(
-                  'Saya Setuju — Lanjutkan',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                child: const Text('Saya Setuju — Lanjutkan'),
               ),
             ),
           ],
@@ -130,32 +125,26 @@ class DisclaimerView extends StatelessWidget {
     required String body,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: GlassCard(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, size: 18, color: const Color(0xFF501F66)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(body, style: const TextStyle(fontSize: 12.5, height: 1.55)),
-            ],
-          ),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: AppSurface(
+        radius: AppRadius.md,
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, size: 18, color: AppColors.primary),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(title, style: AppText.h3),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(body, style: AppText.bodySm.copyWith(height: 1.55)),
+          ],
         ),
       ),
     );

@@ -5,6 +5,15 @@ import 'package:file_picker/file_picker.dart';
 import 'skpi_file_picker.dart';
 import '../models/seminar_workshop.dart';
 import '../services/seminar_workshop_service.dart';
+import '../theme/app_theme.dart';
+import 'app_kit.dart';
+
+/// Form tambah/edit seminar & workshop.
+///
+/// Redesign memakai design system: handlebar & judul memakai token, state
+/// memuat/galat memakai [AppLoading] dan [AppErrorState], seluruh field
+/// memakai `inputDecorationTheme` global (tanpa border lokal), dan tombol
+/// submit memakai [FilledButton]. Field, validator, dan alur submit sama.
 class SeminarWorkshopFormSheet extends StatefulWidget {
   final VoidCallback onSuccess;
   final SeminarWorkshopItem? itemToEdit;
@@ -48,6 +57,7 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
     }
     _loadOptions();
   }
+
   @override
   void dispose() {
     _judulController.dispose();
@@ -74,7 +84,6 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
       });
     }
   }
-
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
@@ -130,7 +139,7 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
           content: Text(_isEditing
               ? 'Seminar / Workshop berhasil diubah'
               : 'Seminar / Workshop berhasil ditambahkan'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.success,
         ),
       );
     } catch (e) {
@@ -138,7 +147,7 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.danger,
         ),
       );
     } finally {
@@ -154,10 +163,10 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
       ),
       child: Container(
         decoration: const BoxDecoration(
-          color: Color(0xFFFAFCFF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          color: AppColors.scaffold,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
         ),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -168,46 +177,36 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
+                    color: AppColors.borderStrong,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    _isEditing ? 'Edit Seminar / Workshop' : 'Tambah Seminar / Workshop',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF501F66),
+                  Expanded(
+                    child: Text(
+                      _isEditing
+                          ? 'Edit Seminar / Workshop'
+                          : 'Tambah Seminar / Workshop',
+                      style: AppText.h2,
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(CupertinoIcons.xmark_circle_fill, color: Colors.grey),
+                    icon: const Icon(
+                      CupertinoIcons.xmark_circle_fill,
+                      color: AppColors.textMuted,
+                    ),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               _isLoadingOptions
-                  ? const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
+                  ? const AppLoading()
                   : _error != null
-                      ? Column(
-                          children: [
-                            Text(_error!, style: const TextStyle(color: Colors.red)),
-                            const SizedBox(height: 8),
-                            ElevatedButton(
-                              onPressed: _loadOptions,
-                              child: const Text('Coba Lagi'),
-                            ),
-                          ],
-                        )
+                      ? AppErrorState(message: _error!, onRetry: _loadOptions)
                       : Form(
                           key: _formKey,
                           child: Column(
@@ -216,10 +215,9 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
                               // Dropdown Jenis Kegiatan (Wajib)
                               DropdownButtonFormField<String>(
                                 initialValue: _selectedJenisKegiatan,
-                                decoration: InputDecoration(
+                                decoration: const InputDecoration(
                                   labelText: 'Jenis Kegiatan *',
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  prefixIcon: const Icon(CupertinoIcons.rectangle_grid_2x2),
+                                  prefixIcon: Icon(CupertinoIcons.rectangle_grid_2x2),
                                 ),
                                 isExpanded: true,
                                 items: _optionsData?.jenisKegiatan.map((opt) {
@@ -235,29 +233,28 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
                                 },
                                 validator: (val) => val == null ? 'Pilih jenis kegiatan' : null,
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpacing.lg),
 
                               // Judul Seminar / Workshop (Wajib)
                               TextFormField(
                                 controller: _judulController,
-                                decoration: InputDecoration(
+                                decoration: const InputDecoration(
                                   labelText: 'Judul Seminar / Workshop *',
-                                  hintText: 'Contoh: Workshop Artificial Intelligence & Cloud',
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  prefixIcon: const Icon(CupertinoIcons.textbox),
+                                  hintText:
+                                      'Contoh: Workshop Artificial Intelligence & Cloud',
+                                  prefixIcon: Icon(CupertinoIcons.textbox),
                                 ),
                                 validator: (val) =>
                                     (val == null || val.trim().isEmpty) ? 'Masukkan judul seminar/workshop' : null,
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpacing.lg),
 
                               // Dropdown Sebagai (Wajib)
                               DropdownButtonFormField<String>(
                                 initialValue: _selectedSebagai,
-                                decoration: InputDecoration(
+                                decoration: const InputDecoration(
                                   labelText: 'Peran / Sebagai *',
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  prefixIcon: const Icon(CupertinoIcons.person_badge_plus),
+                                  prefixIcon: Icon(CupertinoIcons.person_badge_plus),
                                 ),
                                 isExpanded: true,
                                 items: _optionsData?.sebagai.map((opt) {
@@ -269,15 +266,14 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
                                 onChanged: (val) => setState(() => _selectedSebagai = val),
                                 validator: (val) => val == null ? 'Pilih peran (sebagai)' : null,
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpacing.lg),
 
                               // Dropdown Tingkatan (Opsional)
                               DropdownButtonFormField<String>(
                                 initialValue: _selectedTingkatan,
-                                decoration: InputDecoration(
+                                decoration: const InputDecoration(
                                   labelText: 'Tingkatan (Opsional)',
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  prefixIcon: const Icon(CupertinoIcons.globe),
+                                  prefixIcon: Icon(CupertinoIcons.globe),
                                 ),
                                 isExpanded: true,
                                 items: _optionsData?.tingkatan.map((opt) {
@@ -288,21 +284,20 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
                                 }).toList(),
                                 onChanged: (val) => setState(() => _selectedTingkatan = val),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpacing.lg),
 
                               // Input Tahun (Wajib)
                               TextFormField(
                                 controller: _tahunController,
                                 keyboardType: TextInputType.number,
-                                decoration: InputDecoration(
+                                decoration: const InputDecoration(
                                   labelText: 'Tahun *',
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  prefixIcon: const Icon(CupertinoIcons.calendar),
+                                  prefixIcon: Icon(CupertinoIcons.calendar),
                                 ),
                                 validator: (val) =>
                                     (val == null || val.trim().isEmpty) ? 'Masukkan tahun' : null,
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpacing.lg),
 
                               SkpiFilePicker(
                                 selectedFile: _selectedFile,
@@ -312,37 +307,32 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
                                 onFileSelected: (file) => setState(() => _selectedFile = file),
                               ),
                               if (_isEditing && _selectedFile == null && widget.itemToEdit!.file.isNotEmpty) ...[
-                                const SizedBox(height: 6),
+                                const SizedBox(height: AppSpacing.sm),
                                 Text(
                                   'File saat ini: ${widget.itemToEdit!.file}',
-                                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                                  style: AppText.label,
                                 ),
                               ],
-                              const SizedBox(height: 24),
+                              const SizedBox(height: AppSpacing.xl),
 
                               // Tombol Submit
                               SizedBox(
                                 width: double.infinity,
-                                child: ElevatedButton(
+                                child: FilledButton(
                                   onPressed: _isSubmitting ? null : _submitForm,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF501F66),
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
                                   child: _isSubmitting
                                       ? const SizedBox(
                                           height: 20,
                                           width: 20,
                                           child: CircularProgressIndicator(
-                                              strokeWidth: 2, color: Colors.white),
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
                                         )
                                       : Text(
-                                          _isEditing ? 'Simpan Perubahan' : 'Upload Seminar / Workshop',
-                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                          _isEditing
+                                              ? 'Simpan Perubahan'
+                                              : 'Upload Seminar / Workshop',
                                         ),
                                 ),
                               ),

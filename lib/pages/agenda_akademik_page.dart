@@ -1,14 +1,21 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import '../services/akademik_service.dart';
 import '../models/agenda.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
+/// Agenda akademik — kalender bulanan di atas, lalu daftar kegiatan yang
+/// disusun kronologis per bulan ([AppSection] = nama bulan, isinya
+/// [AppListGroup] + [AppListRow] dengan lencana tanggal).
+///
+/// Memilih tanggal di kalender menyaring daftar ke hari itu (sama seperti
+/// sebelumnya); tombol "Lihat Semua" mengembalikan ke seluruh agenda.
+/// Tombol kembali disediakan otomatis oleh [AppScaffold], sehingga `onBack`
+/// dipertahankan hanya untuk kompatibilitas pemanggil lama.
 class AgendaAkademikPage extends StatefulWidget {
   final VoidCallback? onBack;
   const AgendaAkademikPage({super.key, this.onBack});
@@ -17,12 +24,30 @@ class AgendaAkademikPage extends StatefulWidget {
   State<AgendaAkademikPage> createState() => _AgendaAkademikPageState();
 }
 
+/// Satu kegiatan + tanggal mulai terparsenya, dipakai untuk mengurutkan
+/// tampilan daftar tanpa mengubah urutan data asli.
+class _AgendaBertanggal {
+  final int urutan;
+  final DateTime? tanggal;
+  final Agenda agenda;
+
+  _AgendaBertanggal(this.urutan, this.tanggal, this.agenda);
+}
+
+/// Kelompok daftar agenda untuk satu bulan.
+class _KelompokBulan {
+  final String label;
+  final List<Agenda> agenda;
+
+  _KelompokBulan(this.label, this.agenda);
+}
+
 class _AgendaAkademikPageState extends State<AgendaAkademikPage> {
   final AkademikService _service = AkademikService();
   bool _isLoading = true;
   String _error = '';
   List<Agenda> _agendaList = [];
-  
+
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
@@ -33,13 +58,13 @@ class _AgendaAkademikPageState extends State<AgendaAkademikPage> {
   };
 
   final List<Color> _eventColors = [
-    const Color(0xFF501F66),
-    Colors.blue.shade700,
-    Colors.teal.shade700,
-    Colors.orange.shade700,
-    Colors.pink.shade700,
-    Colors.indigo.shade700,
-    Colors.green.shade700,
+    AppColors.primary,
+    AppColors.primarySoft,
+    AppColors.info,
+    AppColors.success,
+    AppColors.warning,
+    AppColors.danger,
+    AppColors.textSecondary,
   ];
 
   Color _getColorForAgenda(Agenda agenda) {
@@ -92,17 +117,17 @@ class _AgendaAkademikPageState extends State<AgendaAkademikPage> {
     for (var agenda in _agendaList) {
       final start = _parseTanggal(agenda.mulai);
       final end = _parseTanggal(agenda.selesai);
-      
+
       if (start != null) {
         if (end == null && isSameDay(day, start)) {
           events.add(agenda);
-        } 
+        }
         else if (end != null) {
           final normalizedDay = DateTime(day.year, day.month, day.day);
           final normalizedStart = DateTime(start.year, start.month, start.day);
           final normalizedEnd = DateTime(end.year, end.month, end.day);
-          
-          if (normalizedDay.isAfter(normalizedStart.subtract(const Duration(days: 1))) && 
+
+          if (normalizedDay.isAfter(normalizedStart.subtract(const Duration(days: 1))) &&
               normalizedDay.isBefore(normalizedEnd.add(const Duration(days: 1)))) {
             events.add(agenda);
           }
@@ -115,7 +140,7 @@ class _AgendaAkademikPageState extends State<AgendaAkademikPage> {
   Future<void> _addToGoogleCalendar(Agenda agenda) async {
     final start = _parseTanggal(agenda.mulai);
     final end = _parseTanggal(agenda.selesai) ?? start;
-    
+
     if (start == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Format tanggal tidak valid')),
@@ -125,7 +150,7 @@ class _AgendaAkademikPageState extends State<AgendaAkademikPage> {
 
     final format = DateFormat('yyyyMMdd');
     final startDateStr = format.format(start);
-    final endDateStr = format.format(end!.add(const Duration(days: 1))); 
+    final endDateStr = format.format(end!.add(const Duration(days: 1)));
 
     final url = Uri.parse(
       'https://calendar.google.com/calendar/render?action=TEMPLATE'
@@ -140,238 +165,322 @@ class _AgendaAkademikPageState extends State<AgendaAkademikPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.danger),
         );
       }
     }
   }
 
+  // ── Pemetaan bulan untuk tampilan ──────────────────────────────────────────
+
+  String _namaBulan(int bulan) {
+    for (final entry in _bulanIndo.entries) {
+      if (entry.value == bulan) return entry.key;
+    }
+    return '';
+  }
+
+  String _labelBulan(DateTime tanggal) {
+    final nama = _namaBulan(tanggal.month);
+    return nama.isEmpty ? '${tanggal.year}' : '$nama ${tanggal.year}';
+  }
+
+  String _labelBulanSingkat(DateTime tanggal) {
+    final nama = _namaBulan(tanggal.month);
+    if (nama.length < 3) return nama.toUpperCase();
+    return nama.substring(0, 3).toUpperCase();
+  }
+
+  /// Kelompokkan agenda kronologis per bulan. Agenda tanpa tanggal valid
+  /// diletakkan paling akhir agar tidak menutupi data utama.
+  List<_KelompokBulan> _kelompokkanPerBulan(List<Agenda> items) {
+    final entries = <_AgendaBertanggal>[
+      for (var i = 0; i < items.length; i++)
+        _AgendaBertanggal(i, _parseTanggal(items[i].mulai), items[i]),
+    ];
+
+    entries.sort((a, b) {
+      final ta = a.tanggal;
+      final tb = b.tanggal;
+      if (ta == null && tb == null) return a.urutan.compareTo(b.urutan);
+      if (ta == null) return 1;
+      if (tb == null) return -1;
+      final banding = ta.compareTo(tb);
+      return banding != 0 ? banding : a.urutan.compareTo(b.urutan);
+    });
+
+    final hasil = <_KelompokBulan>[];
+    for (final entry in entries) {
+      final tanggal = entry.tanggal;
+      final label = tanggal == null ? 'Tanggal belum tersedia' : _labelBulan(tanggal);
+      if (hasil.isEmpty || hasil.last.label != label) {
+        hasil.add(_KelompokBulan(label, [entry.agenda]));
+      } else {
+        hasil.last.agenda.add(entry.agenda);
+      }
+    }
+    return hasil;
+  }
+
+  // ── Tampilan ──────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    // get events for selected day to show in the list below
-    final selectedEvents = _selectedDay != null ? _getEventsForDay(_selectedDay!) : <Agenda>[];
+    return AppScaffold(
+      title: 'Agenda Akademik',
+      subtitle: 'Kalender & jadwal kegiatan',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      body: _buildBody(),
+    );
+  }
 
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFAFCFF), // Pearl White
-            Color(0xFFE3F2FD), // Ice Blue
+  Widget _buildBody() {
+    if (_isLoading) return const AppLoading(message: 'Memuat agenda akademik…');
+
+    if (_error.isNotEmpty) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: AppSpacing.page,
+          child: AppErrorState(message: _error, onRetry: _loadData),
+        ),
+      );
+    }
+
+    // Agenda hari terpilih untuk ditampilkan di daftar bawah kalender.
+    final selectedEvents = _selectedDay != null ? _getEventsForDay(_selectedDay!) : <Agenda>[];
+    final visible =
+        _selectedDay != null && selectedEvents.isNotEmpty ? selectedEvents : _agendaList;
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: AppColors.primary,
+      child: ListView(
+        padding: EdgeInsets.only(
+          left: AppSpacing.lg,
+          right: AppSpacing.lg,
+          top: AppSpacing.lg,
+          bottom: MediaQuery.of(context).padding.bottom + 100,
+        ),
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          _buildRingkasanBulan(),
+          AppSection(
+            title: 'Kalender',
+            child: AppSurface(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              child: _buildCalendar(),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _selectedDay != null
+                      ? 'Agenda di ${DateFormat('dd MMM yyyy').format(_selectedDay!)}'
+                      : 'Semua Agenda',
+                  style: AppText.h2,
+                ),
+              ),
+              if (_selectedDay != null)
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _selectedDay = null;
+                    });
+                  },
+                  child: const Text('Lihat Semua'),
+                ),
+            ],
+          ),
+          if (_agendaList.isEmpty)
+            const AppEmptyState(
+              title: 'Belum ada agenda akademik sama sekali.',
+              icon: CupertinoIcons.calendar,
+            )
+          else if (visible.isEmpty)
+            const AppEmptyState(
+              title: 'Tidak ada agenda pada tanggal ini.',
+              icon: CupertinoIcons.calendar_badge_minus,
+            )
+          else
+            ..._buildKelompokBulan(visible),
+        ],
+      ),
+    );
+  }
+
+  /// Sorotan bulan & hari berjalan (kartu hero ringkas).
+  Widget _buildRingkasanBulan() {
+    final now = DateTime.now();
+    final agendaHariIni = _getEventsForDay(now).length;
+    final agendaBulanIni = _agendaList.where((agenda) {
+      final tanggal = _parseTanggal(agenda.mulai);
+      return tanggal != null && tanggal.month == now.month && tanggal.year == now.year;
+    }).length;
+
+    return AppSurface(
+      variant: AppSurfaceVariant.hero,
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: AppDeco.softPrimary(),
+            child: const Icon(CupertinoIcons.calendar_today, size: 20, color: AppColors.primary),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_labelBulan(now), style: AppText.h3),
+                const SizedBox(height: 2),
+                Text(
+                  'Hari ini: $agendaHariIni kegiatan • Bulan ini: $agendaBulanIni kegiatan',
+                  style: AppText.bodySm,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildKelompokBulan(List<Agenda> items) {
+    return [
+      for (final kelompok in _kelompokkanPerBulan(items))
+        AppSection(
+          title: kelompok.label,
+          trailing: Text(
+            '${kelompok.agenda.length} kegiatan',
+            style: AppText.label.copyWith(fontWeight: FontWeight.w400),
+          ),
+          child: AppListGroup.from([
+            for (final agenda in kelompok.agenda) _buildAgendaRow(agenda),
+          ]),
+        ),
+    ];
+  }
+
+  /// Satu baris kegiatan: lencana tanggal · nama kegiatan · waktu,
+  /// plus aksi simpan ke Google Calendar.
+  Widget _buildAgendaRow(Agenda agenda) {
+    final tanggal = _parseTanggal(agenda.mulai);
+    final waktu = agenda.selesai.isNotEmpty && agenda.mulai != agenda.selesai
+        ? '${agenda.mulai} - ${agenda.selesai}'
+        : agenda.mulai;
+
+    return AppListRow(
+      leading: Container(
+        width: 46,
+        height: 46,
+        alignment: Alignment.center,
+        decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              tanggal != null ? '${tanggal.day}' : '—',
+              style: AppText.h3.copyWith(fontSize: 17, color: AppColors.primary),
+            ),
+            if (tanggal != null)
+              Text(
+                _labelBulanSingkat(tanggal),
+                style: AppText.label.copyWith(color: AppColors.primarySoft),
+              ),
           ],
         ),
       ),
-      child: Scaffold(
-        extendBodyBehindAppBar: true,
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: widget.onBack != null
-              ? IconButton(
-                  icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-                  onPressed: widget.onBack,
-                )
-              : null,
-          title: const Text(
-            'Agenda Akademik',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: Colors.white.withValues(alpha: 0.5),
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          flexibleSpace: ClipRRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(color: Colors.transparent),
-            ),
-          ),
+      title: agenda.title,
+      subtitle: waktu,
+      trailing: IconButton(
+        tooltip: 'Simpan ke Google Calendar',
+        onPressed: () => _addToGoogleCalendar(agenda),
+        icon: const Icon(
+          CupertinoIcons.calendar_badge_plus,
+          size: 20,
+          color: AppColors.primary,
         ),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)))
-            : _error.isNotEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(CupertinoIcons.exclamationmark_triangle, size: 50, color: Colors.red),
-                        const SizedBox(height: 16),
-                        Text(_error, style: const TextStyle(color: Colors.black54)),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _loadData,
-                          child: const Text('Coba Lagi'),
-                        )
-                      ],
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _loadData,
-                    color: const Color(0xFF501F66),
-                    child: ListView(
-                      padding: EdgeInsets.only(
-                        left: 16,
-                        right: 16,
-                        top: 16,
-                        bottom: MediaQuery.of(context).padding.bottom + 100,
-                      ),
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: [
-                        _buildCalendar().animate().fadeIn().slideY(begin: 0.1),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _selectedDay != null 
-                                    ? 'Agenda di ${DateFormat('dd MMM yyyy').format(_selectedDay!)}'
-                                    : 'Semua Agenda',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF501F66),
-                                ),
-                              ).animate().fadeIn(delay: 100.ms),
-                            ),
-                            if (_selectedDay != null)
-                              TextButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _selectedDay = null;
-                                  });
-                                },
-                                style: TextButton.styleFrom(
-                                  foregroundColor: const Color(0xFF501F66),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                child: const Text('Lihat Semua', style: TextStyle(fontWeight: FontWeight.bold)),
-                              ).animate().fadeIn(delay: 100.ms),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          transitionBuilder: (child, animation) {
-                            return FadeTransition(
-                              opacity: animation,
-                              child: SlideTransition(
-                                position: Tween<Offset>(
-                                  begin: const Offset(0, 0.05),
-                                  end: Offset.zero,
-                                ).animate(animation),
-                                child: child,
-                              ),
-                            );
-                          },
-                          child: Column(
-                            key: ValueKey(_selectedDay?.toIso8601String() ?? 'all'),
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (_agendaList.isEmpty)
-                                const Center(
-                                  child: Padding(
-                                    padding: EdgeInsets.all(32.0),
-                                    child: Text('Belum ada agenda akademik sama sekali.', style: TextStyle(color: Colors.black54)),
-                                  ),
-                                )
-                              else if (selectedEvents.isEmpty && _selectedDay != null)
-                                const Center(
-                                  child: Padding(
-                                    padding: EdgeInsets.all(32.0),
-                                    child: Text('Tidak ada agenda pada tanggal ini.', style: TextStyle(color: Colors.black54)),
-                                  ),
-                                )
-                              else
-                                ...(_selectedDay != null && selectedEvents.isNotEmpty ? selectedEvents : _agendaList)
-                                    .asMap().entries.map((entry) {
-                                  return _buildAgendaCard(entry.value, entry.key)
-                                      .animate()
-                                      .fadeIn(delay: (100 + (entry.key * 50)).ms)
-                                      .slideX(begin: 0.1);
-                                }),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildCalendar() {
-    return GlassCard(
-      padding: const EdgeInsets.all(8),
-      borderRadius: 20,
-      opacity: 0.9,
-      child: TableCalendar<Agenda>(
-        firstDay: DateTime.utc(2020, 1, 1),
-        lastDay: DateTime.utc(2030, 12, 31),
-        focusedDay: _focusedDay,
-        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-        onDaySelected: (selectedDay, focusedDay) {
-          setState(() {
-            _selectedDay = selectedDay;
-            _focusedDay = focusedDay;
-          });
+    return TableCalendar<Agenda>(
+      firstDay: DateTime.utc(2020, 1, 1),
+      lastDay: DateTime.utc(2030, 12, 31),
+      focusedDay: _focusedDay,
+      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+      onDaySelected: (selectedDay, focusedDay) {
+        setState(() {
+          _selectedDay = selectedDay;
+          _focusedDay = focusedDay;
+        });
+      },
+      eventLoader: _getEventsForDay,
+      calendarFormat: CalendarFormat.month,
+      rowHeight: 70, // Ditinggikan agar event title muat di dalam kotak
+      headerStyle: HeaderStyle(
+        formatButtonVisible: false,
+        titleCentered: true,
+        titleTextStyle: AppText.h3.copyWith(color: AppColors.primary),
+      ),
+      daysOfWeekStyle: DaysOfWeekStyle(
+        weekdayStyle: AppText.label.copyWith(color: AppColors.textMuted),
+        weekendStyle: AppText.label.copyWith(color: AppColors.textMuted),
+      ),
+      calendarBuilders: CalendarBuilders(
+        defaultBuilder: (context, day, focusedDay) => _buildCalendarCell(day, isToday: false, isSelected: false),
+        todayBuilder: (context, day, focusedDay) => _buildCalendarCell(day, isToday: true, isSelected: false),
+        selectedBuilder: (context, day, focusedDay) => _buildCalendarCell(day, isToday: false, isSelected: true),
+        outsideBuilder: (context, day, focusedDay) => _buildCalendarCell(day, isToday: false, isSelected: false, isOutside: true),
+        markerBuilder: (context, day, events) {
+          // Marker dirender manual di dalam cell builder agar lebih fleksibel.
+          return const SizedBox();
         },
-        eventLoader: _getEventsForDay,
-        calendarFormat: CalendarFormat.month,
-        rowHeight: 70, // Ditinggikan agar event title muat di dalam kotak
-        headerStyle: const HeaderStyle(
-          formatButtonVisible: false,
-          titleCentered: true,
-          titleTextStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF501F66)),
-        ),
-        calendarBuilders: CalendarBuilders(
-          defaultBuilder: (context, day, focusedDay) => _buildCalendarCell(day, isToday: false, isSelected: false),
-          todayBuilder: (context, day, focusedDay) => _buildCalendarCell(day, isToday: true, isSelected: false),
-          selectedBuilder: (context, day, focusedDay) => _buildCalendarCell(day, isToday: false, isSelected: true),
-          outsideBuilder: (context, day, focusedDay) => _buildCalendarCell(day, isToday: false, isSelected: false, isOutside: true),
-          markerBuilder: (context, day, events) {
-            // Kita render manual marker di dalam cell builder agar lebih fleksibel
-            return const SizedBox(); 
-          },
-        ),
       ),
     );
   }
 
   Widget _buildCalendarCell(DateTime day, {bool isToday = false, bool isSelected = false, bool isOutside = false}) {
     final events = _getEventsForDay(day);
-    
+
     return Container(
       margin: const EdgeInsets.all(2), // margin kecil agar membentuk grid
       decoration: BoxDecoration(
-        color: isSelected 
-            ? const Color(0xFF501F66) 
-            : isToday 
-                ? const Color(0xFF501F66).withValues(alpha: 0.1) 
-                : Colors.white,
-        borderRadius: BorderRadius.circular(8), // Kotak dengan sudut membulat
-        border: Border.all(color: isSelected ? const Color(0xFF501F66) : Colors.grey.withValues(alpha: 0.2)),
+        color: isSelected
+            ? AppColors.primary
+            : isToday
+                ? AppColors.primary.withValues(alpha: 0.1)
+                : AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(
+          color: isSelected ? AppColors.primary : AppColors.border,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 4.0, right: 6.0),
+            padding: const EdgeInsets.only(top: AppSpacing.xs, right: 6),
             child: Text(
               '${day.day}',
               textAlign: TextAlign.right,
-              style: TextStyle(
+              style: AppText.label.copyWith(
                 fontSize: 12,
-                fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.normal,
-                color: isSelected 
-                    ? Colors.white 
-                    : isOutside 
-                        ? Colors.grey 
-                        : isToday 
-                            ? const Color(0xFF501F66) 
-                            : Colors.black87,
+                fontWeight: isSelected || isToday ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected
+                    ? Colors.white
+                    : isOutside
+                        ? AppColors.textMuted
+                        : isToday
+                            ? AppColors.primary
+                            : AppColors.textPrimary,
               ),
             ),
           ),
@@ -379,7 +488,7 @@ class _AgendaAkademikPageState extends State<AgendaAkademikPage> {
           if (events.isNotEmpty)
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.only(left: 2.0, right: 2.0, bottom: 4.0),
+                padding: const EdgeInsets.only(left: 2, right: 2, bottom: AppSpacing.xs),
                 child: ListView.builder(
                   padding: EdgeInsets.zero,
                   physics: const NeverScrollableScrollPhysics(),
@@ -388,20 +497,22 @@ class _AgendaAkademikPageState extends State<AgendaAkademikPage> {
                     final agenda = events[index];
                     return Container(
                       margin: const EdgeInsets.only(bottom: 3, left: 2, right: 2),
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs, vertical: 2),
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.white.withValues(alpha: 0.4) : _getColorForAgenda(agenda).withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(4),
+                        color: isSelected
+                            ? Colors.white.withValues(alpha: 0.4)
+                            : _getColorForAgenda(agenda).withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
                       ),
                       child: Text(
                         agenda.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: AppText.label.copyWith(
                           fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                          color: isSelected ? const Color(0xFF501F66) : Colors.white,
+                          fontWeight: FontWeight.w700,
+                          color: isSelected ? AppColors.primary : Colors.white,
                         ),
                       ),
                     );
@@ -410,84 +521,6 @@ class _AgendaAkademikPageState extends State<AgendaAkademikPage> {
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildAgendaCard(Agenda agenda, int index) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: GlassCard(
-        padding: const EdgeInsets.all(16),
-        borderRadius: 16,
-        opacity: 0.8,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF501F66).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(CupertinoIcons.calendar_today, color: Color(0xFF501F66)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        agenda.title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Color(0xFF501F66),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          const Icon(CupertinoIcons.time, size: 14, color: Colors.black54),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              agenda.selesai.isNotEmpty && agenda.mulai != agenda.selesai
-                                  ? '${agenda.mulai} - ${agenda.selesai}'
-                                  : agenda.mulai,
-                              style: const TextStyle(fontSize: 13, color: Colors.black87),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _addToGoogleCalendar(agenda),
-                icon: const Icon(CupertinoIcons.add, size: 18),
-                label: const Text('Simpan ke Google Calendar'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF501F66),
-                  elevation: 0,
-                  side: const BorderSide(color: Color(0xFF501F66), width: 1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

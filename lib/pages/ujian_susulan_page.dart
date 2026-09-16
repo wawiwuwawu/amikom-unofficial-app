@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../models/ujian_susulan.dart';
 import '../services/ujian_susulan_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
 class UjianSusulanPage extends StatefulWidget {
   final VoidCallback? onBack;
@@ -88,41 +88,35 @@ class _UjianSusulanPageState extends State<UjianSusulanPage> {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFFAFCFF),
-        appBar: AppBar(
-          title: const Text(
-            'Ujian Susulan',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          backgroundColor: Colors.white.withValues(alpha: 0.9),
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-            onPressed: widget.onBack ?? () => Navigator.pop(context),
-          ),
-          bottom: const TabBar(
-            labelColor: Color(0xFF501F66),
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Color(0xFF501F66),
-            indicatorWeight: 3,
-            labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            tabs: [
-              Tab(
-                icon: Icon(CupertinoIcons.doc_text_search),
-                text: 'UTS Susulan',
-              ),
-              Tab(
-                icon: Icon(CupertinoIcons.doc_checkmark),
-                text: 'UAS Susulan',
-              ),
-            ],
-          ),
-        ),
-        body: TabBarView(
+      child: AppScaffold(
+        title: 'Ujian Susulan',
+        scrollable: false,
+        padding: EdgeInsets.zero,
+        body: Column(
           children: [
-            _buildTabContent(isUts: true),
-            _buildTabContent(isUts: false),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: TabBar(
+                tabs: [
+                  Tab(
+                    icon: Icon(CupertinoIcons.doc_text_search, size: 20),
+                    text: 'UTS Susulan',
+                  ),
+                  Tab(
+                    icon: Icon(CupertinoIcons.doc_checkmark, size: 20),
+                    text: 'UAS Susulan',
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _buildTabContent(isUts: true),
+                  _buildTabContent(isUts: false),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -136,24 +130,14 @@ class _UjianSusulanPageState extends State<UjianSusulanPage> {
     final Future<void> Function() onRefresh = isUts ? _fetchUts : _fetchUas;
 
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)));
+      return const AppLoading(message: 'Memuat jadwal ujian susulan…');
     }
 
     if (error.isNotEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(CupertinoIcons.exclamationmark_triangle, size: 50, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(error, style: const TextStyle(color: Colors.black54)),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: onRefresh,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66)),
-              child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
-            ),
-          ],
+        child: SingleChildScrollView(
+          padding: AppSpacing.page,
+          child: AppErrorState(message: error, onRetry: onRefresh),
         ),
       );
     }
@@ -165,46 +149,28 @@ class _UjianSusulanPageState extends State<UjianSusulanPage> {
 
       return RefreshIndicator(
         onRefresh: onRefresh,
-        color: const Color(0xFF501F66),
         child: ListView(
-          padding: const EdgeInsets.all(24),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: AppSpacing.page,
           children: [
-            const SizedBox(height: 60),
-            Center(
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3E0),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFFFCC80)),
-                ),
-                child: const Icon(CupertinoIcons.calendar_badge_minus, size: 64, color: Color(0xFFE65100)),
-              ).animate().scale(duration: 500.ms),
+            AppEmptyState(
+              title: isUts ? 'Jadwal Ujian Susulan UTS' : 'Jadwal Ujian Susulan UAS',
+              message: msg,
+              icon: CupertinoIcons.calendar_badge_minus,
             ),
-            const SizedBox(height: 24),
-            Text(
-              isUts ? 'Jadwal Ujian Susulan UTS' : 'Jadwal Ujian Susulan UAS',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF501F66)),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              msg,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14, color: Colors.black54, height: 1.4, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 32),
-            GlassCard(
-              borderRadius: 16,
-              padding: const EdgeInsets.all(16),
+            AppSurface(
               child: Row(
-                children: const [
-                  Icon(CupertinoIcons.info_circle_fill, color: Color(0xFF1976D2), size: 20),
-                  SizedBox(width: 10),
+                children: [
+                  const Icon(
+                    CupertinoIcons.info_circle_fill,
+                    color: AppColors.info,
+                    size: 20,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
                       'Pendaftaran dan jadwal ujian susulan ditentukan oleh Bagian Akademik Amikom. Silakan cek secara berkala.',
-                      style: TextStyle(fontSize: 12, color: Colors.black87, height: 1.4),
+                      style: AppText.bodySm,
                     ),
                   ),
                 ],
@@ -218,168 +184,87 @@ class _UjianSusulanPageState extends State<UjianSusulanPage> {
     // When Available == true
     return RefreshIndicator(
       onRefresh: onRefresh,
-      color: const Color(0xFF501F66),
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: AppSpacing.page,
         children: [
-          // Available Header Card
-          GlassCard(
-            borderRadius: 16,
-            padding: const EdgeInsets.all(16),
+          AppSurface(
+            variant: AppSurfaceVariant.hero,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(CupertinoIcons.checkmark_seal_fill, color: Colors.green, size: 22),
-                    const SizedBox(width: 10),
+                    const Icon(
+                      CupertinoIcons.checkmark_seal_fill,
+                      color: AppColors.success,
+                      size: 22,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
-                      child: Text(
-                        data.message,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF501F66)),
-                      ),
+                      child: Text(data.message, style: AppText.h3),
                     ),
                   ],
                 ),
                 if (data.badges.isNotEmpty) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: data.badges.map((b) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF501F66).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF501F66).withValues(alpha: 0.3)),
-                        ),
-                        child: Text(
-                          b.value,
-                          style: const TextStyle(color: Color(0xFF501F66), fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                      );
-                    }).toList(),
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      for (final b in data.badges)
+                        AppPill(b.value, tone: AppPillTone.info),
+                    ],
                   ),
                 ],
               ],
             ),
-          ).animate().fadeIn(),
-          const SizedBox(height: 16),
-
-          if (data.items.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 40),
-              child: Center(
-                child: Text('Belum ada matakuliah ujian susulan yang terdaftar', style: TextStyle(color: Colors.black54)),
-              ),
-            )
-          else
-            ...List.generate(data.items.length, (index) {
-              final item = data.items[index];
-
-              Color badgeBg;
-              Color badgeText;
-              IconData badgeIcon;
-
-              switch (item.status.toLowerCase().trim()) {
-                case 'diajukan':
-                  badgeBg = const Color(0xFFFFF3E0);
-                  badgeText = const Color(0xFFE65100);
-                  badgeIcon = CupertinoIcons.clock_fill;
-                  break;
-                case 'diproses':
-                  badgeBg = const Color(0xFFE3F2FD);
-                  badgeText = const Color(0xFF1565C0);
-                  badgeIcon = CupertinoIcons.gear_alt_fill;
-                  break;
-                case 'diterima':
-                case 'disetujui':
-                  badgeBg = const Color(0xFFE8F5E9);
-                  badgeText = const Color(0xFF2E7D32);
-                  badgeIcon = CupertinoIcons.checkmark_seal_fill;
-                  break;
-                case 'ditolak':
-                  badgeBg = const Color(0xFFFFEBEE);
-                  badgeText = const Color(0xFFC62828);
-                  badgeIcon = CupertinoIcons.xmark_octagon_fill;
-                  break;
-                default:
-                  badgeBg = Colors.grey.shade200;
-                  badgeText = Colors.black87;
-                  badgeIcon = CupertinoIcons.info;
-              }
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: GlassCard(
-                  borderRadius: 16,
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              item.mkl,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF501F66)),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: badgeBg,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(badgeIcon, size: 14, color: badgeText),
-                                const SizedBox(width: 4),
-                                Text(
-                                  item.status,
-                                  style: TextStyle(color: badgeText, fontSize: 11, fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      const Divider(height: 1),
-                      const SizedBox(height: 12),
-                      _buildDetailRow('Kode MK:', item.kode),
-                      const SizedBox(height: 4),
-                      _buildDetailRow('SKS & Kelas:', '${item.sks} SKS • Kelas ${item.kelas}'),
-                      if (item.dosen.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        _buildDetailRow('Dosen:', item.dosen),
-                      ],
-                    ],
-                  ),
-                ),
-              ).animate().fadeIn(delay: (50 * index).ms);
-            }),
+          ),
+          AppSection(
+            title: 'Daftar Mata Kuliah',
+            child: data.items.isEmpty
+                ? const AppEmptyState(
+                    title: 'Belum ada matakuliah ujian susulan yang terdaftar',
+                    icon: CupertinoIcons.doc_text_search,
+                  )
+                : AppListGroup.from([
+                    for (final item in data.items) _buildItem(item),
+                  ]),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 110,
-          child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        ),
-        Expanded(
-          child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87)),
-        ),
-      ],
+  /// Satu baris mata kuliah ujian susulan: identitas MK + status pengajuan.
+  Widget _buildItem(UjianSusulanItem item) {
+    final subtitle = [
+      item.kode,
+      '${item.sks} SKS • Kelas ${item.kelas}',
+      if (item.dosen.isNotEmpty) item.dosen,
+    ].join(' • ');
+
+    return AppListRow(
+      title: item.mkl,
+      subtitle: subtitle,
+      trailing: AppPill(item.status, tone: _statusTone(item.status)),
     );
+  }
+
+  AppPillTone _statusTone(String status) {
+    switch (status.toLowerCase().trim()) {
+      case 'diterima':
+      case 'disetujui':
+        return AppPillTone.success;
+      case 'ditolak':
+        return AppPillTone.danger;
+      case 'diproses':
+        return AppPillTone.info;
+      case 'diajukan':
+        return AppPillTone.warning;
+      default:
+        return AppPillTone.neutral;
+    }
   }
 }

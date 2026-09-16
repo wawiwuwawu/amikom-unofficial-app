@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/prestasi.dart';
 import '../services/prestasi_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 import '../widgets/prestasi_form_sheet.dart';
 
 class PrestasiPage extends StatefulWidget {
@@ -75,7 +75,7 @@ class _PrestasiPageState extends State<PrestasiPage> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
             child: const Text('Hapus'),
           ),
         ],
@@ -90,7 +90,7 @@ class _PrestasiPageState extends State<PrestasiPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Prestasi berhasil dihapus'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.success,
         ),
       );
       _loadData();
@@ -99,7 +99,7 @@ class _PrestasiPageState extends State<PrestasiPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.danger,
         ),
       );
     }
@@ -147,231 +147,177 @@ class _PrestasiPageState extends State<PrestasiPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.danger,
         ),
       );
     }
   }
 
-  Widget _buildStatusBadge(String status) {
-    Color bg;
-    Color fg;
-    String label;
-
+  /// Label & warna pil status verifikasi prestasi.
+  (String, AppPillTone) _statusStyle(String status) {
     switch (status.toLowerCase()) {
       case 'valid':
-        bg = Colors.green.shade100;
-        fg = Colors.green.shade800;
-        label = 'Valid';
-        break;
+        return ('Valid', AppPillTone.success);
       case 'ditolak':
-        bg = Colors.red.shade100;
-        fg = Colors.red.shade800;
-        label = 'Ditolak';
-        break;
+        return ('Ditolak', AppPillTone.danger);
       default:
-        bg = Colors.orange.shade100;
-        fg = Colors.orange.shade800;
-        label = 'Menunggu';
+        return ('Menunggu', AppPillTone.warning);
     }
+  }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
+  bool _isValid(PrestasiItem item) =>
+      item.verifikasi == 1 || item.status.toLowerCase() == 'valid';
+
+  ButtonStyle get _compactAction => TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+        minimumSize: const Size(0, 36),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      );
+
+  ButtonStyle get _dangerAction => TextButton.styleFrom(
+        foregroundColor: AppColors.danger,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+        minimumSize: const Size(0, 36),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return AppScaffold(
+      title: 'Prestasi Mahasiswa',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      floatingActionButton: FilledButton.icon(
+        onPressed: _showAddFormSheet,
+        icon: const Icon(CupertinoIcons.add, size: 18),
+        label: const Text('Tambah Prestasi'),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: fg,
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
+      body: AppAsyncView<List<PrestasiItem>>(
+        loading: _loading,
+        error: _error,
+        data: _list,
+        isEmpty: (data) => data.isEmpty,
+        onRetry: _loadData,
+        loadingMessage: 'Memuat data prestasi…',
+        emptyTitle: 'Belum ada data prestasi mahasiswa',
+        emptyIcon: CupertinoIcons.star_fill,
+        builder: (items) => RefreshIndicator(
+          onRefresh: _loadData,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              MediaQuery.of(context).padding.bottom + 96,
+            ),
+            children: [
+              _buildSummary(items),
+              AppSection(
+                title: 'Daftar Prestasi',
+                child: AppListGroup.from([
+                  for (final item in items) _buildItem(item),
+                ]),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFAFCFF), // Pearl White
-            Color(0xFFE3F2FD), // Ice Blue
-          ],
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text('Prestasi Mahasiswa', style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.white.withValues(alpha: 0.5),
-          leading: IconButton(
-            icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-            onPressed: widget.onBack,
+  /// Ringkasan angka dari data yang sudah dimuat (tanpa panggilan service baru).
+  Widget _buildSummary(List<PrestasiItem> items) {
+    final valid = items.where(_isValid).length;
+    final menunggu = items
+        .where((e) => e.status.toLowerCase() == 'menunggu')
+        .length;
+
+    return Row(
+      children: [
+        Expanded(
+          child: AppStatTile(
+            value: '${items.length}',
+            label: 'Total',
+            icon: CupertinoIcons.star_fill,
           ),
-          elevation: 0,
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _showAddFormSheet,
-          backgroundColor: const Color(0xFF501F66),
-          foregroundColor: Colors.white,
-          icon: const Icon(CupertinoIcons.add),
-          label: const Text('Tambah Prestasi'),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: AppStatTile(
+            value: '$valid',
+            label: 'Valid',
+            icon: CupertinoIcons.checkmark_seal_fill,
+            accent: AppColors.success,
+          ),
         ),
-        body: RefreshIndicator(
-        onRefresh: _loadData,
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(CupertinoIcons.exclamationmark_circle, color: Colors.red, size: 48),
-                          const SizedBox(height: 16),
-                          Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: _loadData,
-                            icon: const Icon(CupertinoIcons.refresh),
-                            label: const Text('Coba Lagi'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : _list.isEmpty
-                    ? ListView(
-                        children: const [
-                          SizedBox(height: 120),
-                          Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(CupertinoIcons.star_fill, size: 64, color: Colors.grey),
-                                SizedBox(height: 16),
-                                Text(
-                                  'Belum ada data prestasi mahasiswa',
-                                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _list.length,
-                        itemBuilder: (context, index) {
-                          final item = _list[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: GlassCard(
-                              padding: const EdgeInsets.all(16),
-                              borderRadius: 16,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          item.kejuaraan,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF501F66),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildStatusBadge(item.status),
-                                    ],
-                                  ),
-                                  if (item.perolehan.isNotEmpty) ...[
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      'Perolehan: ${item.perolehan}',
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 6),
-                                  Row(
-                                    children: [
-                                      if (item.tahun.isNotEmpty) ...[
-                                        Icon(CupertinoIcons.calendar, size: 14, color: Colors.grey.shade600),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          item.tahun,
-                                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                                        ),
-                                        const SizedBox(width: 12),
-                                      ],
-                                      if (item.jenisAktivitas.isNotEmpty) ...[
-                                        Icon(CupertinoIcons.tag, size: 14, color: Colors.grey.shade600),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            item.jenisAktivitas,
-                                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                  if (item.keterangan.isNotEmpty) ...[
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      item.keterangan,
-                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                                    ),
-                                  ],
-                                  const Divider(height: 24),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      if (item.verifikasi != 1 && item.status.toLowerCase() != 'valid') ...[
-                                        TextButton.icon(
-                                          onPressed: () => _showAddFormSheet(item),
-                                          icon: const Icon(CupertinoIcons.pencil, color: Color(0xFF501F66), size: 18),
-                                          label: const Text('Edit', style: TextStyle(color: Color(0xFF501F66))),
-                                        ),
-                                        TextButton.icon(
-                                          onPressed: () => _deleteItem(item),
-                                          icon: const Icon(CupertinoIcons.trash, color: Colors.red, size: 18),
-                                          label: const Text('Hapus', style: TextStyle(color: Colors.red)),
-                                        ),
-                                      ],
-                                      TextButton.icon(
-                                        onPressed: () => _downloadFile(item),
-                                        icon: const Icon(CupertinoIcons.cloud_download,
-                                            color: Color(0xFF501F66), size: 18),
-                                        label: const Text('Unduh File',
-                                            style: TextStyle(color: Color(0xFF501F66))),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ).animate().fadeIn().slideY(begin: 0.1, delay: Duration(milliseconds: 50 * index));
-                        },
-                      ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: AppStatTile(
+            value: '$menunggu',
+            label: 'Menunggu',
+            icon: CupertinoIcons.clock_fill,
+            accent: AppColors.warning,
+          ),
         ),
-      ),
+      ],
+    );
+  }
+
+  /// Satu baris prestasi: judul, keterangan singkat, status, lalu aksinya.
+  Widget _buildItem(PrestasiItem item) {
+    final (statusLabel, statusTone) = _statusStyle(item.status);
+    final canEdit = !_isValid(item);
+
+    final subtitle = [
+      if (item.perolehan.isNotEmpty) item.perolehan,
+      if (item.tahun.isNotEmpty) item.tahun,
+      if (item.jenisAktivitas.isNotEmpty) item.jenisAktivitas,
+      if (item.keterangan.isNotEmpty) item.keterangan,
+    ].join(' • ');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppListRow(
+          title: item.kejuaraan,
+          subtitle: subtitle.isEmpty ? null : subtitle,
+          trailing: AppPill(statusLabel, tone: statusTone),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            0,
+            AppSpacing.lg,
+            AppSpacing.md,
+          ),
+          child: Wrap(
+            spacing: AppSpacing.sm,
+            children: [
+              if (canEdit) ...[
+                TextButton.icon(
+                  onPressed: () => _showAddFormSheet(item),
+                  style: _compactAction,
+                  icon: const Icon(CupertinoIcons.pencil, size: 16),
+                  label: const Text('Edit'),
+                ),
+                TextButton.icon(
+                  onPressed: () => _deleteItem(item),
+                  style: _dangerAction,
+                  icon: const Icon(CupertinoIcons.trash, size: 16),
+                  label: const Text('Hapus'),
+                ),
+              ],
+              TextButton.icon(
+                onPressed: () => _downloadFile(item),
+                style: _compactAction,
+                icon: const Icon(CupertinoIcons.cloud_download, size: 16),
+                label: const Text('Unduh File'),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,10 +1,26 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/material.dart';
+
 import '../models/skmk.dart';
 import '../services/skmk_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
+/// Halaman Surat Masih Kuliah (SKMK).
+///
+/// Redesign memakai design system:
+///   * dua tab (pengajuan & riwayat) tetap dipertahankan, digambar oleh tema
+///     global sehingga tidak ada lagi override warna per-tab;
+///   * formulir pengajuan memakai tema input global (border/label/fokus dari
+///     `AppTheme`), hanya dibungkus [AppSurface] agar terbaca sebagai satu blok;
+///   * riwayat pengajuan disajikan sebagai baris [AppListRow] di dalam satu
+///     [AppListGroup] — bukan satu kartu per pengajuan — dengan status sebagai
+///     [AppPill] berwarna dan aksi hapus tetap di baris yang sama;
+///   * syarat/keluhan BAA dipecah jadi [AppSurface] peringatan + baris kontak.
+/// Semua panggilan service, state, dan navigasi tidak berubah.
+///
+/// Tombol kembali disediakan otomatis oleh [AppScaffold] mengikuti route,
+/// sehingga `onBack` hanya dipertahankan untuk kompatibilitas pemanggil lama.
 class SkmkPage extends StatefulWidget {
   final VoidCallback? onBack;
 
@@ -59,7 +75,7 @@ class _SkmkPageState extends State<SkmkPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Harap pilih Keperluan dan Orang Tua terlebih dahulu'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -75,7 +91,7 @@ class _SkmkPageState extends State<SkmkPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(res['message'] ?? 'Pengajuan Berhasil Ditambahkan'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
         setState(() {
@@ -89,7 +105,7 @@ class _SkmkPageState extends State<SkmkPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString().replaceFirst('Exception: ', '')),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -102,25 +118,23 @@ class _SkmkPageState extends State<SkmkPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text(
-          'Hapus Pengajuan SKMK',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF501F66),
-          ),
-        ),
+        title: const Text('Hapus Pengajuan SKMK'),
         content: Text(
           'Apakah Anda yakin ingin menghapus pengajuan SKMK (${item.keperluan}) ini?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+            style: TextButton.styleFrom(foregroundColor: AppColors.textMuted),
+            child: const Text('Batal'),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              minimumSize: const Size(0, 40),
+            ),
+            child: const Text('Hapus'),
           ),
         ],
       ),
@@ -133,7 +147,7 @@ class _SkmkPageState extends State<SkmkPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(res['message'] ?? 'Pengajuan Berhasil Dihapus'),
-              backgroundColor: Colors.green,
+              backgroundColor: AppColors.success,
             ),
           );
           _fetchData();
@@ -143,7 +157,7 @@ class _SkmkPageState extends State<SkmkPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(e.toString().replaceFirst('Exception: ', '')),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.danger,
             ),
           );
         }
@@ -155,337 +169,270 @@ class _SkmkPageState extends State<SkmkPage> {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFFAFCFF),
-        appBar: AppBar(
-          title: const Text(
-            'Surat Masih Kuliah (SKMK)',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          backgroundColor: Colors.white.withValues(alpha: 0.9),
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-            onPressed: widget.onBack ?? () => Navigator.pop(context),
-          ),
-          bottom: const TabBar(
-            labelColor: Color(0xFF501F66),
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Color(0xFF501F66),
-            indicatorWeight: 3,
-            labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            tabs: [
-              Tab(
-                icon: Icon(CupertinoIcons.doc_plaintext),
-                text: 'Form Pengajuan',
-              ),
-              Tab(icon: Icon(CupertinoIcons.clock), text: 'Riwayat Pengajuan'),
-            ],
-          ),
-        ),
-        body: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: Color(0xFF501F66)),
-              )
-            : _error.isNotEmpty
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      CupertinoIcons.exclamationmark_triangle,
-                      size: 50,
-                      color: Colors.red,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(_error, style: const TextStyle(color: Colors.black54)),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _fetchData,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF501F66),
-                      ),
-                      child: const Text(
-                        'Coba Lagi',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ],
+      child: AppScaffold(
+        title: 'Surat Masih Kuliah (SKMK)',
+        scrollable: false,
+        padding: EdgeInsets.zero,
+        body: Column(
+          children: [
+            const TabBar(
+              tabs: [
+                Tab(
+                  icon: Icon(CupertinoIcons.doc_plaintext),
+                  text: 'Form Pengajuan',
                 ),
-              )
-            : TabBarView(children: [_buildFormTab(), _buildRiwayatTab()]),
+                Tab(
+                  icon: Icon(CupertinoIcons.clock),
+                  text: 'Riwayat Pengajuan',
+                ),
+              ],
+            ),
+            Expanded(child: _buildBody()),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildFormTab() {
+  Widget _buildBody() {
+    if (_isLoading) return const AppLoading();
+
+    if (_error.isNotEmpty) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: AppErrorState(message: _error, onRetry: _fetchData),
+          ),
+        ),
+      );
+    }
+
     final data = _data;
     if (data == null) return const SizedBox.shrink();
 
+    return TabBarView(
+      children: [_buildFormTab(data), _buildRiwayatTab(data)],
+    );
+  }
+
+  /// Ikon baris dengan latar sorotan lembut — penanda visual untuk tiap item.
+  Widget _rowIcon(IconData icon, {Color? tone}) {
+    final color = tone ?? AppColors.primary;
+    return Container(
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Icon(icon, size: 18, color: color),
+    );
+  }
+
+  AppPillTone _statusTone(String status) {
+    switch (status.toLowerCase().trim()) {
+      case 'diajukan':
+        return AppPillTone.warning;
+      case 'diproses':
+        return AppPillTone.info;
+      case 'selesai':
+        return AppPillTone.success;
+      case 'ditolak':
+        return AppPillTone.danger;
+      default:
+        return AppPillTone.neutral;
+    }
+  }
+
+  Widget _buildFormTab(SkmkData data) {
     final keperluanList = data.options.keperluan;
     final ortuList = data.options.ortu;
 
     return RefreshIndicator(
       onRefresh: _fetchData,
-      color: const Color(0xFF501F66),
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: AppSpacing.page,
+        physics: const AlwaysScrollableScrollPhysics(),
         children: [
-          // Form Card
-          GlassCard(
-            borderRadius: 16,
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: const [
-                    Icon(
-                      CupertinoIcons.doc_append,
-                      color: Color(0xFF501F66),
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Buat Pengajuan SKMK Baru',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Color(0xFF501F66),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedKeperluan,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Pilih Keperluan',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(
-                      CupertinoIcons.briefcase,
-                      color: Color(0xFF501F66),
-                    ),
-                  ),
-                  items: keperluanList.map((item) {
-                    return DropdownMenuItem<String>(
-                      value: item,
-                      child: Text(
-                        item,
-                        style: const TextStyle(fontSize: 13),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    setState(() => _selectedKeperluan = val);
-                  },
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedOrtu,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Pilih Orang Tua',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(
-                      CupertinoIcons.person_2,
-                      color: Color(0xFF501F66),
-                    ),
-                  ),
-                  items: ortuList.map((item) {
-                    return DropdownMenuItem<String>(
-                      value: item,
-                      child: Text(
-                        item,
-                        style: const TextStyle(fontSize: 13),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    setState(() => _selectedOrtu = val);
-                  },
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: _isSubmitting ? null : _submitForm,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF501F66),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    icon: _isSubmitting
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Icon(
-                            CupertinoIcons.paperplane_fill,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                    label: const Text(
-                      'Ajukan SKMK',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ).animate().fadeIn(),
-          const SizedBox(height: 20),
-
-          // Information & BAA Contact Card
-          GlassCard(
-            borderRadius: 16,
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: const [
-                    Icon(
-                      CupertinoIcons.info_circle_fill,
-                      color: Color(0xFF1976D2),
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Syarat & Catatan Penting',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Color(0xFF501F66),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (data.persyaratanInfo.isNotEmpty) ...[
-                  const Text(
-                    'Layanan SKMK TIDAK DIPROSES untuk:',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ...data.persyaratanInfo.map(
-                    (info) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
+          Center(
+            // Lebar dibatasi agar formulir tetap nyaman dibaca di layar lebar.
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppSection(
+                    title: 'Buat Pengajuan SKMK Baru',
+                    topGap: AppSpacing.xs,
+                    child: AppSurface(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            '• ',
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              info,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.black54,
-                                height: 1.4,
+                          DropdownButtonFormField<String>(
+                            initialValue: _selectedKeperluan,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Pilih Keperluan',
+                              prefixIcon: Icon(
+                                CupertinoIcons.briefcase,
+                                color: AppColors.primarySoft,
                               ),
+                            ),
+                            items: keperluanList.map((item) {
+                              return DropdownMenuItem<String>(
+                                value: item,
+                                child: Text(
+                                  item,
+                                  style: AppText.body,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              setState(() => _selectedKeperluan = val);
+                            },
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          DropdownButtonFormField<String>(
+                            initialValue: _selectedOrtu,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Pilih Orang Tua',
+                              prefixIcon: Icon(
+                                CupertinoIcons.person_2,
+                                color: AppColors.primarySoft,
+                              ),
+                            ),
+                            items: ortuList.map((item) {
+                              return DropdownMenuItem<String>(
+                                value: item,
+                                child: Text(
+                                  item,
+                                  style: AppText.body,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              setState(() => _selectedOrtu = val);
+                            },
+                          ),
+                          const SizedBox(height: AppSpacing.xl),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: _isSubmitting ? null : _submitForm,
+                              icon: _isSubmitting
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.surface,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      CupertinoIcons.paperplane_fill,
+                                      size: 18,
+                                    ),
+                              label: const Text('Ajukan SKMK'),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                ],
-                if (data.kontakBaa.isNotEmpty) ...[
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        CupertinoIcons.chat_bubble_2_fill,
-                        color: Colors.green,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Kontak Loket BAA:',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
+                  if (data.persyaratanInfo.isNotEmpty ||
+                      data.kontakBaa.isNotEmpty)
+                    AppSection(
+                      title: 'Syarat & Catatan Penting',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (data.persyaratanInfo.isNotEmpty)
+                            AppSurface(
+                              variant: AppSurfaceVariant.warning,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Layanan SKMK TIDAK DIPROSES untuk:',
+                                    style: AppText.h3,
+                                  ),
+                                  const SizedBox(height: AppSpacing.sm),
+                                  ...data.persyaratanInfo.map(
+                                    (info) => Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: AppSpacing.sm,
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Padding(
+                                            padding: EdgeInsets.only(top: 6),
+                                            child: Icon(
+                                              CupertinoIcons.circle_fill,
+                                              size: 6,
+                                              color: AppColors.danger,
+                                            ),
+                                          ),
+                                          const SizedBox(width: AppSpacing.sm),
+                                          Expanded(
+                                            child: Text(info, style: AppText.body),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              data.kontakBaa,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.black54,
-                                height: 1.4,
-                              ),
+                          if (data.kontakBaa.isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.md),
+                            AppListGroup(
+                              children: [
+                                AppListRow(
+                                  leading: _rowIcon(
+                                    CupertinoIcons.chat_bubble_2_fill,
+                                    tone: AppColors.success,
+                                  ),
+                                  title: 'Kontak Loket BAA',
+                                  subtitle: data.kontakBaa,
+                                ),
+                              ],
                             ),
                           ],
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  const SizedBox(height: AppSpacing.xxl),
                 ],
-              ],
+              ),
             ),
-          ).animate().fadeIn(delay: 100.ms),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildRiwayatTab() {
-    final items = _data?.items ?? [];
+  Widget _buildRiwayatTab(SkmkData data) {
+    final items = data.items;
 
     if (items.isEmpty) {
       return RefreshIndicator(
         onRefresh: _fetchData,
-        color: const Color(0xFF501F66),
         child: ListView(
+          padding: AppSpacing.page,
+          physics: const AlwaysScrollableScrollPhysics(),
           children: const [
-            SizedBox(height: 100),
-            Center(
-              child: Column(
-                children: [
-                  Icon(
-                    CupertinoIcons.doc_text_search,
-                    size: 60,
-                    color: Colors.grey,
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    'Belum ada riwayat pengajuan SKMK',
-                    style: TextStyle(color: Colors.black54),
-                  ),
-                ],
-              ),
+            SizedBox(height: AppSpacing.xxl),
+            AppEmptyState(
+              title: 'Belum ada riwayat pengajuan SKMK',
+              icon: CupertinoIcons.doc_text_search,
             ),
           ],
         ),
@@ -494,168 +441,59 @@ class _SkmkPageState extends State<SkmkPage> {
 
     return RefreshIndicator(
       onRefresh: _fetchData,
-      color: const Color(0xFF501F66),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: items.length,
-        itemBuilder: (context, index) {
-          final item = items[index];
-
-          Color badgeBg;
-          Color badgeText;
-          IconData badgeIcon;
-
-          switch (item.status.toLowerCase().trim()) {
-            case 'diajukan':
-              badgeBg = const Color(0xFFFFF3E0);
-              badgeText = const Color(0xFFE65100);
-              badgeIcon = CupertinoIcons.clock_fill;
-              break;
-            case 'diproses':
-              badgeBg = const Color(0xFFE3F2FD);
-              badgeText = const Color(0xFF1565C0);
-              badgeIcon = CupertinoIcons.gear_alt_fill;
-              break;
-            case 'selesai':
-              badgeBg = const Color(0xFFE8F5E9);
-              badgeText = const Color(0xFF2E7D32);
-              badgeIcon = CupertinoIcons.checkmark_seal_fill;
-              break;
-            case 'ditolak':
-              badgeBg = const Color(0xFFFFEBEE);
-              badgeText = const Color(0xFFC62828);
-              badgeIcon = CupertinoIcons.xmark_octagon_fill;
-              break;
-            default:
-              badgeBg = Colors.grey.shade200;
-              badgeText = Colors.black87;
-              badgeIcon = CupertinoIcons.info;
-          }
-
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: GlassCard(
-              borderRadius: 16,
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.keperluan,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: Color(0xFF501F66),
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: badgeBg,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(badgeIcon, size: 14, color: badgeText),
-                            const SizedBox(width: 4),
-                            Text(
-                              item.status,
-                              style: TextStyle(
-                                color: badgeText,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Divider(height: 1),
-                  const SizedBox(height: 12),
-                  _buildDetailRow('Tgl Pengajuan:', item.tglPengajuan),
-                  const SizedBox(height: 4),
-                  _buildDetailRow('Semester/TA:', item.thnAjaranSmt),
-                  const SizedBox(height: 4),
-                  _buildDetailRow('Tgl Proses:', item.tglProses ?? '-'),
-                  if (item.keterangan.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    _buildDetailRow('Keterangan:', item.keterangan),
-                  ],
-                  if (item.canDelete) ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: () => _showDeleteConfirmation(item),
-                          icon: const Icon(
-                            CupertinoIcons.trash,
-                            color: Colors.red,
-                            size: 16,
-                          ),
-                          label: const Text(
-                            'Hapus Pengajuan',
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.red),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
+      child: ListView(
+        padding: AppSpacing.page,
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: AppSection(
+                title: 'Riwayat Pengajuan',
+                topGap: AppSpacing.xs,
+                trailing: AppPill('${items.length} pengajuan'),
+                child: AppListGroup.from([
+                  for (final item in items) _buildRiwayatItem(item),
+                ]),
               ),
             ),
-          ).animate().fadeIn(delay: (50 * index).ms);
-        },
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+        ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 110,
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
+  /// Satu pengajuan = satu [AppListRow]; seluruh detailnya dipadatkan ke
+  /// subtitle dan statusnya jadi pil berwarna, sehingga daftar mudah dipindai.
+  Widget _buildRiwayatItem(SkmkItem item) {
+    final detail = <String>[
+      'Tgl Pengajuan: ${item.tglPengajuan} • Semester/TA: ${item.thnAjaranSmt}',
+      'Tgl Proses: ${item.tglProses ?? '-'}',
+      if (item.keterangan.isNotEmpty) 'Keterangan: ${item.keterangan}',
+    ].join('\n');
+
+    return AppListRow(
+      leading: _rowIcon(CupertinoIcons.doc_text_fill),
+      title: item.keperluan,
+      subtitle: detail,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppPill(item.status, tone: _statusTone(item.status)),
+          if (item.canDelete)
+            IconButton(
+              onPressed: () => _showDeleteConfirmation(item),
+              tooltip: 'Hapus Pengajuan',
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(
+                CupertinoIcons.trash,
+                size: 18,
+                color: AppColors.danger,
+              ),
             ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

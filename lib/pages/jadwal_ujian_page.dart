@@ -1,13 +1,15 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:open_filex/open_filex.dart';
 import '../services/akademik_service.dart';
 import '../models/jadwal_ujian.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
+/// Jadwal ujian (UTS/UAS) — disajikan sebagai daftar ringkas bergaya tabel:
+/// tanggal (info depan) · mata kuliah · jam · ruang · nomor kursi,
+/// dengan aksi "Ingatkan di Kalender" per baris dan tombol cetak kartu ujian.
 class JadwalUjianPage extends StatefulWidget {
   final VoidCallback? onBack;
   const JadwalUjianPage({super.key, this.onBack});
@@ -60,7 +62,7 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Berhasil mengunduh kartu ujian'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
             action: SnackBarAction(
               label: 'BUKA',
               textColor: Colors.white,
@@ -76,7 +78,7 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString().replaceFirst('Exception: ', '')),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -123,7 +125,7 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: $e'),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -132,138 +134,44 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFAFCFF), // Pearl White
-            Color(0xFFE3F2FD), // Ice Blue
-          ],
-        ),
-      ),
-      child: Scaffold(
-        extendBodyBehindAppBar: true,
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: widget.onBack != null
-              ? IconButton(
-                  icon: const Icon(
-                    CupertinoIcons.back,
-                    color: Color(0xFF501F66),
-                  ),
-                  onPressed: widget.onBack,
-                )
-              : null,
-          title: const Text(
-            'Jadwal Ujian',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: Colors.white.withValues(alpha: 0.5),
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          flexibleSpace: ClipRRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(color: Colors.transparent),
+    return AppScaffold(
+      title: 'Jadwal Ujian',
+      subtitle: _jenisUjian == 'uts'
+          ? 'Ujian Tengah Semester'
+          : 'Ujian Akhir Semester',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      floatingActionButton: _jadwalList.isNotEmpty && !_isLoading
+          ? _buildCetakKartu()
+          : null,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.lg,
+              AppSpacing.sm,
             ),
+            child: _buildJenisToggle(),
           ),
-        ),
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Toggle
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 8.0,
-                ),
-                child: GlassCard(
-                  borderRadius: 25,
-                  padding: const EdgeInsets.all(4),
-                  child: Row(
-                    children: [
-                      Expanded(child: _buildTabButton('UTS', 'uts')),
-                      Expanded(child: _buildTabButton('UAS', 'uas')),
-                    ],
-                  ),
-                ),
-              ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.1),
+          Expanded(child: _buildContent()),
+        ],
+      ),
+    );
+  }
 
-              // Content
-              Expanded(
-                child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF501F66),
-                        ),
-                      )
-                    : _error.isNotEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              CupertinoIcons.exclamationmark_triangle,
-                              size: 50,
-                              color: Colors.red,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _error,
-                              style: const TextStyle(color: Colors.black54),
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: _loadData,
-                              child: const Text('Coba Lagi'),
-                            ),
-                          ],
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _loadData,
-                        color: const Color(0xFF501F66),
-                        child: _jadwalList.isEmpty
-                            ? _buildEmptyState()
-                            : _buildList(),
-                      ),
-              ),
-            ],
-          ),
-        ),
-        floatingActionButton: _jadwalList.isNotEmpty && !_isLoading
-            ? Padding(
-                padding: const EdgeInsets.only(
-                  bottom: 140.0,
-                ), // Ekstra padding yang lebih tinggi
-                child: FloatingActionButton.extended(
-                  onPressed: _isDownloading ? null : _downloadKartu,
-                  backgroundColor: const Color(0xFF501F66),
-                  icon: _isDownloading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Icon(
-                          CupertinoIcons.printer_fill,
-                          color: Colors.white,
-                        ),
-                  label: Text(
-                    _isDownloading ? 'Mengunduh...' : 'Cetak Kartu Ujian',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ).animate().fadeIn().scale(),
-              )
-            : null,
+  // ── Pemilih jenis ujian (UTS / UAS) ────────────────────────────────────────
+
+  Widget _buildJenisToggle() {
+    return AppSurface(
+      radius: AppRadius.pill,
+      padding: const EdgeInsets.all(AppSpacing.xs),
+      child: Row(
+        children: [
+          Expanded(child: _buildTabButton('UTS', 'uts')),
+          Expanded(child: _buildTabButton('UAS', 'uas')),
+        ],
       ),
     );
   }
@@ -281,21 +189,41 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF501F66) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
         ),
         child: Center(
           child: Text(
             title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isSelected ? Colors.white : Colors.black54,
+            style: AppText.button.copyWith(
+              color: isSelected ? Colors.white : AppColors.textSecondary,
             ),
           ),
         ),
       ),
+    );
+  }
+
+  // ── Isi halaman ────────────────────────────────────────────────────────────
+
+  Widget _buildContent() {
+    if (_isLoading) return const AppLoading(message: 'Memuat jadwal ujian…');
+
+    if (_error.isNotEmpty) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: AppSpacing.page,
+          child: AppErrorState(message: _error, onRetry: _loadData),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: AppColors.primary,
+      child: _jadwalList.isEmpty ? _buildEmptyState() : _buildList(),
     );
   }
 
@@ -304,213 +232,116 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
         SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-        Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  CupertinoIcons.sparkles,
-                  size: 64,
-                  color: Colors.green,
-                ),
-              ).animate().fadeIn().scale().then().shake(
-                hz: 2,
-                duration: 1000.ms,
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Belum Waktunya Ujian Nih!',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF501F66),
-                  letterSpacing: -0.5,
-                ),
-              ).animate().fadeIn(delay: 200.ms),
-              const SizedBox(height: 12),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 32.0),
-                child: Text(
-                  'Saat ini tidak ada jadwal ujian yang tersedia. Gunakan waktumu sebaik mungkin untuk belajar dan beristirahat.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.black54,
-                    height: 1.5,
-                  ),
-                ),
-              ).animate().fadeIn(delay: 300.ms),
-            ],
-          ),
+        const AppEmptyState(
+          title: 'Belum Waktunya Ujian Nih!',
+          message: 'Saat ini tidak ada jadwal ujian yang tersedia. '
+              'Gunakan waktumu sebaik mungkin untuk belajar dan beristirahat.',
+          icon: CupertinoIcons.sparkles,
         ),
       ],
     );
   }
 
   Widget _buildList() {
-    return ListView.builder(
+    return ListView(
       padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
+        left: AppSpacing.lg,
+        right: AppSpacing.lg,
+        top: AppSpacing.sm,
         bottom:
             MediaQuery.of(context).padding.bottom +
             200, // padding extra for FAB and Nav
       ),
       physics: const AlwaysScrollableScrollPhysics(),
-      itemCount: _jadwalList.length,
-      itemBuilder: (context, index) {
-        final jadwal = _jadwalList[index];
-        return _buildJadwalCard(
-          jadwal,
-          index,
-        ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.1);
-      },
+      children: [
+        AppSection(
+          topGap: AppSpacing.md,
+          title: 'Daftar ujian ${_jenisUjian.toUpperCase()}',
+          trailing: Text(
+            '${_jadwalList.length} mata kuliah',
+            style: AppText.label.copyWith(fontWeight: FontWeight.w400),
+          ),
+          child: AppListGroup.from([
+            for (final jadwal in _jadwalList) _buildJadwalRow(jadwal),
+          ]),
+        ),
+      ],
     );
   }
 
-  Widget _buildJadwalCard(JadwalUjian jadwal, int index) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: GlassCard(
-        padding: const EdgeInsets.all(16),
-        borderRadius: 16,
-        opacity: 0.8,
+  /// Satu baris ujian — ringkas seperti tabel: tanggal · mata kuliah · jam ·
+  /// ruang · kursi, plus aksi tambah ke kalender.
+  Widget _buildJadwalRow(JadwalUjian jadwal) {
+    final parts = jadwal.tanggal.split('-');
+    final tanggal = parts.isNotEmpty ? parts[0] : jadwal.tanggal;
+    final bulan = parts.length > 1 ? parts[1] : '';
+
+    return AppListRow(
+      leading: Container(
+        width: 50,
+        height: 50,
+        alignment: Alignment.center,
+        decoration: AppDeco.softPrimary(radius: AppRadius.sm),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF501F66).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        jadwal.tanggal.split('-')[0], // Day part
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          color: Color(0xFF501F66),
-                        ),
-                      ),
-                      Text(
-                        jadwal.tanggal.split('-')[1], // Month part
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF501F66),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        jadwal.mkl,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${jadwal.kode} • ${jadwal.hari}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildInfoItem(
-                      CupertinoIcons.time,
-                      '${jadwal.jamMulai.substring(0, 5)} - ${jadwal.jamSelesai.substring(0, 5)}',
-                    ),
-                  ),
-                  Expanded(
-                    child: _buildInfoItem(
-                      CupertinoIcons.location,
-                      jadwal.ruang,
-                    ),
-                  ),
-                  Expanded(
-                    child: _buildInfoItem(
-                      CupertinoIcons.number_circle,
-                      'Kursi ${jadwal.noKursi}',
-                    ),
-                  ),
-                ],
+            Text(
+              tanggal,
+              style: AppText.h3.copyWith(
+                color: AppColors.primary,
+                fontSize: 18,
               ),
             ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _addToGoogleCalendar(jadwal),
-                icon: const Icon(CupertinoIcons.calendar_badge_plus, size: 18),
-                label: const Text('Ingatkan di Kalender'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF501F66),
-                  elevation: 0,
-                  side: const BorderSide(color: Color(0xFF501F66), width: 1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+            if (bulan.isNotEmpty)
+              Text(
+                bulan,
+                style: AppText.label.copyWith(color: AppColors.primarySoft),
               ),
-            ),
           ],
+        ),
+      ),
+      title: jadwal.mkl,
+      subtitle: '${jadwal.kode} • ${jadwal.hari}\n'
+          '${_jamRange(jadwal)} • ${jadwal.ruang} • Kursi ${jadwal.noKursi}',
+      trailing: IconButton(
+        tooltip: 'Ingatkan di Kalender',
+        onPressed: () => _addToGoogleCalendar(jadwal),
+        icon: const Icon(
+          CupertinoIcons.calendar_badge_plus,
+          size: 20,
+          color: AppColors.primary,
         ),
       ),
     );
   }
 
-  Widget _buildInfoItem(IconData icon, String text) {
-    return Column(
-      children: [
-        Icon(icon, size: 20, color: const Color(0xFF501F66)),
-        const SizedBox(height: 4),
-        Text(
-          text,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
+  Widget _buildCetakKartu() {
+    return Padding(
+      // Ekstra padding yang lebih tinggi (FAB + bottom nav).
+      padding: const EdgeInsets.only(bottom: 140.0),
+      child: FloatingActionButton.extended(
+        onPressed: _isDownloading ? null : _downloadKartu,
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        icon: Icon(
+          _isDownloading ? CupertinoIcons.hourglass : CupertinoIcons.printer_fill,
+          color: Colors.white,
         ),
-      ],
+        label: Text(
+          _isDownloading ? 'Mengunduh...' : 'Cetak Kartu Ujian',
+          style: AppText.button.copyWith(color: Colors.white),
+        ),
+      ),
     );
   }
+
+  /// Rentang jam "HH:mm - HH:mm" (aman bila string jam lebih pendek).
+  String _jamRange(JadwalUjian jadwal) {
+    if (jadwal.jamMulai.isEmpty && jadwal.jamSelesai.isEmpty) return '-';
+    return '${_hhmm(jadwal.jamMulai)} - ${_hhmm(jadwal.jamSelesai)}';
+  }
+
+  String _hhmm(String value) =>
+      value.length >= 5 ? value.substring(0, 5) : value;
 }

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/organisasi.dart';
 import '../services/organisasi_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 import '../widgets/organisasi_form_sheet.dart';
 
 class OrganisasiPage extends StatefulWidget {
@@ -75,10 +75,10 @@ class _OrganisasiPageState extends State<OrganisasiPage> {
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Batal'),
           ),
-          ElevatedButton(
+          TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Hapus'),
           ),
         ],
       ),
@@ -147,163 +147,148 @@ class _OrganisasiPageState extends State<OrganisasiPage> {
     }
   }
 
+  bool _isValid(OrganisasiItem item) =>
+      item.verifikasi == 1 || item.status.toLowerCase() == 'valid';
+
+  ButtonStyle get _compactAction => TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+        minimumSize: const Size(0, 36),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      );
+
+  ButtonStyle get _dangerAction => TextButton.styleFrom(
+        foregroundColor: AppColors.danger,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+        minimumSize: const Size(0, 36),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      );
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFAFCFF), // Pearl White
-            Color(0xFFE3F2FD), // Ice Blue
-          ],
-        ),
+    return AppScaffold(
+      title: 'Organisasi Mahasiswa',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      floatingActionButton: FilledButton.icon(
+        onPressed: _showForm,
+        icon: const Icon(CupertinoIcons.add, size: 18),
+        label: const Text('Tambah Organisasi'),
       ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text('Organisasi Mahasiswa', style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.white.withValues(alpha: 0.5),
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-            onPressed: widget.onBack,
+      body: AppAsyncView<List<OrganisasiItem>>(
+        loading: _loading,
+        error: _error,
+        data: _items,
+        isEmpty: (data) => data.isEmpty,
+        onRetry: _load,
+        loadingMessage: 'Memuat data organisasi…',
+        emptyTitle: 'Belum ada data organisasi mahasiswa',
+        emptyIcon: CupertinoIcons.person_3_fill,
+        builder: (items) => RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              MediaQuery.of(context).padding.bottom + 96,
+            ),
+            children: [
+              _buildSummary(items),
+              AppSection(
+                title: 'Daftar Organisasi',
+                child: AppListGroup.from([
+                  for (final item in items) _buildItem(item),
+                ]),
+              ),
+            ],
           ),
-        ),
-        body: _buildBody(),
-        floatingActionButton: FloatingActionButton(
-          onPressed: _showForm,
-          backgroundColor: const Color(0xFF501F66),
-          child: const Icon(CupertinoIcons.add, color: Colors.white),
         ),
       ),
     );
   }
 
-  Widget _buildBody() {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)));
-    }
+  /// Ringkasan angka dari data yang sudah dimuat (tanpa panggilan service baru).
+  Widget _buildSummary(List<OrganisasiItem> items) {
+    final valid = items.where(_isValid).length;
 
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(CupertinoIcons.exclamationmark_triangle, size: 48, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _load,
-              child: const Text('Coba Lagi'),
-            ),
-          ],
+    return Row(
+      children: [
+        Expanded(
+          child: AppStatTile(
+            value: '${items.length}',
+            label: 'Total',
+            icon: CupertinoIcons.person_3_fill,
+          ),
         ),
-      ).animate().fadeIn();
-    }
-
-    if (_items.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
-            SizedBox(height: 100),
-            Center(
-              child: Text(
-                'Belum ada data organisasi mahasiswa',
-                style: TextStyle(color: Colors.black54),
-              ),
-            ),
-          ],
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: AppStatTile(
+            value: '$valid',
+            label: 'Valid',
+            icon: CupertinoIcons.checkmark_seal_fill,
+            accent: AppColors.success,
+          ),
         ),
-      ).animate().fadeIn();
-    }
+      ],
+    );
+  }
 
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16).copyWith(bottom: 100),
-        itemCount: _items.length,
-        itemBuilder: (context, index) {
-          final item = _items[index];
-          final isValid = item.verifikasi == 1 || item.status.toLowerCase() == 'valid';
+  /// Satu baris organisasi: nama, jabatan/tahun, status verifikasi, lalu aksinya.
+  Widget _buildItem(OrganisasiItem item) {
+    final isValid = _isValid(item);
 
-          return Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            child: GlassCard(
-              padding: const EdgeInsets.all(16),
-              borderRadius: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.namaOrganisasi,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF501F66)),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isValid ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isValid ? Colors.green : Colors.orange,
-                          ),
-                        ),
-                        child: Text(
-                          isValid ? 'Valid' : 'Belum Verifikasi',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: isValid ? Colors.green : Colors.orange,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text('Jabatan: ${item.jabatan}', style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
-                  Text('Tahun: ${item.tahun}', style: const TextStyle(color: Colors.black87)),
-                  if (item.keterangan.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text('Catatan: ${item.keterangan}', style: const TextStyle(color: Colors.red, fontSize: 12)),
-                  ],
-                  const Divider(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if (!isValid) ...[
-                        TextButton.icon(
-                          onPressed: () => _showForm(item),
-                          icon: const Icon(CupertinoIcons.pencil, color: Color(0xFF501F66), size: 18),
-                          label: const Text('Edit', style: TextStyle(color: Color(0xFF501F66))),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => _deleteItem(item),
-                          icon: const Icon(CupertinoIcons.trash, color: Colors.red, size: 18),
-                          label: const Text('Hapus', style: TextStyle(color: Colors.red)),
-                        ),
-                      ],
-                      TextButton.icon(
-                        onPressed: () => _downloadFile(item),
-                        icon: const Icon(CupertinoIcons.cloud_download, color: Color(0xFF501F66), size: 18),
-                        label: const Text('Unduh File', style: TextStyle(color: Color(0xFF501F66))),
-                      ),
-                    ],
-                  ),
-                ],
+    final subtitle = [
+      item.jabatan,
+      '${item.tahun}',
+      if (item.keterangan.isNotEmpty) 'Catatan: ${item.keterangan}',
+    ].join(' • ');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppListRow(
+          title: item.namaOrganisasi,
+          subtitle: subtitle,
+          trailing: AppPill(
+            isValid ? 'Valid' : 'Belum Verifikasi',
+            tone: isValid ? AppPillTone.success : AppPillTone.warning,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            0,
+            AppSpacing.lg,
+            AppSpacing.md,
+          ),
+          child: Wrap(
+            spacing: AppSpacing.sm,
+            children: [
+              if (!isValid) ...[
+                TextButton.icon(
+                  onPressed: () => _showForm(item),
+                  style: _compactAction,
+                  icon: const Icon(CupertinoIcons.pencil, size: 16),
+                  label: const Text('Edit'),
+                ),
+                TextButton.icon(
+                  onPressed: () => _deleteItem(item),
+                  style: _dangerAction,
+                  icon: const Icon(CupertinoIcons.trash, size: 16),
+                  label: const Text('Hapus'),
+                ),
+              ],
+              TextButton.icon(
+                onPressed: () => _downloadFile(item),
+                style: _compactAction,
+                icon: const Icon(CupertinoIcons.cloud_download, size: 16),
+                label: const Text('Unduh File'),
               ),
-            ),
-          ).animate().fadeIn().slideY(begin: 0.1, delay: Duration(milliseconds: 50 * index));
-        },
-      ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

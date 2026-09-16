@@ -1,10 +1,9 @@
-import 'dart:ui';
-import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../services/api_client.dart';
-import '../widgets/info_section_card.dart';
+
 import '../models/dashboard.dart';
+import '../services/api_client.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
 class VisiMisiPage extends StatefulWidget {
   final VoidCallback? onBack;
@@ -130,167 +129,158 @@ class _VisiMisiPageState extends State<VisiMisiPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFAFCFF), // Pearl White
-            Color(0xFFE3F2FD), // Ice Blue
-          ],
-        ),
-      ),
-      child: Scaffold(
-        extendBodyBehindAppBar: true,
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: widget.onBack != null
-              ? IconButton(
-                  icon: const Icon(
-                    CupertinoIcons.back,
-                    color: Color(0xFF501F66),
-                  ),
-                  onPressed: widget.onBack,
-                )
-              : null,
-          title: const Text(
-            'Visi & Misi',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: Colors.white.withValues(alpha: 0.5),
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          flexibleSpace: ClipRRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(color: Colors.transparent),
-            ),
-          ),
-        ),
-        body: SafeArea(
-          child: _loading
-              ? const Center(
-                  child: CircularProgressIndicator(color: Color(0xFF501F66)),
-                )
-              : _error != null
-              ? _buildErrorState()
-              : _buildContent(),
-        ),
+    return AppScaffold(
+      title: 'Visi & Misi',
+      subtitle: 'Program studi Anda',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      body: AppAsyncView<Dashboard>(
+        loading: _loading,
+        error: _error,
+        data: _data,
+        onRetry: _load,
+        loadingMessage: 'Memuat visi & misi…',
+        emptyTitle: 'Data visi & misi belum tersedia',
+        emptyMessage: 'Coba muat ulang beberapa saat lagi.',
+        emptyIcon: CupertinoIcons.eye,
+        builder: _buildContent,
       ),
     );
   }
 
-  Widget _buildErrorState() {
-    return Center(
+  Widget _buildContent(Dashboard data) {
+    final prodiData = _getProdiData(data.profile.prodi);
+    final visi = prodiData['visi'] as String;
+    final misi = List<String>.from(prodiData['misi']);
+    final tujuan = List<String>.from(prodiData['tujuan']);
+    final strategi = List<String>.from(prodiData['strategi']);
+
+    return ListView(
+      padding: AppSpacing.page,
+      physics: const BouncingScrollPhysics(),
+      children: [
+        _buildHeader(prodiData['nama'] as String),
+        _contentSection(
+          title: 'Visi',
+          icon: CupertinoIcons.eye_fill,
+          toneBg: AppColors.infoBg,
+          toneFg: AppColors.info,
+          child: Text(
+            visi,
+            style: AppText.body.copyWith(height: 1.7),
+            textAlign: TextAlign.justify,
+          ),
+        ),
+        _contentSection(
+          title: 'Misi',
+          icon: CupertinoIcons.rocket_fill,
+          toneBg: AppColors.warningBg,
+          toneFg: AppColors.warning,
+          child: _numberedList(misi),
+        ),
+        _contentSection(
+          title: 'Tujuan',
+          icon: CupertinoIcons.flag_fill,
+          toneBg: AppColors.dangerBg,
+          toneFg: AppColors.danger,
+          child: _numberedList(tujuan),
+        ),
+        _contentSection(
+          title: 'Strategi',
+          icon: CupertinoIcons.chart_bar_alt_fill,
+          toneBg: AppColors.successBg,
+          toneFg: AppColors.success,
+          child: _numberedList(strategi),
+        ),
+      ],
+    );
+  }
+
+  /// Kartu identitas program studi — pengikat konteks sebelum teks panjang.
+  Widget _buildHeader(String namaProdi) {
+    return AppSurface(
+      variant: AppSurfaceVariant.hero,
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            CupertinoIcons.exclamationmark_triangle,
-            size: 64,
-            color: Colors.redAccent,
-          ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
-          const SizedBox(height: 16),
-          Text(
-            _error!,
-            style: const TextStyle(
-              color: Colors.redAccent,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+          Container(
+            width: 56,
+            height: 56,
+            alignment: Alignment.center,
+            decoration: AppDeco.softPrimary(),
+            child: const Icon(
+              CupertinoIcons.building_2_fill,
+              size: 26,
+              color: AppColors.primary,
             ),
-            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _load,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF501F66),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Coba Lagi'),
-          ),
+          const SizedBox(height: AppSpacing.md),
+          Text('Program Studi', style: AppText.label),
+          const SizedBox(height: AppSpacing.xs),
+          Text(namaProdi, style: AppText.h1, textAlign: TextAlign.center),
         ],
       ),
     );
   }
 
-  Widget _buildContent() {
-    final prodiData = _getProdiData(_data!.profile.prodi);
-
-    return ListView(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).padding.bottom + 100,
+  /// Seksi teks: judul hierarkis (overline + ikon) dan kartu isi yang lapang.
+  Widget _contentSection({
+    required String title,
+    required IconData icon,
+    required Color toneBg,
+    required Color toneFg,
+    required Widget child,
+  }) {
+    return AppSection(
+      title: title,
+      trailing: Container(
+        width: 30,
+        height: 30,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: toneBg,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
+        child: Icon(icon, size: 16, color: toneFg),
       ),
-      physics: const BouncingScrollPhysics(),
-      children: [
-        _buildHeader(
-          prodiData['nama'],
-        ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0),
-        const SizedBox(height: 24),
-        InfoSectionCard(
-          title: 'Visi',
-          icon: CupertinoIcons.eye_fill,
-          color: Colors.blue,
-          content: [prodiData['visi']],
-        ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1, end: 0),
-        const SizedBox(height: 16),
-        InfoSectionCard(
-          title: 'Misi',
-          icon: CupertinoIcons.rocket_fill,
-          color: Colors.orange,
-          content: List<String>.from(prodiData['misi']),
-        ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
-        const SizedBox(height: 16),
-        InfoSectionCard(
-          title: 'Tujuan',
-          icon: CupertinoIcons.flag_fill,
-          color: Colors.red,
-          content: List<String>.from(prodiData['tujuan']),
-        ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1, end: 0),
-        const SizedBox(height: 16),
-        InfoSectionCard(
-          title: 'Strategi',
-          icon: CupertinoIcons.chart_bar_alt_fill,
-          color: Colors.green,
-          content: List<String>.from(prodiData['strategi']),
-        ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0),
-      ],
+      child: AppSurface(child: child),
     );
   }
 
-  Widget _buildHeader(String namaProdi) {
+  /// Daftar bernomor — memudahkan merujuk butir misi/tujuan/strategi.
+  Widget _numberedList(List<String> items) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(
-          CupertinoIcons.building_2_fill,
-          size: 64,
-          color: Color(0xFF501F66),
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          'Program Studi',
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.black54,
-            fontWeight: FontWeight.w500,
+        for (final (index, text) in items.indexed) ...[
+          if (index > 0) const SizedBox(height: AppSpacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                alignment: Alignment.center,
+                decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+                child: Text(
+                  '${index + 1}',
+                  style: AppText.label.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  text,
+                  style: AppText.body.copyWith(height: 1.7),
+                  textAlign: TextAlign.justify,
+                ),
+              ),
+            ],
           ),
-        ),
-        Text(
-          namaProdi,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF501F66),
-            letterSpacing: -0.5,
-          ),
-          textAlign: TextAlign.center,
-        ),
+        ],
       ],
     );
   }
-
 }

@@ -5,7 +5,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../models/keuangan.dart';
 import '../services/keuangan_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 import 'panduan_pembayaran_page.dart';
 
 class KeuanganPage extends StatefulWidget {
@@ -21,39 +22,32 @@ class _KeuanganPageState extends State<KeuanganPage> {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text(
-            'Keuangan & Pembayaran',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(CupertinoIcons.back),
-            onPressed: widget.onBack ?? () => Navigator.pop(context),
-          ),
-          bottom: const TabBar(
-            labelColor: Color(0xFF501F66),
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Color(0xFF501F66),
-            indicatorWeight: 3,
-            tabs: [
-              Tab(
-                icon: Icon(CupertinoIcons.clock_fill, size: 20),
-                text: 'Riwayat Pembayaran',
-              ),
-              Tab(
-                icon: Icon(CupertinoIcons.creditcard, size: 20),
-                text: 'Tagihan & Pembayaran',
-              ),
-            ],
-          ),
-        ),
-        body: const TabBarView(
+      child: AppScaffold(
+        title: 'Keuangan & Pembayaran',
+        scrollable: false,
+        padding: EdgeInsets.zero,
+        body: Column(
           children: [
-            _RiwayatPembayaranTab(),
-            _TagihanPembayaranTab(),
+            const TabBar(
+              tabs: [
+                Tab(
+                  icon: Icon(CupertinoIcons.clock_fill, size: 20),
+                  text: 'Riwayat Pembayaran',
+                ),
+                Tab(
+                  icon: Icon(CupertinoIcons.creditcard, size: 20),
+                  text: 'Tagihan & Pembayaran',
+                ),
+              ],
+            ),
+            const Expanded(
+              child: TabBarView(
+                children: [
+                  _RiwayatPembayaranTab(),
+                  _TagihanPembayaranTab(),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -125,8 +119,8 @@ class _RiwayatPembayaranTabState extends State<_RiwayatPembayaranTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Tersimpan di $path', style: const TextStyle(color: Colors.white)),
-            backgroundColor: const Color(0xFF501F66),
+            content: Text('Tersimpan di $path'),
+            backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -135,8 +129,8 @@ class _RiwayatPembayaranTabState extends State<_RiwayatPembayaranTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal mengunduh PDF: ${e.toString()}', style: const TextStyle(color: Colors.white)),
-            backgroundColor: Colors.redAccent,
+            content: Text('Gagal mengunduh PDF: ${e.toString()}'),
+            backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -150,114 +144,54 @@ class _RiwayatPembayaranTabState extends State<_RiwayatPembayaranTab> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (ctx) => _KeuanganDetailSheet(item: item, service: _service),
     );
   }
 
   Widget _buildSummaryHeader() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF501F66), Color(0xFF7B2CBF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF501F66).withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return AppSurface(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      CupertinoIcons.money_dollar_circle_fill,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Total Akumulasi Pembayaran',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _formatRupiah(_totalBayar),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${_historyList.length} Kwitansi',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: AppDeco.softPrimary(),
+                child: const Icon(
+                  CupertinoIcons.money_dollar_circle_fill,
+                  color: AppColors.primary,
+                  size: 22,
                 ),
               ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  'Total Akumulasi Pembayaran',
+                  style: AppText.label,
+                ),
+              ),
+              AppPill('${_historyList.length} Kwitansi'),
             ],
           ),
-          const SizedBox(height: 14),
-          const Divider(color: Colors.white24, height: 1),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
+          Text(_formatRupiah(_totalBayar), style: AppText.metric),
+          const SizedBox(height: AppSpacing.lg),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton.icon(
+            child: OutlinedButton.icon(
               onPressed: _downloadingAll ? null : _downloadHistoryPdf,
               icon: _downloadingAll
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF501F66)),
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(CupertinoIcons.arrow_down_doc_fill, size: 18),
-              label: Text(_downloadingAll ? 'Mengunduh...' : 'Unduh PDF Histori Keseluruhan'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: const Color(0xFF501F66),
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+              label: Text(
+                _downloadingAll
+                    ? 'Mengunduh...'
+                    : 'Unduh PDF Histori Keseluruhan',
               ),
             ),
           ),
@@ -266,243 +200,92 @@ class _RiwayatPembayaranTabState extends State<_RiwayatPembayaranTab> {
     );
   }
 
-  Widget _buildHistoryCard(KeuanganHistoryItem item) {
-    final hasKwitansi = item.nomorKwitansi != null && item.nomorKwitansi!.isNotEmpty;
+  Widget _buildHistoryRow(KeuanganHistoryItem item) {
+    final hasKwitansi =
+        item.nomorKwitansi != null && item.nomorKwitansi!.isNotEmpty;
+    final hasRefBank = item.norefBank != null && item.norefBank!.isNotEmpty;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: GlassCard(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF501F66).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      item.channelBank,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF501F66),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'Angsuran ${item.angsuranKe}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1976D2),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(CupertinoIcons.checkmark_seal_fill, size: 12, color: Colors.green),
-                    SizedBox(width: 4),
-                    Text(
-                      'Lunas',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _formatRupiah(item.jumlahBayar),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'TA ${item.tahunAkademik} • Semester ${_semesterLabel(item.semester)} (Smt Tempuh ${item.semesterTempuh})',
-            style: const TextStyle(
-              fontSize: 13,
-              color: Colors.black54,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(CupertinoIcons.calendar, size: 14, color: Colors.grey),
-              const SizedBox(width: 4),
-              Text(
-                'Tgl Bayar: ${item.tglBayar}',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
-          ),
-          if (hasKwitansi) ...[
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(CupertinoIcons.doc_text, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    'No. Kwitansi: ${item.nomorKwitansi}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.black87,
-                      fontFamily: 'monospace',
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ],
-          if (item.norefBank != null && item.norefBank!.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(CupertinoIcons.number, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(
-                  'No. Ref Bank: ${item.norefBank}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-          ],
-          const SizedBox(height: 12),
-          const Divider(height: 1),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              if (item.nomorKwitansi != null && item.nomorKwitansi!.isNotEmpty)
-                OutlinedButton.icon(
-                  onPressed: () => _showDetailBottomSheet(item),
-                  icon: const Icon(CupertinoIcons.info_circle, size: 14),
-                  label: const Text('Rincian Biaya', style: TextStyle(fontSize: 12)),
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    foregroundColor: const Color(0xFF501F66),
-                    side: const BorderSide(color: Color(0xFF501F66)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    ),
-  );
-}
+    final meta = [
+      '${item.channelBank} • Angsuran ${item.angsuranKe}',
+      'TA ${item.tahunAkademik} • Semester ${_semesterLabel(item.semester)} (Smt Tempuh ${item.semesterTempuh})',
+      'Tgl Bayar: ${item.tglBayar}',
+      if (hasKwitansi) 'No. Kwitansi: ${item.nomorKwitansi}',
+      if (hasRefBank) 'No. Ref Bank: ${item.norefBank}',
+    ];
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              CupertinoIcons.money_dollar_circle,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Belum Ada Riwayat Pembayaran',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Riwayat pembayaran kuliah Anda akan muncul di sini setelah transaksi dikonfirmasi oleh sistem.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.black45,
-              ),
-            ),
-          ],
+    return AppListRow(
+      leading: Container(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        decoration: AppDeco.softPrimary(),
+        child: const Icon(
+          CupertinoIcons.checkmark_seal_fill,
+          size: 18,
+          color: AppColors.primary,
         ),
       ),
+      title: _formatRupiah(item.jumlahBayar),
+      subtitle: meta.join('\n'),
+      trailing: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const AppPill('Lunas', tone: AppPillTone.success),
+          if (hasKwitansi) ...[
+            const SizedBox(height: AppSpacing.xs),
+            const Icon(
+              CupertinoIcons.chevron_right,
+              size: 16,
+              color: AppColors.textMuted,
+            ),
+          ],
+        ],
+      ),
+      onTap: hasKwitansi ? () => _showDetailBottomSheet(item) : null,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF501F66)),
-      );
+      return const AppLoading();
     }
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(CupertinoIcons.exclamationmark_circle, size: 48, color: Colors.redAccent),
-            const SizedBox(height: 12),
-            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent)),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _load, child: const Text('Coba Lagi'))
-          ],
-        ),
+      return SingleChildScrollView(
+        padding: AppSpacing.page,
+        child: AppErrorState(message: _error!, onRetry: _load),
       );
     }
 
     return RefreshIndicator(
       onRefresh: _load,
-      color: const Color(0xFF501F66),
       child: ListView(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).padding.bottom + 40,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          MediaQuery.of(context).padding.bottom + AppSpacing.xxl,
         ),
         children: [
-          _buildSummaryHeader().animate().fadeIn().slideY(begin: -0.1, end: 0),
+          _buildSummaryHeader().animate().fadeIn().slideY(begin: -0.05, end: 0),
+          const SizedBox(height: AppSpacing.xl),
           if (_historyList.isEmpty)
             SizedBox(
-              height: MediaQuery.of(context).size.height * 0.4,
-              child: _buildEmptyState(),
+              height: MediaQuery.of(context).size.height * 0.35,
+              child: const AppEmptyState(
+                title: 'Belum Ada Riwayat Pembayaran',
+                message:
+                    'Riwayat pembayaran kuliah Anda akan muncul di sini setelah transaksi dikonfirmasi oleh sistem.',
+                icon: CupertinoIcons.money_dollar_circle,
+              ),
             )
           else
-            for (var item in _historyList)
-              _buildHistoryCard(item).animate().fadeIn().slideY(begin: 0.1, end: 0),
+            AppListGroup.from([
+              for (var item in _historyList) _buildHistoryRow(item),
+            ])
+                .animate()
+                .fadeIn()
+                .slideY(begin: 0.04, end: 0),
         ],
       ),
     );
@@ -560,8 +343,8 @@ class _KeuanganDetailSheetState extends State<_KeuanganDetailSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Kwitansi tersimpan di $path', style: const TextStyle(color: Colors.white)),
-            backgroundColor: const Color(0xFF501F66),
+            content: Text('Kwitansi tersimpan di $path'),
+            backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -570,8 +353,8 @@ class _KeuanganDetailSheetState extends State<_KeuanganDetailSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal mengunduh kwitansi: ${e.toString()}', style: const TextStyle(color: Colors.white)),
-            backgroundColor: Colors.redAccent,
+            content: Text('Gagal mengunduh kwitansi: ${e.toString()}'),
+            backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -608,10 +391,10 @@ class _KeuanganDetailSheetState extends State<_KeuanganDetailSheet> {
       maxChildSize: 0.95,
       builder: (_, scrollController) => Container(
         decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
         ),
-        padding: const EdgeInsets.all(20),
+        padding: AppSpacing.page,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -620,142 +403,110 @@ class _KeuanganDetailSheetState extends State<_KeuanganDetailSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
+                  color: AppColors.borderStrong,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Rincian Komponen Biaya',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF501F66),
-                  ),
+                Expanded(
+                  child: Text('Rincian Komponen Biaya', style: AppText.h2),
                 ),
                 IconButton(
-                  icon: const Icon(CupertinoIcons.xmark_circle_fill, color: Colors.grey),
+                  icon: const Icon(
+                    CupertinoIcons.xmark_circle_fill,
+                    color: AppColors.textMuted,
+                  ),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
             ),
             Text(
               'TA ${widget.item.tahunAkademik} • Semester ${_semesterLabel(widget.item.semester)} (${widget.item.channelBank})',
-              style: const TextStyle(color: Colors.black54, fontSize: 13),
+              style: AppText.bodySm,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             const Divider(),
             Expanded(
               child: _loading
-                  ? const Center(
-                      child: CircularProgressIndicator(color: Color(0xFF501F66)),
-                    )
+                  ? const AppLoading()
                   : _error != null
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-                              const SizedBox(height: 8),
-                              ElevatedButton(onPressed: _loadDetail, child: const Text('Coba Lagi'))
-                            ],
+                      ? SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AppSpacing.lg,
+                          ),
+                          child: AppErrorState(
+                            message: _error!,
+                            onRetry: _loadDetail,
                           ),
                         )
                       : _details.isEmpty
-                          ? const Center(child: Text('Tidak ada rincian komponen biaya.'))
-                          : ListView.separated(
+                          ? const AppEmptyState(
+                              title: 'Tidak ada rincian komponen biaya.',
+                              icon: CupertinoIcons.doc_text,
+                            )
+                          : ListView(
                               controller: scrollController,
-                              itemCount: _details.length,
-                              separatorBuilder: (ctx, index) => const Divider(height: 1),
-                              itemBuilder: (ctx, i) {
-                                final d = _details[i];
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              d.jenisBiaya,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              'Ref: ${d.noReferensi}',
-                                              style: const TextStyle(
-                                                fontSize: 11,
-                                                color: Colors.grey,
-                                                fontFamily: 'monospace',
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Text(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: AppSpacing.sm,
+                              ),
+                              children: [
+                                AppListGroup.from([
+                                  for (final d in _details)
+                                    AppListRow(
+                                      title: d.jenisBiaya,
+                                      subtitle: 'Ref: ${d.noReferensi}',
+                                      trailing: Text(
                                         _formatRupiah(d.nominal),
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                          color: Color(0xFF501F66),
+                                        style: AppText.h3.copyWith(
+                                          color: AppColors.primary,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                );
-                              },
+                                    ),
+                                ]),
+                              ],
                             ),
             ),
             const Divider(),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Total Biaya Rincian:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
+                  Text('Total Biaya Rincian:', style: AppText.h3),
                   Text(
-                    _formatRupiah(totalNominal > 0 ? totalNominal : widget.item.jumlahBayar),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
+                    _formatRupiah(
+                      totalNominal > 0 ? totalNominal : widget.item.jumlahBayar,
+                    ),
+                    style: AppText.metric.copyWith(
                       fontSize: 16,
-                      color: Color(0xFF501F66),
+                      color: AppColors.primary,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
+              child: FilledButton.icon(
                 onPressed: _downloading ? null : _downloadKwitansiPdf,
                 icon: _downloading
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Icon(CupertinoIcons.arrow_down_doc_fill, size: 18),
-                label: Text(_downloading ? 'Mengunduh Kwitansi...' : 'Unduh Kwitansi Detail (PDF)'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF501F66),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                label: Text(
+                  _downloading
+                      ? 'Mengunduh Kwitansi...'
+                      : 'Unduh Kwitansi Detail (PDF)',
                 ),
               ),
             ),
@@ -837,8 +588,8 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$label: $text', style: const TextStyle(color: Colors.white)),
-          backgroundColor: const Color(0xFF501F66),
+          content: Text('$label: $text'),
+          backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -859,12 +610,8 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
   void _showPilihBankSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
+        padding: AppSpacing.page,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -872,25 +619,18 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
+                color: AppColors.borderStrong,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'Pilih Channel Pembayaran',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF501F66),
-              ),
-            ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.lg),
+            Text('Pilih Channel Pembayaran', style: AppText.h2),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               'Total yang dibayar: ${_formatRupiah(_selectedNominal)}',
-              style: const TextStyle(color: Colors.black54, fontSize: 13),
+              style: AppText.bodySm,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             _buildBankOption(
               ctx,
               label: 'BRI Virtual Account',
@@ -898,7 +638,7 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
               code: 'brivia',
               icon: CupertinoIcons.building_2_fill,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.sm),
             _buildBankOption(
               ctx,
               label: 'Bank Muamalat',
@@ -906,7 +646,7 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
               code: 'muamalat',
               icon: CupertinoIcons.building_2_fill,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
           ],
         ),
       ),
@@ -920,53 +660,37 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
     required String code,
     required IconData icon,
   }) {
-    return InkWell(
+    return AppSurface(
+      variant: AppSurfaceVariant.hero,
       onTap: () async {
         Navigator.pop(ctx);
         await _prosesBayar(code);
       },
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF501F66).withValues(alpha: 0.4)),
-          color: const Color(0xFF501F66).withValues(alpha: 0.05),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF501F66).withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: const Color(0xFF501F66), size: 22),
-            ),
-            const SizedBox(width: 12),
-            Column(
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: AppDeco.softPrimary(),
+            child: Icon(icon, color: AppColors.primary, size: 20),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
+                Text(label, style: AppText.h3),
                 const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
-                ),
+                Text(subtitle, style: AppText.bodySm),
               ],
             ),
-            const Spacer(),
-            const Icon(CupertinoIcons.chevron_right, color: Color(0xFF501F66)),
-          ],
-        ),
+          ),
+          const Icon(
+            CupertinoIcons.chevron_right,
+            size: 18,
+            color: AppColors.textMuted,
+          ),
+        ],
       ),
     );
   }
@@ -992,8 +716,8 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal membuat VA: ${e.toString()}', style: const TextStyle(color: Colors.white)),
-            backgroundColor: Colors.redAccent,
+            content: Text('Gagal membuat VA: ${e.toString()}'),
+            backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1019,9 +743,9 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Batal'),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.danger,
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
@@ -1045,8 +769,8 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Transaksi pembayaran berhasil dibatalkan', style: TextStyle(color: Colors.white)),
-            backgroundColor: Colors.green,
+            content: Text('Transaksi pembayaran berhasil dibatalkan'),
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1056,8 +780,8 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal membatalkan: ${e.toString()}', style: const TextStyle(color: Colors.white)),
-            backgroundColor: Colors.redAccent,
+            content: Text('Gagal membatalkan: ${e.toString()}'),
+            backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1068,249 +792,137 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
   }
 
   Widget _buildSummaryHeader() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF501F66), Color(0xFF7B2CBF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    final list = _tagihan?.data ?? [];
+    final hasTunggakan = list.isNotEmpty;
+    final accent = hasTunggakan ? AppColors.warning : AppColors.primary;
+
+    return AppSurface(
+      variant: hasTunggakan ? AppSurfaceVariant.warning : AppSurfaceVariant.plain,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              flex: 3,
+              child: AppStatTile(
+                value: _formatRupiah(_tagihan?.totalTagihan ?? 0),
+                label: 'Total Tagihan',
+                icon: CupertinoIcons.doc_text_fill,
+                accent: accent,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              flex: 2,
+              child: AppStatTile(
+                value: '${list.length}',
+                label: 'Belum Lunas',
+                icon: CupertinoIcons.exclamationmark_circle,
+                accent: accent,
+              ),
+            ),
+          ],
         ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF501F66).withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  CupertinoIcons.doc_text_fill,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Total Tagihan',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _formatRupiah(_tagihan?.totalTagihan ?? 0),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              '${_tagihan?.data.length ?? 0} Tagihan',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
 
   Widget _buildPanduanCard() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF501F66).withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color(0xFF501F66).withValues(alpha: 0.3),
-        ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const PanduanPembayaranPage(),
+    return AppListGroup(
+      children: [
+        AppListRow(
+          leading: Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: AppDeco.softPrimary(),
+            child: const Icon(
+              CupertinoIcons.book,
+              color: AppColors.primary,
+              size: 18,
             ),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(2),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF501F66).withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  CupertinoIcons.book,
-                  color: Color(0xFF501F66),
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Panduan & Tata Cara Pembayaran',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF501F66),
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Ketuk untuk melihat langkah-langkah pembayaran via Bank Muamalat & BRI/BRIVA.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.black54,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(
-                CupertinoIcons.chevron_right,
-                color: Color(0xFF501F66),
-              ),
-            ],
           ),
+          title: 'Panduan & Tata Cara Pembayaran',
+          subtitle:
+              'Ketuk untuk melihat langkah-langkah pembayaran via Bank Muamalat & BRI/BRIVA.',
+          trailing: const Icon(
+            CupertinoIcons.chevron_right,
+            size: 18,
+            color: AppColors.textMuted,
+          ),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const PanduanPembayaranPage(),
+              ),
+            );
+          },
         ),
-      ),
+      ],
     );
   }
 
   Widget _buildActiveVaCard() {
     final active = _tagihan!.activeTransaction;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return AppSurface(
+      variant: AppSurfaceVariant.hero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(CupertinoIcons.creditcard_fill, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Tagihan Aktif (Virtual Account)',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+              const Icon(
+                CupertinoIcons.creditcard_fill,
+                color: AppColors.primary,
+                size: 20,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Tagihan Aktif (Virtual Account)',
+                  style: AppText.h3,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          const Text(
-            'Nomor Virtual Account',
-            style: TextStyle(color: Colors.white70, fontSize: 12),
-          ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.lg),
+          Text('Nomor Virtual Account', style: AppText.label),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             active.va.isEmpty ? '-' : active.va,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+            style: AppText.metric.copyWith(
+              fontSize: 22,
               letterSpacing: 1.2,
               fontFamily: 'monospace',
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             'Total: ${_formatRupiah(active.totalNominal)} • ${active.channelBank.toUpperCase()}',
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
+            style: AppText.bodySm,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.lg),
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              OutlinedButton.icon(
-                onPressed: () => _copyToClipboard(active.va, label: 'Nomor VA disalin'),
-                icon: const Icon(CupertinoIcons.doc_on_doc, size: 14, color: Colors.white),
-                label: const Text('Copy Nomor VA', style: TextStyle(fontSize: 12, color: Colors.white)),
-                style: OutlinedButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  side: const BorderSide(color: Colors.white70),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      _copyToClipboard(active.va, label: 'Nomor VA disalin'),
+                  icon: const Icon(CupertinoIcons.doc_on_doc, size: 14),
+                  label: const Text('Copy Nomor VA'),
                 ),
               ),
-              const SizedBox(width: 8),
-              TextButton.icon(
-                onPressed: _processing ? null : _batalkanVa,
-                icon: _processing
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(CupertinoIcons.xmark_circle, size: 14, color: Colors.white),
-                label: const Text('Batalkan', style: TextStyle(fontSize: 12, color: Colors.white)),
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: TextButton.icon(
+                  onPressed: _processing ? null : _batalkanVa,
+                  icon: _processing
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(CupertinoIcons.xmark_circle, size: 14),
+                  label: const Text('Batalkan'),
                 ),
               ),
             ],
@@ -1322,43 +934,30 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
 
   Widget _buildVaActiveWarning() {
     final totalNominal = _tagihan?.activeTransaction.totalNominal ?? 0;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
-      ),
+    return AppSurface(
+      variant: AppSurfaceVariant.warning,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(
             CupertinoIcons.exclamationmark_triangle_fill,
             size: 20,
-            color: Colors.orange,
+            color: AppColors.warning,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'Transaksi VA masih aktif (${_formatRupiah(totalNominal)})',
-                  style: const TextStyle(
-                    color: Colors.orange,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
+                  style: AppText.h3.copyWith(color: AppColors.warning),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   'Batalkan transaksi sebelum mengganti pilihan tagihan agar tidak terjadi transaksi ganda.',
-                  style: TextStyle(
-                    color: Colors.orange[800],
-                    fontSize: 12,
-                    height: 1.4,
-                  ),
+                  style: AppText.bodySm,
                 ),
               ],
             ),
@@ -1368,129 +967,58 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
     );
   }
 
-  Widget _buildTagihanCard(KeuanganTagihanItem item) {
+  void _toggleTagihan(KeuanganTagihanItem item, bool selected) {
+    setState(() {
+      if (selected) {
+        _selectedIdtrans.add(item.idtrans);
+      } else {
+        _selectedIdtrans.remove(item.idtrans);
+      }
+    });
+  }
+
+  Widget _buildTagihanRow(KeuanganTagihanItem item) {
     final isSelected = _selectedIdtrans.contains(item.idtrans);
     final disabled = _hasActiveVa;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isSelected
-              ? const Color(0xFF501F66)
-              : Colors.grey.withValues(alpha: 0.25),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
+    return AppListRow(
+      leading: Checkbox(
+        value: isSelected,
+        visualDensity: VisualDensity.compact,
+        onChanged: disabled ? null : (val) => _toggleTagihan(item, val == true),
+      ),
+      title: item.jenisPembayaran,
+      subtitle: 'TA ${_formatTahunAkademik(item.tahunAkademik)}',
+      trailing: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _formatRupiah(item.nominal),
+            style: AppText.h3.copyWith(
+              color: disabled ? AppColors.textMuted : AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          AppPill(
+            'Belum bayar',
+            tone: disabled ? AppPillTone.neutral : AppPillTone.warning,
           ),
         ],
       ),
-      child: CheckboxListTile(
-        value: isSelected,
-        onChanged: disabled
-            ? null
-            : (val) {
-                setState(() {
-                  if (val == true) {
-                    _selectedIdtrans.add(item.idtrans);
-                  } else {
-                    _selectedIdtrans.remove(item.idtrans);
-                  }
-                });
-              },
-        controlAffinity: ListTileControlAffinity.leading,
-        title: Text(
-          item.jenisPembayaran,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: disabled ? Colors.black45 : Colors.black87,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 2),
-            Text(
-              'TA ${_formatTahunAkademik(item.tahunAkademik)}',
-              style: const TextStyle(fontSize: 12, color: Colors.black54),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _formatRupiah(item.nominal),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF501F66),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              CupertinoIcons.checkmark_circle_fill,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Tidak Ada Tagihan',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Seluruh kewajiban pembayaran perkuliahan Anda saat ini sudah lunas.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.black45,
-                height: 1.4,
-              ),
-            ),
-          ],
-        ),
-      ),
+      onTap: disabled ? null : () => _toggleTagihan(item, !isSelected),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF501F66)),
-      );
+      return const AppLoading();
     }
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(CupertinoIcons.exclamationmark_circle, size: 48, color: Colors.redAccent),
-            const SizedBox(height: 12),
-            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent)),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _load, child: const Text('Coba Lagi'))
-          ],
-        ),
+      return SingleChildScrollView(
+        padding: AppSpacing.page,
+        child: AppErrorState(message: _error!, onRetry: _load),
       );
     }
 
@@ -1498,47 +1026,50 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
 
     return RefreshIndicator(
       onRefresh: _load,
-      color: const Color(0xFF501F66),
       child: ListView(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).padding.bottom + 100,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          MediaQuery.of(context).padding.bottom + AppSpacing.xxl,
         ),
         children: [
-          _buildSummaryHeader().animate().fadeIn().slideY(begin: -0.1, end: 0),
-          _buildPanduanCard().animate().fadeIn().slideY(begin: -0.1, end: 0),
+          _buildSummaryHeader().animate().fadeIn().slideY(begin: -0.05, end: 0),
+          const SizedBox(height: AppSpacing.lg),
+          _buildPanduanCard(),
           if (_hasActiveVa) ...[
-            _buildActiveVaCard().animate().fadeIn().slideY(begin: -0.1, end: 0),
+            const SizedBox(height: AppSpacing.lg),
+            _buildActiveVaCard(),
+            const SizedBox(height: AppSpacing.md),
             _buildVaActiveWarning(),
           ],
           if (!_hasActiveVa && tagihanList.isEmpty)
             SizedBox(
-              height: MediaQuery.of(context).size.height * 0.35,
-              child: _buildEmptyState(),
+              height: MediaQuery.of(context).size.height * 0.32,
+              child: const AppEmptyState(
+                title: 'Tidak Ada Tagihan',
+                message:
+                    'Seluruh kewajiban pembayaran perkuliahan Anda saat ini sudah lunas.',
+                icon: CupertinoIcons.checkmark_circle_fill,
+              ),
             )
           else if (!_hasActiveVa) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Daftar Tagihan',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-                  ),
-                  Text(
-                    'Terpilih: ${_formatRupiah(_selectedNominal)}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF501F66),
-                    ),
-                  ),
-                ],
+            AppSection(
+              title: 'Daftar Tagihan',
+              trailing: Text(
+                'Terpilih: ${_formatRupiah(_selectedNominal)}',
+                style: AppText.label.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
+              child: AppListGroup.from([
+                for (var item in tagihanList) _buildTagihanRow(item),
+              ]),
             ),
-            for (var item in tagihanList)
-              _buildTagihanCard(item).animate().fadeIn().slideY(begin: 0.1, end: 0),
           ],
+          const SizedBox(height: AppSpacing.xl),
           _buildBayarButton(),
         ],
       ),
@@ -1548,39 +1079,26 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
   Widget _buildBayarButton() {
     final canPay = _selectedIdtrans.isNotEmpty && !_hasActiveVa;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 8,
-        bottom: MediaQuery.of(context).padding.bottom + 16,
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: (canPay && !_processing) ? _showPilihBankSheet : null,
-          icon: _processing
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-              : const Icon(CupertinoIcons.creditcard_fill, size: 18),
-          label: Text(
-            _processing
-                ? 'Memproses...'
-                : _hasActiveVa
-                    ? 'Batalkan VA Aktif untuk Bayar'
-                    : 'Bayar Tagihan Terpilih',
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF501F66),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: (canPay && !_processing) ? _showPilihBankSheet : null,
+        icon: _processing
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(CupertinoIcons.creditcard_fill, size: 18),
+        label: Text(
+          _processing
+              ? 'Memproses...'
+              : _hasActiveVa
+                  ? 'Batalkan VA Aktif untuk Bayar'
+                  : 'Bayar Tagihan Terpilih',
         ),
       ),
     );
@@ -1604,171 +1122,120 @@ class _VaSuksesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFCFF),
+      backgroundColor: AppColors.scaffold,
       body: SafeArea(
-        child: Column(
+        child: ListView(
+          padding: AppSpacing.page,
           children: [
-            const Spacer(flex: 2),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                CupertinoIcons.checkmark_circle_fill,
-                size: 72,
-                color: Colors.green,
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Virtual Account Berhasil Dibuat',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                'Silakan lakukan transfer ke nomor Virtual Account berikut sebelum batas waktu kedaluwarsa.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Colors.black54,
-                  height: 1.4,
+            const SizedBox(height: AppSpacing.xl),
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                decoration: const BoxDecoration(
+                  color: AppColors.successBg,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  CupertinoIcons.checkmark_circle_fill,
+                  size: 56,
+                  color: AppColors.success,
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 24),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF501F66).withValues(alpha: 0.3)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
+            const SizedBox(height: AppSpacing.xl),
+            Text(
+              'Virtual Account Berhasil Dibuat',
+              textAlign: TextAlign.center,
+              style: AppText.h1,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Silakan lakukan transfer ke nomor Virtual Account berikut sebelum batas waktu kedaluwarsa.',
+              textAlign: TextAlign.center,
+              style: AppText.bodySm,
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            AppSurface(
               child: Column(
                 children: [
-                  const Text(
-                    'Nomor Virtual Account',
-                    style: TextStyle(fontSize: 13, color: Colors.black54),
-                  ),
-                  const SizedBox(height: 8),
+                  Text('Nomor Virtual Account', style: AppText.label),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(
                     result.va,
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF501F66),
+                    textAlign: TextAlign.center,
+                    style: AppText.metric.copyWith(
+                      fontSize: 24,
                       letterSpacing: 1.5,
                       fontFamily: 'monospace',
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(
                     '${result.channelBank.toUpperCase()} • Total ${_formatRupiah(result.totalNominal)}',
-                    style: const TextStyle(fontSize: 13, color: Colors.black54),
+                    textAlign: TextAlign.center,
+                    style: AppText.bodySm,
                   ),
-                  const SizedBox(height: 16),
-                  const Divider(height: 1),
-                  const SizedBox(height: 16),
-                  for (var item in result.items)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              item.jenisPembayaran,
-                              style: const TextStyle(fontSize: 13, color: Colors.black87),
-                            ),
-                          ),
-                          Text(
-                            _formatRupiah(item.nominal),
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
-                          ),
-                        ],
-                      ),
-                    ),
                 ],
               ),
             ),
-            const Spacer(flex: 2),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
-                ),
-                child: const Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(CupertinoIcons.alarm, size: 18, color: Colors.orange),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Nomor VA berlaku sementara. Setelah transfer sukses, status pembayaran baru ter-update setelah proses settlement bank. Status dapat dicek kembali pada tab "Riwayat Pembayaran".',
-                        style: TextStyle(fontSize: 12, color: Colors.orange, height: 1.4),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: result.va));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Nomor VA disalin'),
-                          backgroundColor: Color(0xFF501F66),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
-                  },
-                  icon: const Icon(CupertinoIcons.doc_on_doc, size: 18),
-                  label: const Text('Copy Nomor VA'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF501F66),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+            const SizedBox(height: AppSpacing.lg),
+            AppListGroup.from([
+              for (var item in result.items)
+                AppListRow(
+                  title: item.jenisPembayaran,
+                  trailing: Text(
+                    _formatRupiah(item.nominal),
+                    style: AppText.h3,
                   ),
                 ),
+            ]),
+            const SizedBox(height: AppSpacing.lg),
+            AppSurface(
+              variant: AppSurfaceVariant.warning,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    CupertinoIcons.alarm,
+                    size: 18,
+                    color: AppColors.warning,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Nomor VA berlaku sementara. Setelah transfer sukses, status pembayaran baru ter-update setelah proses settlement bank. Status dapat dicek kembali pada tab "Riwayat Pembayaran".',
+                      style: AppText.bodySm,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.lg),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: result.va));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Nomor VA disalin'),
+                        backgroundColor: AppColors.primary,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(CupertinoIcons.doc_on_doc, size: 18),
+                label: const Text('Copy Nomor VA'),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Selesai', style: TextStyle(color: Color(0xFF501F66))),
+              child: const Text('Selesai'),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xl),
           ],
         ),
       ),

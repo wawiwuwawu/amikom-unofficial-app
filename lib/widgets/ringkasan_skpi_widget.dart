@@ -4,7 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../models/transkrip.dart';
 import '../pages/sertifikasi_page.dart';
 import '../pages/prestasi_page.dart';
-import 'glass_card.dart';
+import '../theme/app_theme.dart';
+import 'app_kit.dart';
 
 class RingkasanSkpiWidget extends StatelessWidget {
   final SkpiData data;
@@ -16,160 +17,168 @@ class RingkasanSkpiWidget extends StatelessWidget {
     final isEligible = data.isSkpiEligible;
     final poin = data.skkmPoinInfo.estimasiPoinSkkm;
     final pct = (poin / 100.0).clamp(0.0, 1.0);
-    final statusColor = isEligible ? Colors.green : Colors.orange;
+    final accent = isEligible ? AppColors.success : AppColors.warning;
 
-    return GlassCard(
-      borderRadius: 20,
-      padding: const EdgeInsets.all(16),
+    return AppSurface(
+      radius: AppRadius.lg,
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: Icon(
-                  isEligible ? CupertinoIcons.doc_checkmark_fill : CupertinoIcons.exclamationmark_circle_fill,
-                  color: statusColor,
+                  isEligible
+                      ? CupertinoIcons.doc_checkmark_fill
+                      : CupertinoIcons.exclamationmark_circle_fill,
+                  color: accent,
                   size: 22,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Kecukupan SKPI & Poin SKKM',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Color(0xFF501F66),
-                      ),
-                    ),
+                    Text('Kecukupan SKPI & Poin SKKM', style: AppText.h3),
+                    const SizedBox(height: 2),
                     Text(
                       data.statusSkpi,
-                      style: TextStyle(fontSize: 11, color: statusColor.shade900, fontWeight: FontWeight.bold),
+                      style: AppText.label.copyWith(
+                        color: accent,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.shade700,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  isEligible ? 'LULUS SKPI' : '$poin / 100 POIN',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
-                ),
+              const SizedBox(width: AppSpacing.sm),
+              AppPill(
+                isEligible ? 'LULUS SKPI' : '$poin / 100 POIN',
+                tone: isEligible ? AppPillTone.success : AppPillTone.warning,
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.md),
 
           // Progress Bar SKKM
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadius.sm),
             child: LinearProgressIndicator(
               value: pct,
               minHeight: 10,
-              backgroundColor: Colors.grey.shade200,
-              valueColor: AlwaysStoppedAnimation<Color>(statusColor.shade700),
+              backgroundColor: AppColors.surfaceMuted,
+              valueColor: AlwaysStoppedAnimation<Color>(accent),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             data.skkmPoinInfo.description,
-            style: const TextStyle(fontSize: 11, color: Colors.black87, height: 1.3),
+            style: AppText.bodySm.copyWith(color: AppColors.textSecondary),
           ),
-          const SizedBox(height: 12),
 
           // Peringatan Kekurangan (If any)
           if (data.peringatanKekurangan.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.orange.shade50,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.orange.shade200),
-              ),
+            const SizedBox(height: AppSpacing.md),
+            AppSurface(
+              variant: AppSurfaceVariant.warning,
+              radius: AppRadius.sm,
+              padding: const EdgeInsets.all(AppSpacing.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    children: const [
-                      Icon(CupertinoIcons.info_circle_fill, size: 14, color: Colors.deepOrange),
-                      SizedBox(width: 6),
-                      Text(
-                        'Perhatian Tambahan SKPI:',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.deepOrange),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        CupertinoIcons.info_circle_fill,
+                        size: 14,
+                        color: AppColors.warning,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'Perhatian Tambahan SKPI:',
+                          style: AppText.label.copyWith(
+                            color: AppColors.warning,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  ...data.peringatanKekurangan.map(
-                    (warn) => Padding(
+                  const SizedBox(height: AppSpacing.xs),
+                  for (final warn in data.peringatanKekurangan)
+                    Padding(
                       padding: const EdgeInsets.only(bottom: 2),
                       child: Text(
                         '• $warn',
-                        style: const TextStyle(fontSize: 10.5, color: Colors.black87),
+                        style: AppText.bodySm.copyWith(fontSize: 12),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
           ],
+          const SizedBox(height: AppSpacing.lg),
 
           // Quick Actions Row
           Row(
             children: [
               Expanded(
-                child: SizedBox(
-                  height: 34,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => SertifikasiPage(onBack: () => Navigator.pop(context))),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF501F66),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      elevation: 0,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SertifikasiPage(onBack: () => Navigator.pop(context)),
+                      ),
+                    );
+                  },
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
                     ),
-                    icon: const Icon(CupertinoIcons.doc_append, size: 14),
-                    label: const Text('Input Sertifikasi', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                  icon: const Icon(CupertinoIcons.doc_append, size: 14, color: Colors.white),
+                  label: Text(
+                    'Input Sertifikasi',
+                    style: AppText.label.copyWith(color: Colors.white),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: SizedBox(
-                  height: 34,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => PrestasiPage(onBack: () => Navigator.pop(context))),
-                      );
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF501F66),
-                      side: const BorderSide(color: Color(0xFF501F66)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PrestasiPage(onBack: () => Navigator.pop(context)),
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                    side: const BorderSide(color: AppColors.primary),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
                     ),
-                    icon: const Icon(CupertinoIcons.star_fill, size: 14),
-                    label: const Text('Input Prestasi', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                  icon: const Icon(CupertinoIcons.star_fill, size: 14, color: AppColors.primary),
+                  label: Text(
+                    'Input Prestasi',
+                    style: AppText.label.copyWith(color: AppColors.primary),
                   ),
                 ),
               ),

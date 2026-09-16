@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../models/izin_penelitian.dart';
 import '../services/izin_penelitian_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
+/// Izin penelitian — dua tab: form pengajuan dan riwayat pengajuan.
+///
+/// Riwayat disajikan sebagai satu daftar ([AppListGroup] + [AppListRow])
+/// dengan pil status, bukan satu kartu per pengajuan, supaya cepat dipindai.
+/// Tombol kembali disediakan otomatis oleh [AppScaffold], sehingga `onBack`
+/// dipertahankan hanya untuk kompatibilitas pemanggil lama.
 class IzinPenelitianPage extends StatefulWidget {
   final VoidCallback? onBack;
 
@@ -127,7 +133,7 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Harap lengkapi jenis penelitian dan penerima surat'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -137,7 +143,7 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Harap isi spesifik penerima surat (Ditujukan Kepada)'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -147,7 +153,7 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Harap isi Instansi Tujuan dan Judul / Mata Kuliah'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -157,7 +163,7 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Harap isi Topik Tugas / Wawancara'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -167,7 +173,7 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Harap pilih Tanggal Mulai dan Tanggal Selesai'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -191,7 +197,7 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(res['message'] ?? 'Pengajuan Berhasil Ditambahkan'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
         _resetForm();
@@ -202,7 +208,7 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString().replaceFirst('Exception: ', '')),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -215,17 +221,20 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Hapus Pengajuan Izin Penelitian', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
+        title: const Text('Hapus Pengajuan Izin Penelitian'),
         content: Text('Apakah Anda yakin ingin menghapus pengajuan izin penelitian ke ${item.instansi}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+            child: const Text('Batal', style: TextStyle(color: AppColors.textMuted)),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Hapus'),
           ),
         ],
       ),
@@ -238,7 +247,7 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(res['message'] ?? 'Pengajuan Berhasil Dihapus'),
-              backgroundColor: Colors.green,
+              backgroundColor: AppColors.success,
             ),
           );
           _fetchData();
@@ -248,7 +257,7 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(e.toString().replaceFirst('Exception: ', '')),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.danger,
             ),
           );
         }
@@ -256,67 +265,74 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
     }
   }
 
+  /// Nada pil untuk status pengajuan (warna semantik dari design system).
+  AppPillTone _statusTone(String status) {
+    switch (status.toLowerCase().trim()) {
+      case 'diajukan':
+        return AppPillTone.warning;
+      case 'diproses':
+        return AppPillTone.info;
+      case 'selesai':
+        return AppPillTone.success;
+      case 'ditolak':
+        return AppPillTone.danger;
+      default:
+        return AppPillTone.neutral;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFFAFCFF),
-        appBar: AppBar(
-          title: const Text(
-            'Izin Penelitian',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          backgroundColor: Colors.white.withValues(alpha: 0.9),
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-            onPressed: widget.onBack ?? () => Navigator.pop(context),
-          ),
-          bottom: const TabBar(
-            labelColor: Color(0xFF501F66),
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Color(0xFF501F66),
-            indicatorWeight: 3,
-            labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            tabs: [
-              Tab(
-                icon: Icon(CupertinoIcons.doc_plaintext),
-                text: 'Form Pengajuan',
-              ),
-              Tab(
-                icon: Icon(CupertinoIcons.clock),
-                text: 'Riwayat Pengajuan',
-              ),
-            ],
-          ),
-        ),
-        body: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)))
-            : _error.isNotEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(CupertinoIcons.exclamationmark_triangle, size: 50, color: Colors.red),
-                        const SizedBox(height: 16),
-                        Text(_error, style: const TextStyle(color: Colors.black54)),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _fetchData,
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66)),
-                          child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
-                        ),
-                      ],
-                    ),
-                  )
-                : TabBarView(
-                    children: [
-                      _buildFormTab(),
-                      _buildRiwayatTab(),
-                    ],
+      child: AppScaffold(
+        title: 'Izin Penelitian',
+        subtitle: 'Pengajuan surat izin & riwayatnya',
+        scrollable: false,
+        padding: EdgeInsets.zero,
+        body: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: TabBar(
+                tabs: [
+                  Tab(
+                    icon: Icon(CupertinoIcons.doc_plaintext),
+                    text: 'Form Pengajuan',
                   ),
+                  Tab(
+                    icon: Icon(CupertinoIcons.clock),
+                    text: 'Riwayat Pengajuan',
+                  ),
+                ],
+              ),
+            ),
+            Expanded(child: _buildContent()),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (_isLoading) {
+      return const AppLoading(message: 'Memuat data izin penelitian…');
+    }
+
+    if (_error.isNotEmpty) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: AppSpacing.page,
+          child: AppErrorState(message: _error, onRetry: _fetchData),
+        ),
+      );
+    }
+
+    return TabBarView(
+      children: [
+        _buildFormTab(),
+        _buildRiwayatTab(),
+      ],
     );
   }
 
@@ -338,233 +354,197 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
 
     return RefreshIndicator(
       onRefresh: _fetchData,
-      color: const Color(0xFF501F66),
+      color: AppColors.primary,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: AppSpacing.page,
+        physics: const AlwaysScrollableScrollPhysics(),
         children: [
-          // Form Card
-          GlassCard(
-            borderRadius: 16,
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: const [
-                    Icon(CupertinoIcons.doc_append, color: Color(0xFF501F66), size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Buat Pengajuan Izin Penelitian',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF501F66)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Dropdown Jenis Penelitian
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedJenis,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Jenis Penelitian',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(CupertinoIcons.square_grid_2x2, color: Color(0xFF501F66)),
-                  ),
-                  items: jenisList.map((item) {
-                    return DropdownMenuItem<String>(
-                      value: item.value,
-                      child: Text(
-                        item.label,
-                        style: const TextStyle(fontSize: 13),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    setState(() => _selectedJenis = val);
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Dropdown Ditujukan
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedDitujukan,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Ditujukan Kepada',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(CupertinoIcons.person_crop_square, color: Color(0xFF501F66)),
-                  ),
-                  items: ditujukanList.map((item) {
-                    return DropdownMenuItem<String>(
-                      value: item,
-                      child: Text(
-                        item,
-                        style: const TextStyle(fontSize: 13),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    setState(() => _selectedDitujukan = val);
-                  },
-                ),
-
-                // Input Kondisional jika ditujukan == 'Lainnya'
-                if (_selectedDitujukan == 'Lainnya') ...[
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _ditujukanLainnyaController,
-                    decoration: const InputDecoration(
-                      labelText: 'Ditujukan Kepada (Spesifik)',
-                      border: OutlineInputBorder(),
-                      hintText: 'Contoh: Koordinator Lapangan / Supervisor',
-                      prefixIcon: Icon(CupertinoIcons.person, color: Color(0xFF501F66)),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 16),
-
-                // Instansi
-                TextField(
-                  controller: _instansiController,
-                  decoration: const InputDecoration(
-                    labelText: 'Instansi / Perusahaan Tujuan',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(CupertinoIcons.building_2_fill, color: Color(0xFF501F66)),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Judul / Matkul / MBKM
-                TextField(
-                  controller: _judulController,
-                  maxLines: _selectedJenis == 'tugas' ? 1 : 2,
-                  decoration: InputDecoration(
-                    labelText: judulLabel,
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(CupertinoIcons.book, color: Color(0xFF501F66)),
-                  ),
-                ),
-
-                // Input Kondisional Topik jika jenis == 'tugas'
-                if (_selectedJenis == 'tugas') ...[
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _topikController,
-                    maxLines: 2,
-                    decoration: const InputDecoration(
-                      labelText: 'Topik Tugas / Wawancara',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(CupertinoIcons.text_quote, color: Color(0xFF501F66)),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 16),
-
-                // Date Picker Row
-                Row(
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: _selectStartDate,
-                        child: InputDecorator(
-                          decoration: const InputDecoration(
-                            labelText: 'Tanggal Mulai',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(CupertinoIcons.calendar, color: Color(0xFF501F66)),
-                          ),
-                          child: Text(
-                            _startDate != null ? _formatDateDisplay(_startDate!) : 'Pilih Tanggal',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: _startDate != null ? Colors.black87 : Colors.grey,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: InkWell(
-                        onTap: _selectEndDate,
-                        child: InputDecorator(
-                          decoration: const InputDecoration(
-                            labelText: 'Tanggal Selesai',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(CupertinoIcons.calendar, color: Color(0xFF501F66)),
-                          ),
-                          child: Text(
-                            _endDate != null ? _formatDateDisplay(_endDate!) : 'Pilih Tanggal',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: _endDate != null ? Colors.black87 : Colors.grey,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Submit Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: _isSubmitting ? null : _submitForm,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF501F66),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    icon: _isSubmitting
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                          )
-                        : const Icon(CupertinoIcons.paperplane_fill, color: Colors.white, size: 18),
-                    label: const Text(
-                      'Ajukan Izin Penelitian',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ).animate().fadeIn(),
-          const SizedBox(height: 20),
-
-          // Keterangan BAA Card
-          if (data.keteranganBaa.isNotEmpty)
-            GlassCard(
-              borderRadius: 16,
-              padding: const EdgeInsets.all(16),
-              child: Row(
+          AppSection(
+            topGap: AppSpacing.sm,
+            title: 'Buat Pengajuan Izin Penelitian',
+            child: AppSurface(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(CupertinoIcons.info_circle_fill, color: Color(0xFF1976D2), size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Petunjuk Pengambilan Surat (BAA)',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF501F66)),
+                  // Dropdown Jenis Penelitian
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedJenis,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Jenis Penelitian',
+                      prefixIcon: Icon(CupertinoIcons.square_grid_2x2, color: AppColors.primary),
+                    ),
+                    items: [
+                      for (final item in jenisList)
+                        DropdownMenuItem<String>(
+                          value: item.value,
+                          child: Text(
+                            item.label,
+                            style: AppText.body,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          data.keteranganBaa,
-                          style: const TextStyle(fontSize: 12, color: Colors.black87, height: 1.4),
+                    ],
+                    onChanged: (val) {
+                      setState(() => _selectedJenis = val);
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Dropdown Ditujukan
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedDitujukan,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Ditujukan Kepada',
+                      prefixIcon: Icon(CupertinoIcons.person_crop_square, color: AppColors.primary),
+                    ),
+                    items: [
+                      for (final item in ditujukanList)
+                        DropdownMenuItem<String>(
+                          value: item,
+                          child: Text(
+                            item,
+                            style: AppText.body,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ],
+                    ],
+                    onChanged: (val) {
+                      setState(() => _selectedDitujukan = val);
+                    },
+                  ),
+
+                  // Input Kondisional jika ditujukan == 'Lainnya'
+                  if (_selectedDitujukan == 'Lainnya') ...[
+                    const SizedBox(height: AppSpacing.lg),
+                    TextField(
+                      controller: _ditujukanLainnyaController,
+                      decoration: const InputDecoration(
+                        labelText: 'Ditujukan Kepada (Spesifik)',
+                        hintText: 'Contoh: Koordinator Lapangan / Supervisor',
+                        prefixIcon: Icon(CupertinoIcons.person, color: AppColors.primary),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Instansi
+                  TextField(
+                    controller: _instansiController,
+                    decoration: const InputDecoration(
+                      labelText: 'Instansi / Perusahaan Tujuan',
+                      prefixIcon: Icon(CupertinoIcons.building_2_fill, color: AppColors.primary),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Judul / Matkul / MBKM
+                  TextField(
+                    controller: _judulController,
+                    maxLines: _selectedJenis == 'tugas' ? 1 : 2,
+                    decoration: InputDecoration(
+                      labelText: judulLabel,
+                      prefixIcon: const Icon(CupertinoIcons.book, color: AppColors.primary),
+                    ),
+                  ),
+
+                  // Input Kondisional Topik jika jenis == 'tugas'
+                  if (_selectedJenis == 'tugas') ...[
+                    const SizedBox(height: AppSpacing.lg),
+                    TextField(
+                      controller: _topikController,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Topik Tugas / Wawancara',
+                        prefixIcon: Icon(CupertinoIcons.text_quote, color: AppColors.primary),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Date Picker Row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: _selectStartDate,
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Tanggal Mulai',
+                              prefixIcon: Icon(CupertinoIcons.calendar, color: AppColors.primary),
+                            ),
+                            child: Text(
+                              _startDate != null ? _formatDateDisplay(_startDate!) : 'Pilih Tanggal',
+                              style: AppText.bodySm.copyWith(
+                                color: _startDate != null ? AppColors.textPrimary : AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: InkWell(
+                          onTap: _selectEndDate,
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Tanggal Selesai',
+                              prefixIcon: Icon(CupertinoIcons.calendar, color: AppColors.primary),
+                            ),
+                            child: Text(
+                              _endDate != null ? _formatDateDisplay(_endDate!) : 'Pilih Tanggal',
+                              style: AppText.bodySm.copyWith(
+                                color: _endDate != null ? AppColors.textPrimary : AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+
+                  // Submit Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _isSubmitting ? null : _submitForm,
+                      icon: _isSubmitting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : const Icon(CupertinoIcons.paperplane_fill, size: 18),
+                      label: const Text('Ajukan Izin Penelitian'),
                     ),
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 100.ms),
+            ),
+          ),
+
+          // Keterangan BAA
+          if (data.keteranganBaa.isNotEmpty)
+            AppSection(
+              title: 'Petunjuk Pengambilan Surat (BAA)',
+              child: AppSurface(
+                variant: AppSurfaceVariant.hero,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(CupertinoIcons.info_circle_fill, color: AppColors.primary, size: 20),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Text(data.keteranganBaa, style: AppText.bodySm),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -576,18 +556,14 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
     if (items.isEmpty) {
       return RefreshIndicator(
         onRefresh: _fetchData,
-        color: const Color(0xFF501F66),
+        color: AppColors.primary,
         child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: const [
-            SizedBox(height: 100),
-            Center(
-              child: Column(
-                children: [
-                  Icon(CupertinoIcons.doc_text_search, size: 60, color: Colors.grey),
-                  SizedBox(height: 12),
-                  Text('Belum ada riwayat pengajuan izin penelitian', style: TextStyle(color: Colors.black54)),
-                ],
-              ),
+            SizedBox(height: 80),
+            AppEmptyState(
+              title: 'Belum ada riwayat pengajuan izin penelitian',
+              icon: CupertinoIcons.doc_text_search,
             ),
           ],
         ),
@@ -596,130 +572,49 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
 
     return RefreshIndicator(
       onRefresh: _fetchData,
-      color: const Color(0xFF501F66),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: items.length,
-        itemBuilder: (context, index) {
-          final item = items[index];
-
-          Color badgeBg;
-          Color badgeText;
-          IconData badgeIcon;
-
-          switch (item.status.toLowerCase().trim()) {
-            case 'diajukan':
-              badgeBg = const Color(0xFFFFF3E0);
-              badgeText = const Color(0xFFE65100);
-              badgeIcon = CupertinoIcons.clock_fill;
-              break;
-            case 'diproses':
-              badgeBg = const Color(0xFFE3F2FD);
-              badgeText = const Color(0xFF1565C0);
-              badgeIcon = CupertinoIcons.gear_alt_fill;
-              break;
-            case 'selesai':
-              badgeBg = const Color(0xFFE8F5E9);
-              badgeText = const Color(0xFF2E7D32);
-              badgeIcon = CupertinoIcons.checkmark_seal_fill;
-              break;
-            case 'ditolak':
-              badgeBg = const Color(0xFFFFEBEE);
-              badgeText = const Color(0xFFC62828);
-              badgeIcon = CupertinoIcons.xmark_octagon_fill;
-              break;
-            default:
-              badgeBg = Colors.grey.shade200;
-              badgeText = Colors.black87;
-              badgeIcon = CupertinoIcons.info;
-          }
-
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: GlassCard(
-              borderRadius: 16,
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.instansi,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF501F66)),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: badgeBg,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(badgeIcon, size: 14, color: badgeText),
-                            const SizedBox(width: 4),
-                            Text(
-                              item.status,
-                              style: TextStyle(color: badgeText, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Divider(height: 1),
-                  const SizedBox(height: 12),
-                  _buildDetailRow('Judul / Kegiatan:', item.judulPenelitian),
-                  const SizedBox(height: 4),
-                  _buildDetailRow('Tanggal:', '${item.mulai} - ${item.selesai}'),
-                  const SizedBox(height: 4),
-                  _buildDetailRow('Semester/TA:', item.thnAjaranSmt),
-                  const SizedBox(height: 4),
-                  _buildDetailRow('Tgl Proses:', item.tglProses ?? 'Proses'),
-                  if (item.canDelete) ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: () => _showDeleteConfirmation(item),
-                          icon: const Icon(CupertinoIcons.trash, color: Colors.red, size: 16),
-                          label: const Text('Hapus Pengajuan', style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold)),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.red),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
+      color: AppColors.primary,
+      child: ListView(
+        padding: AppSpacing.page,
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          AppSection(
+            topGap: AppSpacing.sm,
+            title: 'Riwayat Pengajuan',
+            trailing: Text(
+              '${items.length} pengajuan',
+              style: AppText.label.copyWith(fontWeight: FontWeight.w400),
             ),
-          ).animate().fadeIn(delay: (50 * index).ms);
-        },
+            child: AppListGroup.from([
+              for (final item in items) _buildRiwayatRow(item),
+            ]),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 120,
-          child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        ),
-        Expanded(
-          child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87)),
-        ),
-      ],
+  /// Satu baris pengajuan: judul penelitian · instansi/tanggal/nomor · pil status.
+  Widget _buildRiwayatRow(IzinPenelitianItem item) {
+    return AppListRow(
+      title: item.judulPenelitian.isNotEmpty ? item.judulPenelitian : item.instansi,
+      subtitle: '${item.instansi}\n'
+          '${item.mulai} - ${item.selesai} • ${item.thnAjaranSmt}\n'
+          'No. ${item.idPengajuan} • Proses: ${item.tglProses ?? 'Proses'}',
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppPill(item.status, tone: _statusTone(item.status)),
+          if (item.canDelete) ...[
+            const SizedBox(width: AppSpacing.xs),
+            IconButton(
+              tooltip: 'Hapus Pengajuan',
+              onPressed: () => _showDeleteConfirmation(item),
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(CupertinoIcons.trash, size: 18, color: AppColors.danger),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

@@ -4,6 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'skpi_file_picker.dart';
 import '../models/sertifikasi.dart';
 import '../services/sertifikasi_service.dart';
+import '../theme/app_theme.dart';
+import 'app_kit.dart';
 
 class SertifikasiFormSheet extends StatefulWidget {
   final VoidCallback onSuccess;
@@ -154,154 +156,140 @@ class _SertifikasiFormSheetState extends State<SertifikasiFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFFFAFCFF),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+    return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: _loadingOptions
-              ? const SizedBox(
-                  height: 200,
-                  child: Center(child: CircularProgressIndicator(color: Color(0xFF501F66))),
-                )
-              : _error != null
-                  ? SizedBox(
-                      height: 200,
-                      child: Center(child: Text(_error!, style: const TextStyle(color: Colors.red))),
-                    )
-                  : Form(
-                      key: _formKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            _isEditing ? 'Edit Sertifikasi' : 'Tambah Sertifikasi',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF501F66),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: _loadingOptions
+                ? const SizedBox(
+                    height: 200,
+                    child: AppLoading(message: 'Memuat pilihan…'),
+                  )
+                : _error != null
+                    ? SizedBox(
+                        height: 200,
+                        child: Center(
+                          child: AppErrorState(message: _error!, onRetry: _loadOptions),
+                        ),
+                      )
+                    : Form(
+                        key: _formKey,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              _isEditing ? 'Edit Sertifikasi' : 'Tambah Sertifikasi',
+                              style: AppText.h2,
+                              textAlign: TextAlign.center,
                             ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 24),
-                          
-                          // Dropdown Judul
-                          DropdownButtonFormField<String>(
-                            decoration: const InputDecoration(
-                              labelText: 'Judul Sertifikasi',
-                              border: OutlineInputBorder(),
-                            ),
-                            isExpanded: true,
-                            initialValue: _selectedJudul,
-                            items: _options.map((opt) {
-                              return DropdownMenuItem(
-                                value: opt.value,
-                                child: Text(opt.label),
-                              );
-                            }).toList(),
-                            onChanged: (val) {
-                              setState(() {
-                                _selectedJudul = val;
-                                if (val != 'SERTIFIKASI LAINNYA') {
-                                  _judulLainnyaController.clear();
-                                }
-                              });
-                            },
-                            validator: (val) => val == null ? 'Wajib dipilih' : null,
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Field Judul Lainnya (Conditional)
-                          if (_selectedJudul == 'SERTIFIKASI LAINNYA') ...[
-                            TextFormField(
-                              controller: _judulLainnyaController,
+                            const SizedBox(height: AppSpacing.xl),
+                            
+                            // Dropdown Judul
+                            DropdownButtonFormField<String>(
                               decoration: const InputDecoration(
-                                labelText: 'Masukkan Judul Sertifikasi',
-                                border: OutlineInputBorder(),
+                                labelText: 'Judul Sertifikasi',
+                              ),
+                              isExpanded: true,
+                              initialValue: _selectedJudul,
+                              items: _options.map((opt) {
+                                return DropdownMenuItem(
+                                  value: opt.value,
+                                  child: Text(opt.label),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                setState(() {
+                                  _selectedJudul = val;
+                                  if (val != 'SERTIFIKASI LAINNYA') {
+                                    _judulLainnyaController.clear();
+                                  }
+                                });
+                              },
+                              validator: (val) => val == null ? 'Wajib dipilih' : null,
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+
+                            // Field Judul Lainnya (Conditional)
+                            if (_selectedJudul == 'SERTIFIKASI LAINNYA') ...[
+                              TextFormField(
+                                controller: _judulLainnyaController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Masukkan Judul Sertifikasi',
+                                ),
+                                validator: (val) => (val == null || val.isEmpty) ? 'Wajib diisi' : null,
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
+                            ],
+
+                            // Field Nilai
+                            TextFormField(
+                              controller: _nilaiController,
+                              decoration: const InputDecoration(
+                                labelText: 'Nilai / Grade',
                               ),
                               validator: (val) => (val == null || val.isEmpty) ? 'Wajib diisi' : null,
                             ),
-                            const SizedBox(height: 16),
-                          ],
+                            const SizedBox(height: AppSpacing.lg),
 
-                          // Field Nilai
-                          TextFormField(
-                            controller: _nilaiController,
-                            decoration: const InputDecoration(
-                              labelText: 'Nilai / Grade',
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (val) => (val == null || val.isEmpty) ? 'Wajib diisi' : null,
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Dropdown Tahun
-                          DropdownButtonFormField<int>(
-                            decoration: const InputDecoration(
-                              labelText: 'Tahun Sertifikasi',
-                              border: OutlineInputBorder(),
-                            ),
-                            initialValue: _selectedTahun,
-                            items: _getTahunList().map((thn) {
-                              return DropdownMenuItem(
-                                value: thn,
-                                child: Text(thn.toString()),
-                              );
-                            }).toList(),
-                            onChanged: (val) => setState(() => _selectedTahun = val),
-                            validator: (val) => val == null ? 'Wajib dipilih' : null,
-                          ),
-                          const SizedBox(height: 16),
-
-                          SkpiFilePicker(
-                            selectedFile: _selectedFile,
-                            label: _isEditing
-                                ? 'File Scan Sertifikat (Opsional jika tidak diganti)'
-                                : 'File Scan Sertifikat (PDF)*',
-                            allowedExtensions: const ['pdf'],
-                            onFileSelected: (file) => setState(() => _selectedFile = file),
-                          ),
-                          if (_isEditing && _selectedFile == null && widget.itemToEdit!.file.isNotEmpty) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              'File saat ini: ${widget.itemToEdit!.file}',
-                              style: const TextStyle(fontSize: 12, color: Colors.black54),
-                            ),
-                          ],
-                          const SizedBox(height: 32),
-
-                          // Submit Button
-                          ElevatedButton(
-                            onPressed: _isSubmitting ? null : _submit,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF501F66),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                            // Dropdown Tahun
+                            DropdownButtonFormField<int>(
+                              decoration: const InputDecoration(
+                                labelText: 'Tahun Sertifikasi',
                               ),
+                              initialValue: _selectedTahun,
+                              items: _getTahunList().map((thn) {
+                                return DropdownMenuItem(
+                                  value: thn,
+                                  child: Text(thn.toString()),
+                                );
+                              }).toList(),
+                              onChanged: (val) => setState(() => _selectedTahun = val),
+                              validator: (val) => val == null ? 'Wajib dipilih' : null,
                             ),
-                            child: _isSubmitting
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                  )
-                                : Text(
-                                    _isEditing ? 'Simpan Perubahan' : 'Upload Sertifikasi',
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                          ),
-                        ],
+                            const SizedBox(height: AppSpacing.lg),
+
+                            SkpiFilePicker(
+                              selectedFile: _selectedFile,
+                              label: _isEditing
+                                  ? 'File Scan Sertifikat (Opsional jika tidak diganti)'
+                                  : 'File Scan Sertifikat (PDF)*',
+                              allowedExtensions: const ['pdf'],
+                              onFileSelected: (file) => setState(() => _selectedFile = file),
+                            ),
+                            if (_isEditing && _selectedFile == null && widget.itemToEdit!.file.isNotEmpty) ...[
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                'File saat ini: ${widget.itemToEdit!.file}',
+                                style: AppText.bodySm,
+                              ),
+                            ],
+                            const SizedBox(height: AppSpacing.xxl),
+
+                            // Submit Button
+                            FilledButton(
+                              onPressed: _isSubmitting ? null : _submit,
+                              child: _isSubmitting
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : Text(_isEditing ? 'Simpan Perubahan' : 'Upload Sertifikasi'),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+          ),
         ),
       ),
     );

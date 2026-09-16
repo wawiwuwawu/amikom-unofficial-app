@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../../services/krs_service.dart';
 import '../../models/krs.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/app_kit.dart';
 import '../jadwal_page.dart';
 
 class KrsMainPage extends StatefulWidget {
@@ -17,32 +19,31 @@ class _KrsMainPageState extends State<KrsMainPage> {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 4,
-      child: Scaffold(
-        appBar: AppBar(
-          leading: widget.onBack != null ? IconButton(icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)), onPressed: widget.onBack) : null,
-          title: const Text('Kartu Rencana Studi (KRS)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          backgroundColor: const Color(0xFFFAFCFF),
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          bottom: const TabBar(
-            isScrollable: true,
-            labelColor: Color(0xFF501F66),
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Color(0xFF501F66),
-            tabs: [
-              Tab(text: 'Pengajuan'),
-              Tab(text: 'Daftar'),
-              Tab(text: 'Pengisian'),
-              Tab(text: 'Cetak & Jadwal'),
-            ],
-          ),
-        ),
-        body: const TabBarView(
+      child: AppScaffold(
+        title: 'Kartu Rencana Studi (KRS)',
+        scrollable: false,
+        padding: EdgeInsets.zero,
+        body: const Column(
           children: [
-            _InfoPengajuanTab(),
-            _DaftarPengajuanTab(),
-            _PengisianKelasTab(),
-            JadwalPage(showDownloadKrs: true),
+            TabBar(
+              isScrollable: true,
+              tabs: [
+                Tab(text: 'Pengajuan'),
+                Tab(text: 'Daftar'),
+                Tab(text: 'Pengisian'),
+                Tab(text: 'Cetak & Jadwal'),
+              ],
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _InfoPengajuanTab(),
+                  _DaftarPengajuanTab(),
+                  _PengisianKelasTab(),
+                  JadwalPage(showDownloadKrs: true),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -66,7 +67,7 @@ class _InfoPengajuanTabState extends State<_InfoPengajuanTab> {
   int _maxSks = 0;
   int _sksSaatIni = 0;
   bool _isAnnouncementExpanded = false;
-  
+
   // Set of selected KODE
   final Set<String> _selectedMakul = {};
 
@@ -131,14 +132,14 @@ class _InfoPengajuanTabState extends State<_InfoPengajuanTab> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih minimal satu mata kuliah')));
       return;
     }
-    
-    final List<String> payload = _selectedMakul.toList(); 
-    
+
+    final List<String> payload = _selectedMakul.toList();
+
     setState(() => _loading = true);
     try {
       // 1. Submit pengajuan
       await _service.submitPengajuan(payload);
-      
+
       // 2. Auto trigger sinkronisasi (sesuai sequence flow BE)
       try {
         await _service.sinkronisasi();
@@ -161,91 +162,62 @@ class _InfoPengajuanTabState extends State<_InfoPengajuanTab> {
     }
   }
 
+  /// Ketentuan & informasi KRS — konten yang dibaca, jadi tetap berupa permukaan
+  /// (bukan baris list), namun seluruh warnanya memakai token.
   Widget _buildAnnouncementBanner(String text) {
     final cleanText = text.replaceAll(RegExp(r'\s+'), ' ').trim();
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE3F2FD),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF90CAF9)),
-      ),
+    return AppSurface(
+      variant: AppSurfaceVariant.hero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(CupertinoIcons.info_circle_fill,
-                  size: 18, color: Color(0xFF1976D2)),
-              SizedBox(width: 8),
+              const Icon(CupertinoIcons.info_circle_fill, size: 18, color: AppColors.primary),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   'Ketentuan & Informasi KRS',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1976D2),
-                    fontSize: 14,
-                  ),
+                  style: AppText.h3.copyWith(color: AppColors.primary),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           AnimatedCrossFade(
             firstChild: Text(
               cleanText,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.black87,
-                fontSize: 13,
-                height: 1.4,
-              ),
+              style: AppText.body,
             ),
             secondChild: Text(
               cleanText,
-              style: const TextStyle(
-                color: Colors.black87,
-                fontSize: 13,
-                height: 1.4,
-              ),
+              style: AppText.body,
             ),
             crossFadeState: _isAnnouncementExpanded
                 ? CrossFadeState.showSecond
                 : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 250),
           ),
-          const SizedBox(height: 8),
-          InkWell(
-            onTap: () {
-              setState(() {
-                _isAnnouncementExpanded = !_isAnnouncementExpanded;
-              });
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                Text(
-                  _isAnnouncementExpanded
-                      ? 'Sembunyikan'
-                      : 'Lihat Selengkapnya',
-                  style: const TextStyle(
-                    color: Color(0xFF1976D2),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  _isAnnouncementExpanded
-                      ? CupertinoIcons.chevron_up
-                      : CupertinoIcons.chevron_down,
-                  size: 14,
-                  color: const Color(0xFF1976D2),
-                ),
-              ],
+          const SizedBox(height: AppSpacing.xs),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _isAnnouncementExpanded = !_isAnnouncementExpanded;
+                });
+              },
+              icon: Icon(
+                _isAnnouncementExpanded
+                    ? CupertinoIcons.chevron_up
+                    : CupertinoIcons.chevron_down,
+                size: 14,
+              ),
+              label: Text(
+                _isAnnouncementExpanded ? 'Sembunyikan' : 'Lihat Selengkapnya',
+              ),
             ),
           ),
         ],
@@ -253,21 +225,107 @@ class _InfoPengajuanTabState extends State<_InfoPengajuanTab> {
     );
   }
 
+  /// Pil status per mata kuliah: sudah lulus / mengulang / nilai sebelumnya.
+  Widget? _buildStatusPills(MatkulDitawarkan mk) {
+    final isLulus = mk.status.toLowerCase() == 'lulus';
+    final nilaiLalu = mk.nilaiSebelumnya;
+    final pills = <Widget>[];
+
+    if (isLulus) {
+      pills.add(AppPill(
+        'Sudah Lulus${nilaiLalu != null && nilaiLalu.isNotEmpty ? " ($nilaiLalu)" : ""}',
+        tone: AppPillTone.success,
+      ));
+    } else {
+      if (mk.isUlang) {
+        pills.add(const AppPill('Mengulang', tone: AppPillTone.warning));
+      }
+      if (nilaiLalu != null && nilaiLalu.isNotEmpty) {
+        pills.add(AppPill('Nilai Lalu: $nilaiLalu', tone: AppPillTone.info));
+      }
+    }
+
+    if (pills.isEmpty) return null;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        for (var i = 0; i < pills.length; i++) ...[
+          if (i > 0) const SizedBox(height: AppSpacing.xs),
+          pills[i],
+        ],
+      ],
+    );
+  }
+
+  /// Satu baris mata kuliah — aksi (pilih/batal pilih) tetap sama.
+  Widget _buildMatkulRow(MatkulDitawarkan mk) {
+    final isLulus = mk.status.toLowerCase() == 'lulus';
+    final isSelected = _selectedMakul.contains(mk.kode);
+
+    return AppListRow(
+      leading: Icon(
+        isLulus
+            ? CupertinoIcons.checkmark_seal_fill
+            : (isSelected ? Icons.check_circle : Icons.radio_button_unchecked),
+        size: 22,
+        color: isLulus
+            ? AppColors.success
+            : (isSelected ? AppColors.primary : AppColors.borderStrong),
+      ),
+      title: mk.nama,
+      subtitle: '${mk.kode} • ${mk.sks} SKS',
+      trailing: _buildStatusPills(mk),
+      onTap: isLulus
+          ? null
+          : () {
+              setState(() {
+                if (isSelected) {
+                  _selectedMakul.remove(mk.kode);
+                } else {
+                  _selectedMakul.add(mk.kode);
+                }
+              });
+            },
+    );
+  }
+
+  Widget _buildSemesterTile(int semester, List<MatkulDitawarkan> items) {
+    return ExpansionTile(
+      initiallyExpanded: false,
+      shape: const Border(),
+      collapsedShape: const Border(),
+      iconColor: AppColors.primarySoft,
+      collapsedIconColor: AppColors.textMuted,
+      tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+      childrenPadding: EdgeInsets.zero,
+      title: Text(
+        'Semester $semester',
+        style: AppText.h3.copyWith(color: AppColors.primary),
+      ),
+      children: [
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0) const Divider(height: 1, thickness: 1, color: AppColors.border),
+          _buildMatkulRow(items[i]),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)));
+    if (_loading) return const AppLoading();
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-            ElevatedButton(onPressed: _load, child: const Text('Coba Lagi'))
-          ],
+      return Padding(
+        padding: AppSpacing.page,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: AppErrorState(message: _error!, onRetry: _load),
         ),
       );
     }
-    
+
     // Group by Semester
     Map<int, List<MatkulDitawarkan>> groupedMatkul = {};
     for (var mk in _matkulList) {
@@ -275,152 +333,82 @@ class _InfoPengajuanTabState extends State<_InfoPengajuanTab> {
     }
     final sortedSemesters = groupedMatkul.keys.toList()..sort();
 
+    final bool overSks = (_selectedSks + _sksSaatIni) > _maxSks;
+
     return Column(
       children: [
-        if (_info?.periodePengajuan != null && _info!.periodePengajuan!.teksMentah.isNotEmpty)
-          _buildAnnouncementBanner(_info!.periodePengajuan!.teksMentah),
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Batas SKS: $_maxSks', style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text('Terpilih: ${_selectedSks + _sksSaatIni} SKS', 
-                style: TextStyle(fontWeight: FontWeight.bold, color: (_selectedSks + _sksSaatIni) > _maxSks ? Colors.red : Colors.green)
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _syncKrs,
-              icon: const Icon(CupertinoIcons.arrow_2_circlepath),
-              label: const Text('Sinkronisasi Tagihan & KRS'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF501F66),
-                side: const BorderSide(color: Color(0xFF501F66)),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
         Expanded(
           child: ListView(
-            padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 80),
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.lg,
+              MediaQuery.of(context).padding.bottom + AppSpacing.xxl,
+            ),
             children: [
-              for (var smt in sortedSemesters) 
-                ExpansionTile(
-                  initiallyExpanded: false,
-                  title: Text('Semester $smt', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
-                  backgroundColor: Colors.grey.withValues(alpha: 0.05),
-                  children: [
-                    for (var mk in groupedMatkul[smt]!) ...[
-                      Builder(builder: (context) {
-                        final isLulus = mk.status.toLowerCase() == 'lulus';
-                        return CheckboxListTile(
-                          title: Text(
-                            mk.nama,
-                            style: TextStyle(
-                              color: isLulus ? Colors.black45 : Colors.black87,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 2),
-                              Text(
-                                '${mk.kode} • ${mk.sks} SKS',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: isLulus ? Colors.black38 : Colors.black54,
-                                ),
-                              ),
-                              if (isLulus || mk.isUlang || (mk.nilaiSebelumnya != null && mk.nilaiSebelumnya!.isNotEmpty)) ...[
-                                const SizedBox(height: 4),
-                                Wrap(
-                                  spacing: 6,
-                                  children: [
-                                    if (isLulus)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          'Sudah Lulus${mk.nilaiSebelumnya != null && mk.nilaiSebelumnya!.isNotEmpty ? " (${mk.nilaiSebelumnya})" : ""}',
-                                          style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold),
-                                        ),
-                                      )
-                                    else ...[
-                                      if (mk.isUlang)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: Colors.orange.withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: const Text(
-                                            'Mengulang',
-                                            style: TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                      if (mk.nilaiSebelumnya != null && mk.nilaiSebelumnya!.isNotEmpty)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: Colors.blue.withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: Text(
-                                            'Nilai Lalu: ${mk.nilaiSebelumnya}',
-                                            style: const TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.bold),
-                                          ),
-                                        ),
-                                    ],
-                                  ],
-                                ),
-                              ],
-                            ],
-                          ),
-                          value: _selectedMakul.contains(mk.kode),
-                          onChanged: isLulus
-                              ? null
-                              : (val) {
-                                  setState(() {
-                                    if (val == true) {
-                                      _selectedMakul.add(mk.kode);
-                                    } else {
-                                      _selectedMakul.remove(mk.kode);
-                                    }
-                                  });
-                                },
-                        );
-                      }),
-                    ],
-                  ],
+              if (_info?.periodePengajuan != null && _info!.periodePengajuan!.teksMentah.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                  child: _buildAnnouncementBanner(_info!.periodePengajuan!.teksMentah),
                 ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: AppStatTile(
+                      value: _maxSks.toString(),
+                      label: 'Batas SKS',
+                      icon: CupertinoIcons.arrow_up_right_square,
+                      accent: AppColors.info,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: AppStatTile(
+                      value: '${_selectedSks + _sksSaatIni} SKS',
+                      label: 'Terpilih',
+                      icon: CupertinoIcons.checkmark_alt_circle,
+                      accent: overSks ? AppColors.danger : AppColors.success,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _syncKrs,
+                  icon: const Icon(CupertinoIcons.arrow_2_circlepath, size: 18),
+                  label: const Text('Sinkronisasi Tagihan & KRS'),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppListGroup(
+                children: [
+                  for (var i = 0; i < sortedSemesters.length; i++) ...[
+                    if (i > 0)
+                      const Divider(height: 1, thickness: 1, color: AppColors.border),
+                    _buildSemesterTile(
+                      sortedSemesters[i],
+                      groupedMatkul[sortedSemesters[i]]!,
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
         ),
         Padding(
           padding: EdgeInsets.only(
-            left: 16, right: 16, top: 16, 
-            bottom: MediaQuery.of(context).padding.bottom + 16
+            left: AppSpacing.lg,
+            right: AppSpacing.lg,
+            top: AppSpacing.md,
+            bottom: MediaQuery.of(context).padding.bottom + AppSpacing.lg,
           ),
           child: SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF501F66), 
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14)
-              ),
-              onPressed: (_selectedSks + _sksSaatIni) > _maxSks ? null : _submit,
+            child: FilledButton(
+              onPressed: overSks ? null : _submit,
               child: const Text('Ajukan Mata Kuliah'),
             ),
           ),
@@ -479,11 +467,8 @@ class _DaftarPengajuanTabState extends State<_DaftarPengajuanTab> {
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Batal'),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              foregroundColor: Colors.white,
-            ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Hapus'),
           ),
@@ -516,302 +501,112 @@ class _DaftarPengajuanTabState extends State<_DaftarPengajuanTab> {
     }
   }
 
-  Widget _buildSummaryHeader() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF501F66), Color(0xFF6B2D86)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF501F66).withValues(alpha: 0.25),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  CupertinoIcons.book_circle_fill,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Total SKS Diajukan',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '$_totalSks SKS',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              '${_list.length} Matkul',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPengajuanCard(KrsPengajuan mk) {
+  /// Baris pengajuan: kode sebagai penanda, status sebagai pil.
+  Widget _buildPengajuanRow(KrsPengajuan mk) {
     final isAktif = mk.aktivasi == 1;
     final isUlang = mk.ambilKe > 1;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isAktif
-              ? Colors.green.withValues(alpha: 0.3)
-              : Colors.grey.withValues(alpha: 0.25),
+    return AppListRow(
+      leading: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
+        decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+        child: Text(
+          mk.kode,
+          style: AppText.label.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w700,
           ),
-        ],
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      title: mk.mkl,
+      subtitle: '${mk.sks} SKS • ${isUlang ? 'Ambil Ulang' : 'Baru'}',
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: isUlang
-                      ? Colors.orange.withValues(alpha: 0.15)
-                      : const Color(0xFF501F66).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  isUlang ? 'Ambil Ulang' : 'Baru',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: isUlang ? Colors.orange[800] : const Color(0xFF501F66),
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: isAktif
-                      ? Colors.green.withValues(alpha: 0.15)
-                      : Colors.amber.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isAktif
-                          ? CupertinoIcons.checkmark_seal_fill
-                          : CupertinoIcons.clock_fill,
-                      size: 12,
-                      color: isAktif ? Colors.green[700] : Colors.amber[800],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      isAktif ? 'Teraktivasi' : 'Belum Teraktivasi',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: isAktif ? Colors.green[800] : Colors.amber[900],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          AppPill(
+            isAktif ? 'Teraktivasi' : 'Belum Teraktivasi',
+            tone: isAktif ? AppPillTone.success : AppPillTone.warning,
           ),
-          const SizedBox(height: 10),
-          Text(
-            mk.mkl,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  mk.kode,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${mk.sks} SKS',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black54,
-                ),
-              ),
-            ],
-          ),
-          if (!isAktif) ...[
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: OutlinedButton.icon(
-                onPressed: () => _confirmDelete(mk),
-                icon: const Icon(CupertinoIcons.trash, size: 14, color: Colors.redAccent),
-                label: const Text('Hapus', style: TextStyle(fontSize: 12, color: Colors.redAccent)),
-                style: OutlinedButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  side: const BorderSide(color: Colors.redAccent),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+          if (!isAktif)
+            IconButton(
+              onPressed: () => _confirmDelete(mk),
+              icon: const Icon(CupertinoIcons.trash, size: 18, color: AppColors.danger),
+              tooltip: 'Hapus',
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints.tightFor(
+                width: AppSpacing.xxl,
+                height: AppSpacing.xxl,
               ),
             ),
-          ],
         ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              CupertinoIcons.doc_plaintext,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Belum Ada Mata Kuliah Diajukan',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Silakan pilih mata kuliah pada tab "Pengajuan" untuk mengajukan KRS.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.black45,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF501F66)),
-      );
-    }
+    if (_loading) return const AppLoading();
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-            const SizedBox(height: 12),
-            ElevatedButton(onPressed: _load, child: const Text('Coba Lagi'))
-          ],
+      return Padding(
+        padding: AppSpacing.page,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: AppErrorState(message: _error!, onRetry: _load),
         ),
       );
     }
 
     return RefreshIndicator(
       onRefresh: _load,
-      color: const Color(0xFF501F66),
       child: ListView(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).padding.bottom + 80,
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.md,
+          AppSpacing.lg,
+          MediaQuery.of(context).padding.bottom + AppSpacing.xxl,
         ),
         children: [
-          _buildSummaryHeader(),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: AppStatTile(
+                  value: '$_totalSks SKS',
+                  label: 'Total SKS Diajukan',
+                  icon: CupertinoIcons.book_circle_fill,
+                  accent: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: AppStatTile(
+                  value: _list.length.toString(),
+                  label: 'Matkul',
+                  icon: CupertinoIcons.list_bullet,
+                  accent: AppColors.info,
+                ),
+              ),
+            ],
+          ),
           if (_list.isEmpty)
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.4,
-              child: _buildEmptyState(),
+            const Padding(
+              padding: EdgeInsets.only(top: AppSpacing.xxl),
+              child: AppEmptyState(
+                title: 'Belum Ada Mata Kuliah Diajukan',
+                message: 'Silakan pilih mata kuliah pada tab "Pengajuan" untuk mengajukan KRS.',
+                icon: CupertinoIcons.doc_plaintext,
+              ),
             )
           else
-            for (var mk in _list) _buildPengajuanCard(mk),
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xl),
+              child: AppListGroup.from([
+                for (final mk in _list) _buildPengajuanRow(mk),
+              ]),
+            ),
         ],
       ),
     );
@@ -872,59 +667,72 @@ class _PengisianKelasTabState extends State<_PengisianKelasTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)));
+    if (_loading) return const AppLoading();
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-            ElevatedButton(onPressed: _load, child: const Text('Coba Lagi'))
-          ],
+      return Padding(
+        padding: AppSpacing.page,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: AppErrorState(message: _error!, onRetry: _load),
         ),
       );
     }
 
     return ListView(
-      padding: EdgeInsets.only(
-        left: 16, right: 16, top: 16, 
-        bottom: MediaQuery.of(context).padding.bottom + 80
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        MediaQuery.of(context).padding.bottom + AppSpacing.xxl,
       ),
       children: [
-        const Text('Matkul Belum Diisi Kelasnya:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        const SizedBox(height: 8),
-        if (_listBelum.isEmpty) const Text('Semua matkul sudah diisi kelasnya', style: TextStyle(color: Colors.green)),
-        ..._listBelum.map((mk) => Card(
-          color: Colors.white,
-          child: ListTile(
-            textColor: Colors.black87,
-            title: Text(mk.namaMataKuliah),
-            subtitle: Text('${mk.kodeMk} - ${mk.sks} SKS', style: const TextStyle(color: Colors.black54)),
-            trailing: ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66), foregroundColor: Colors.white),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Form pengisian kelas masih menunggu penyelesaian backend adaptor')));
-              },
-              child: const Text('Pilih Kelas'),
-            ),
-          ),
-        )),
-        const Divider(height: 32),
-        const Text('Daftar Kelas Terpilih:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        const SizedBox(height: 8),
-        if (_listSudah.isEmpty) const Text('Belum ada kelas yang dipilih', style: TextStyle(color: Colors.grey)),
-        ..._listSudah.map((mk) => Card(
-          color: Colors.white,
-          child: ListTile(
-            textColor: Colors.black87,
-            title: Text('${mk.namaMataKuliah} - Ruang ${mk.ruang}'),
-            subtitle: Text('${mk.hari}, ${mk.jam}\nDosen: ${mk.dosenKelas.isEmpty ? "-" : mk.dosenKelas}', style: const TextStyle(color: Colors.black54)),
-            trailing: IconButton(
-              icon: const Icon(CupertinoIcons.trash, color: Colors.red),
-              onPressed: () => _batal(mk.kodeMk),
-            ),
-          ),
-        )),
+        AppSection(
+          title: 'Matkul Belum Diisi Kelasnya:',
+          topGap: 0,
+          child: _listBelum.isEmpty
+              ? Text(
+                  'Semua matkul sudah diisi kelasnya',
+                  style: AppText.bodySm.copyWith(color: AppColors.success),
+                )
+              : AppListGroup.from([
+                  for (final mk in _listBelum)
+                    AppListRow(
+                      title: mk.namaMataKuliah,
+                      subtitle: '${mk.kodeMk} - ${mk.sks} SKS',
+                      trailing: TextButton(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Form pengisian kelas masih menunggu penyelesaian backend adaptor')));
+                        },
+                        child: const Text('Pilih Kelas'),
+                      ),
+                    ),
+                ]),
+        ),
+        AppSection(
+          title: 'Daftar Kelas Terpilih:',
+          child: _listSudah.isEmpty
+              ? Text(
+                  'Belum ada kelas yang dipilih',
+                  style: AppText.bodySm.copyWith(color: AppColors.textMuted),
+                )
+              : AppListGroup.from([
+                  for (final mk in _listSudah)
+                    AppListRow(
+                      title: '${mk.namaMataKuliah} - Ruang ${mk.ruang}',
+                      subtitle: '${mk.sks} SKS\n${mk.hari}, ${mk.jam}\nDosen: ${mk.dosenKelas.isEmpty ? "-" : mk.dosenKelas}',
+                      trailing: IconButton(
+                        onPressed: () => _batal(mk.kodeMk),
+                        icon: const Icon(CupertinoIcons.trash, size: 18, color: AppColors.danger),
+                        tooltip: 'Batalkan',
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints.tightFor(
+                          width: AppSpacing.xxl,
+                          height: AppSpacing.xxl,
+                        ),
+                      ),
+                    ),
+                ]),
+        ),
       ],
     );
   }

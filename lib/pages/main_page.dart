@@ -1,45 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../services/api_client.dart';
-import '../widgets/glass_card.dart';
-import 'absensi_page.dart';
-import 'berita_list_page.dart';
-import 'dashboard_page.dart';
-import 'khs_page.dart';
-import 'pengumuman_list_page.dart';
-import 'transkrip_page.dart';
-import 'panduan_list_page.dart';
-import 'jadwal_page.dart';
-import 'krs/krs_main_page.dart';
-import 'asisten_page.dart';
-import 'seminar_page.dart';
-import 'mbkm_page.dart';
-import 'visi_misi_page.dart';
-import 'visi_misi_institusi_page.dart';
-import 'tata_krama_page.dart';
-import 'penafian_page.dart';
-import 'agenda_akademik_page.dart';
-import 'jadwal_ujian_page.dart';
-import 'pusat_studi/pusat_studi_page.dart';
-import 'sertifikasi_page.dart';
-import 'organisasi_page.dart';
-import 'prestasi_page.dart';
-import 'seminar_workshop_page.dart';
-import 'notifikasi_list_page.dart';
-import 'keuangan_page.dart';
-import 'sp_page.dart';
-import 'skmk_page.dart';
-import 'izin_penelitian_page.dart';
-import 'surat_tugas_page.dart';
-import 'pkl_page.dart';
-import 'ujian_susulan_page.dart';
-import 'ppks_page.dart';
-import 'skripsi_page.dart';
-import 'nilai_rincian_page.dart';
-import 'rekognisi_page.dart';
-import '../services/notifikasi_service.dart';
 
+import '../config/menu_catalog.dart';
+import '../services/api_client.dart';
+import '../services/notifikasi_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
+import 'absensi_page.dart';
+import 'dashboard_page.dart';
+import 'jadwal_page.dart';
+import 'nilai/nilai_page.dart';
+import 'notifikasi_list_page.dart';
+
+/// Kerangka utama aplikasi (hasil redesign navigasi).
+///
+/// Tiga permukaan navigasi, masing-masing dengan satu tugas yang jelas:
+///
+///  1. Bottom nav — Beranda · Jadwal · Nilai · Menu, plus tombol QR presensi
+///     di tengah. Hanya untuk hal yang SERING dibuka.
+///  2. Drawer — pintasan untuk hal yang JARANG dibuka tapi perlu cepat
+///     ditemukan: pengumuman, berita, panduan, tata krama, visi misi, surat.
+///  3. Tab Menu — SEMUA layanan, dikelompokkan dari yang paling sering
+///     dipakai sampai paling jarang, dilengkapi pencarian.
+///
+/// Perubahan dari versi lama:
+///  * Baris "aksi cepat" di beranda dihapus — dulu 3 dari 4 tombolnya hanya
+///    menuju tab yang sudah ada (duplikasi).
+///  * Seluruh daftar menu kini berasal dari satu sumber [MenuCatalog];
+///    sebelumnya drawer & grid menu punya daftar terpisah yang harus
+///    disinkronkan manual.
+///  * Tab "Nilai" tidak lagi langsung membuka satu halaman panjang.
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
 
@@ -49,8 +39,13 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
-  final int _refreshTrigger = 0;
+  int _refreshTrigger = 0;
   int _unreadNotifCount = 0;
+
+  final _searchController = TextEditingController();
+  String _menuQuery = '';
+
+  static const _titles = ['Beranda', 'Jadwal', 'Nilai', 'Menu'];
 
   @override
   void initState() {
@@ -58,210 +53,408 @@ class _MainPageState extends State<MainPage> {
     _checkUnreadNotif();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _checkUnreadNotif() async {
     try {
       final count = await NotifikasiService().getUnreadCount();
-      if (mounted) {
-        setState(() => _unreadNotifCount = count);
+      if (mounted) setState(() => _unreadNotifCount = count);
+    } catch (_) {
+      // Diamkan: badge notifikasi bukan fungsi kritis.
+    }
+  }
+
+  // ── Navigasi ──────────────────────────────────────────────────────────────
+
+  void _selectTab(int index) {
+    if (index == _currentIndex && index == 0) {
+      setState(() => _refreshTrigger++); // ketuk ulang = segarkan
+      return;
+    }
+    setState(() {
+      _currentIndex = index;
+      if (index != 3 && _menuQuery.isNotEmpty) {
+        _menuQuery = '';
+        _searchController.clear();
       }
-    } catch (_) {}
+    });
+  }
+
+  Future<void> _openPage(Widget page) async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
+
+  Future<void> _openNotifikasi() async {
+    await _openPage(
+      NotifikasiListPage(onBack: () => Navigator.pop(context)),
+    );
+    _checkUnreadNotif();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Determine which page to show
-    Widget currentWidget;
-    bool showMainAppBar = false;
-    String appBarTitle = '';
-
-    switch (_currentIndex) {
-      case 0:
-        currentWidget = DashboardPage(refreshTrigger: _refreshTrigger);
-        showMainAppBar = true;
-        appBarTitle = 'Dashboard';
-        break;
-      case 1:
-        currentWidget = const JadwalPage();
-        showMainAppBar = true;
-        appBarTitle = 'Jadwal Perkuliahan';
-        break;
-      case 2:
-        currentWidget = TranskripPage(
-          onBack: () => setState(() => _currentIndex = 0),
-        );
-        break;
-      case 3:
-        currentWidget = _buildMenuGridPage();
-        showMainAppBar = true;
-        appBarTitle = 'Menu Layanan';
-        break;
-      default:
-        currentWidget = DashboardPage(refreshTrigger: _refreshTrigger);
-        showMainAppBar = true;
-        appBarTitle = 'Dashboard';
-    }
-
     return Scaffold(
-      extendBody: true,
-      appBar: showMainAppBar
-          ? AppBar(
-              title: Text(
-                appBarTitle,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              backgroundColor: Colors.white.withValues(alpha: 0.5),
-              leading: _currentIndex != 0
-                  ? IconButton(
-                      icon: const Icon(
-                        CupertinoIcons.back,
-                        color: Color(0xFF501F66),
-                      ),
-                      onPressed: () => setState(() => _currentIndex = 0),
-                    )
-                  : null,
-              elevation: 0,
-              surfaceTintColor: Colors.transparent,
-              flexibleSpace: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.92),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: Colors.grey.withValues(alpha: 0.15),
-                      width: 1,
-                    ),
-                  ),
-                ),
-              ),
-              actions: [
-                IconButton(
-                  icon: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      const Icon(
-                        CupertinoIcons.bell_fill,
-                        color: Color(0xFF501F66),
-                      ),
-                      if (_unreadNotifCount > 0)
-                        Positioned(
-                          right: -2,
-                          top: -2,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Text(
-                              _unreadNotifCount > 9
-                                  ? '9+'
-                                  : _unreadNotifCount.toString(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  onPressed: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => NotifikasiListPage(
-                          onBack: () => Navigator.pop(context),
-                        ),
-                      ),
-                    );
-                    _checkUnreadNotif();
-                  },
-                ),
-              ],
-            )
-          : null, // Hide main AppBar if the inner page (Transkrip/Absensi) has its own
+      backgroundColor: AppColors.scaffold,
       drawer: _buildDrawer(),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFAFCFF), // Pearl White
-              Color(0xFFE3F2FD), // Ice Blue
-            ],
-          ),
-        ),
-        child: currentWidget,
+      appBar: _buildAppBar(),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          DashboardPage(refreshTrigger: _refreshTrigger),
+          const JadwalPage(),
+          const NilaiPage(),
+          _buildMenuPage(),
+        ],
       ),
-      floatingActionButton: _buildFloatingAction(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: _buildBottomNav(),
     );
   }
 
-  Widget _buildFloatingAction() {
-    return RepaintBoundary(
-      child: Container(
-        margin: const EdgeInsets.only(top: 32),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF501F66).withValues(alpha: 0.25),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
+  // ── App bar ───────────────────────────────────────────────────────────────
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      titleSpacing: 0,
+      title: Text(_titles[_currentIndex], style: AppText.h2),
+      actions: [
+        IconButton(
+          tooltip: 'Notifikasi',
+          icon: _unreadNotifCount > 0
+              ? _notifBellWithBadge()
+              : const Icon(CupertinoIcons.bell, size: 21),
+          onPressed: _openNotifikasi,
+        ),
+        const SizedBox(width: AppSpacing.xs),
+      ],
+    );
+  }
+
+  Widget _notifBellWithBadge() {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        const Icon(CupertinoIcons.bell, size: 21),
+        Positioned(
+          right: -5,
+          top: -5,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            constraints: const BoxConstraints(minWidth: 16),
+            decoration: const BoxDecoration(
+              color: AppColors.danger,
+              borderRadius: BorderRadius.all(Radius.circular(AppRadius.pill)),
+            ),
+            child: Text(
+              _unreadNotifCount > 99 ? '99+' : '$_unreadNotifCount',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Drawer: yang jarang dibuka, tapi perlu cepat ditemukan ───────────────
+
+  Widget _buildDrawer() {
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+            _drawerHeader(),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.sm,
+                  0,
+                  AppSpacing.sm,
+                  AppSpacing.xl,
+                ),
+                children: [
+                  _drawerSection(
+                    'Informasi & Pengumuman',
+                    CupertinoIcons.bell_fill,
+                    MenuCatalog.drawerInformasi,
+                  ),
+                  _drawerSection(
+                    'Panduan & Referensi',
+                    CupertinoIcons.book_fill,
+                    MenuCatalog.drawerReferensi,
+                  ),
+                  _drawerSection(
+                    'Layanan Penting',
+                    CupertinoIcons.checkmark_seal_fill,
+                    MenuCatalog.drawerLayananPenting,
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                    child: Divider(),
+                  ),
+                  ListTile(
+                    dense: true,
+                    leading: const Icon(
+                      CupertinoIcons.square_arrow_right,
+                      size: 20,
+                      color: AppColors.danger,
+                    ),
+                    title: Text(
+                      'Keluar',
+                      style: AppText.h3.copyWith(
+                        fontSize: 14,
+                        color: AppColors.danger,
+                      ),
+                    ),
+                    onTap: () async {
+                      await ApiClient.instance.fullLogout();
+                      if (!mounted) return;
+                      Navigator.pushReplacementNamed(context, '/login');
+                    },
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      0,
+                    ),
+                    child: Text(
+                      'Aplikasi tidak resmi. Seluruh data berasal dari layanan '
+                      'akademik kampus.',
+                      style: AppText.label.copyWith(
+                        fontWeight: FontWeight.w400,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-        child: FloatingActionButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    AbsensiPage(onBack: () => Navigator.pop(context)),
-              ),
-            );
-          },
-          backgroundColor: const Color(0xFFBBDEFB), // Ice Blue Deep
-          elevation: 0,
-          shape: const CircleBorder(),
-          child: const Icon(
-            CupertinoIcons.qrcode_viewfinder,
-            color: Color(0xFF501F66),
-            size: 32,
-          ),
-        ).animate().scaleXY(duration: 400.ms, curve: Curves.easeOutBack),
       ),
     );
   }
 
-  Widget _buildBottomNav() {
-    return RepaintBoundary(
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-          child: GlassCard(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            borderRadius: 32,
-            opacity: 0.88,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _navItem(0, CupertinoIcons.square_grid_2x2_fill, 'Beranda'),
-                _navItem(1, CupertinoIcons.calendar, 'Jadwal'),
-                const SizedBox(width: 48), // Space for FAB
-                _navItem(2, CupertinoIcons.doc_text_fill, 'Nilai'),
-                _navItem(3, CupertinoIcons.bars, 'Menu'),
-              ],
+  Widget _drawerHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        AppSpacing.xxl,
+        AppSpacing.xl,
+        AppSpacing.xl,
+      ),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, AppColors.primarySoft],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+            ),
+            child: const Icon(
+              CupertinoIcons.square_grid_2x2_fill,
+              color: Colors.white,
+              size: 22,
             ),
           ),
-        ).animate().slideY(
-          begin: 1,
-          end: 0,
-          duration: 500.ms,
-          curve: Curves.easeOutExpo,
+          const SizedBox(height: AppSpacing.md),
+          const Text(
+            'AmiApp',
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Layanan mahasiswa dalam satu tempat',
+            style: TextStyle(
+              fontSize: 11.5,
+              color: Colors.white.withValues(alpha: 0.85),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _drawerSection(
+    String title,
+    IconData icon,
+    List<MenuEntry> entries,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.xs,
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 13, color: AppColors.textMuted),
+              const SizedBox(width: AppSpacing.sm),
+              Flexible(
+                child: Text(
+                  title.toUpperCase(),
+                  style: AppText.overline,
+                ),
+              ),
+            ],
+          ),
+        ),
+        for (final entry in entries)
+          ListTile(
+            dense: true,
+            visualDensity: VisualDensity.compact,
+            leading: Icon(entry.icon, size: 19, color: AppColors.primarySoft),
+            title: Text(entry.title, style: AppText.h3.copyWith(fontSize: 13.5)),
+            trailing: entry.title == 'Notifikasi' && _unreadNotifCount > 0
+                ? AppPill('$_unreadNotifCount', tone: AppPillTone.danger)
+                : const Icon(
+                    CupertinoIcons.chevron_forward,
+                    size: 14,
+                    color: AppColors.textMuted,
+                  ),
+            onTap: () {
+              final page = entry.build(context);
+              Navigator.pop(context); // tutup drawer
+              _openPage(page);
+              if (entry.title == 'Notifikasi') _checkUnreadNotif();
+            },
+          ),
+      ],
+    );
+  }
+
+  // ── Tab Menu: semua menu dikelompokkan per frekuensi pemakaian ────────────
+
+  Widget _buildMenuPage() {
+    final results = _menuQuery.isEmpty ? null : MenuCatalog.search(_menuQuery);
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.xxl,
+      ),
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        AppSearchField(
+          controller: _searchController,
+          hint: 'Cari layanan… (mis. KHS, SKMK, surat)',
+          onChanged: (v) => setState(() => _menuQuery = v),
+          onClear: () {
+            _searchController.clear();
+            setState(() => _menuQuery = '');
+          },
+        ),
+        const SizedBox(height: AppSpacing.lg),
+
+        if (results != null) ...[
+          Text('HASIL PENCARIAN (${results.length})', style: AppText.overline),
+          const SizedBox(height: AppSpacing.sm),
+          if (results.isEmpty)
+            AppSurface(
+              child: const Text(
+                'Tidak ada layanan yang cocok. Coba kata kunci lain.',
+              ),
+            )
+          else
+            AppListGroup.from([for (final e in results) _menuRow(e)]),
+        ] else
+          for (final group in MenuCatalog.grouped.entries)
+            AppSection(
+              title: group.key.label,
+              trailing: Text(
+                '${group.value.length} layanan',
+                style: AppText.label.copyWith(fontWeight: FontWeight.w400),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(group.key.hint, style: AppText.bodySm),
+                  const SizedBox(height: AppSpacing.md),
+                  AppListGroup.from([
+                    for (final e in group.value) _menuRow(e),
+                  ]),
+                ],
+              ),
+            ),
+      ],
+    );
+  }
+
+  Widget _menuRow(MenuEntry entry) {
+    return AppListRow(
+      leading: Container(
+        width: 38,
+        height: 38,
+        alignment: Alignment.center,
+        decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+        child: Icon(entry.icon, size: 19, color: AppColors.primary),
+      ),
+      title: entry.title,
+      subtitle: entry.description,
+      trailing: const Icon(
+        CupertinoIcons.chevron_forward,
+        size: 17,
+        color: AppColors.textMuted,
+      ),
+      onTap: () => _openPage(entry.build(context)),
+    );
+  }
+
+  // ── Bottom nav: Beranda · Jadwal · Nilai · Menu (+ tombol QR presensi) ────
+
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.sm,
+          ),
+          child: Row(
+            children: [
+              _navItem(0, CupertinoIcons.square_grid_2x2_fill, 'Beranda'),
+              _navItem(1, CupertinoIcons.calendar, 'Jadwal'),
+              _absensiButton(),
+              _navItem(2, CupertinoIcons.doc_text_fill, 'Nilai'),
+              _navItem(3, CupertinoIcons.bars, 'Menu'),
+            ],
+          ),
         ),
       ),
     );
@@ -269,532 +462,75 @@ class _MainPageState extends State<MainPage> {
 
   Widget _navItem(int index, IconData icon, String label) {
     final selected = _currentIndex == index;
-    final color = selected ? const Color(0xFF501F66) : Colors.grey.shade500;
-
-    return InkWell(
-      onTap: () => setState(() => _currentIndex = index),
-      splashColor: Colors.transparent,
-      highlightColor: Colors.transparent,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: selected ? 28 : 24, color: color),
-            const SizedBox(height: 4),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 200),
-              style: TextStyle(
-                fontSize: selected ? 11 : 10,
-                color: color,
-                fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+    return Expanded(
+      child: InkWell(
+        onTap: () => _selectTab(index),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 22,
+                color: selected ? AppColors.primary : AppColors.textMuted,
               ),
-              child: Text(label),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDrawer() {
-    return Drawer(
-      child: Container(
-        color: const Color(0xFFFAFCFF),
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFFE3F2FD),
-                    Color(0xFFBBDEFB),
-                  ], // Ice Blue gradient
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+              const SizedBox(height: 3),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.label.copyWith(
+                  fontSize: 10.5,
+                  color: selected ? AppColors.primary : AppColors.textMuted,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: const [
-                  Icon(
-                    CupertinoIcons.book_fill,
-                    size: 48,
-                    color: Color(0xFF501F66),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Ini Amikom?',
-                    style: TextStyle(
-                      color: Color(0xFF501F66),
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _drawerItem(0, CupertinoIcons.square_grid_2x2_fill, 'Beranda'),
-            ListTile(
-              leading: const Icon(
-                CupertinoIcons.bell_fill,
-                color: Color(0xFF501F66),
-              ),
-              title: const Text('Notifikasi & Pengumuman'),
-              trailing: _unreadNotifCount > 0
-                  ? Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '$_unreadNotifCount baru',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    )
-                  : null,
-              onTap: () async {
-                Navigator.pop(context);
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => NotifikasiListPage(
-                      onBack: () => Navigator.pop(context),
-                    ),
-                  ),
-                );
-                _checkUnreadNotif();
-              },
-            ),
-            _drawerItem(1, CupertinoIcons.calendar, 'Jadwal Perkuliahan'),
-            _drawerItem(2, CupertinoIcons.doc_text_fill, 'Transkrip Nilai'),
-            const Divider(),
-            // ponytail: unified categories avoiding 370 lines of duplicated ListTiles
-            ..._getMenuCategories().entries.expand((entry) => [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 6),
-                child: Text(
-                  entry.key,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ),
-              ...entry.value.map((item) => ListTile(
-                leading: Icon(
-                  item['icon'] as IconData,
-                  color: item['color'] as Color? ?? const Color(0xFF501F66),
-                ),
-                title: Text(item['title'] as String),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: item['page'] as WidgetBuilder,
-                    ),
-                  );
-                },
-              )),
-            ]),
-            ListTile(
-              leading: const Icon(
-                CupertinoIcons.square_arrow_right,
-                color: Colors.redAccent,
-              ),
-              title: const Text(
-                'Keluar',
-                style: TextStyle(
-                  color: Colors.redAccent,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onTap: () async {
-                await ApiClient.instance.fullLogout();
-                if (!mounted) return;
-                Navigator.pushReplacementNamed(context, '/login');
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _drawerItem(int index, IconData icon, String title) {
-    final selected = _currentIndex == index;
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: selected ? const Color(0xFF501F66) : Colors.grey.shade600,
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-          color: selected ? const Color(0xFF501F66) : Colors.black87,
-        ),
-      ),
-      selected: selected,
-      selectedTileColor: const Color(0xFF501F66).withValues(alpha: 0.1),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-      onTap: () {
-        setState(() => _currentIndex = index);
-        Navigator.pop(context);
-      },
-    );
-  }
-
-  Map<String, List<Map<String, dynamic>>> _getMenuCategories() {
-    return {
-      'Perkuliahan & Akademik': [
-        {
-          'title': 'KRS Online',
-          'icon': CupertinoIcons.doc_text_search,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              KrsMainPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Semester Pendek',
-          'icon': CupertinoIcons.layers_alt_fill,
-          'color': const Color(0xFFE65100),
-          'page': (BuildContext ctx) => SpPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'KHS',
-          'icon': CupertinoIcons.rosette,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) => const KhsPage(),
-        },
-        {
-          'title': 'Rincian Nilai',
-          'icon': CupertinoIcons.chart_bar_alt_fill,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              NilaiRincianPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Skripsi & TA',
-          'icon': CupertinoIcons.book_circle_fill,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              SkripsiPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Jadwal Ujian',
-          'icon': CupertinoIcons.check_mark_circled,
-          'color': const Color(0xFF2E7D32),
-          'page': (BuildContext ctx) =>
-              JadwalUjianPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Agenda Akademik',
-          'icon': CupertinoIcons.calendar,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              AgendaAkademikPage(onBack: () => Navigator.pop(ctx)),
-        },
-      ],
-      'Persuratan & Mandiri': [
-        {
-          'title': 'SKMK',
-          'icon': CupertinoIcons.doc_plaintext,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              SkmkPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Izin Penelitian',
-          'icon': CupertinoIcons.search_circle_fill,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              IzinPenelitianPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Surat Tugas',
-          'icon': CupertinoIcons.doc_on_clipboard_fill,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              SuratTugasPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'PKL & Mandiri',
-          'icon': CupertinoIcons.briefcase_fill,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) => PklPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Ujian Susulan',
-          'icon': CupertinoIcons.calendar_badge_minus,
-          'color': const Color(0xFFD32F2F),
-          'page': (BuildContext ctx) =>
-              UjianSusulanPage(onBack: () => Navigator.pop(ctx)),
-        },
-      ],
-      'Kemahasiswaan & Keuangan': [
-        {
-          'title': 'Tagihan VA',
-          'icon': CupertinoIcons.creditcard_fill,
-          'color': const Color(0xFF2E7D32),
-          'page': (BuildContext ctx) =>
-              KeuanganPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Satgas PPKS',
-          'icon': CupertinoIcons.shield_fill,
-          'color': const Color(0xFFD32F2F),
-          'page': (BuildContext ctx) =>
-              PpksPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Asisten Praktikum',
-          'icon': CupertinoIcons.briefcase,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              AsistenPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Jadwal Seminar',
-          'icon': CupertinoIcons.person_3_fill,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              SeminarPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'MBKM Internal',
-          'icon': CupertinoIcons.building_2_fill,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              MbkmPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Pusat Studi',
-          'icon': CupertinoIcons.building_2_fill,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              PusatStudiPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Sertifikasi',
-          'icon': CupertinoIcons.doc_checkmark_fill,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              SertifikasiPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Organisasi',
-          'icon': CupertinoIcons.person_3_fill,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              OrganisasiPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Prestasi',
-          'icon': CupertinoIcons.star_fill,
-          'color': const Color(0xFFFBC02D),
-          'page': (BuildContext ctx) =>
-              PrestasiPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Seminar Workshop',
-          'icon': CupertinoIcons.rectangle_grid_2x2_fill,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              SeminarWorkshopPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Rekognisi Mahasiswa',
-          'icon': CupertinoIcons.rosette,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              RekognisiPage(onBack: () => Navigator.pop(ctx)),
-        },
-      ],
-      'Informasi & Dokumen Kampus': [
-        {
-          'title': 'Berita Kampus',
-          'icon': CupertinoIcons.news_solid,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) => const BeritaListPage(),
-        },
-        {
-          'title': 'Pengumuman',
-          'icon': CupertinoIcons.speaker_2_fill,
-          'color': const Color(0xFFE65100),
-          'page': (BuildContext ctx) => const PengumumanListPage(),
-        },
-        {
-          'title': 'Panduan Akademik',
-          'icon': CupertinoIcons.book,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) => const PanduanListPage(),
-        },
-        {
-          'title': 'Visi Misi Prodi',
-          'icon': CupertinoIcons.eye_fill,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              VisiMisiPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Visi Misi Institusi',
-          'icon': CupertinoIcons.building_2_fill,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              VisiMisiInstitusiPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Tata Krama',
-          'icon': CupertinoIcons.person_2_alt,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) =>
-              TataKramaPage(onBack: () => Navigator.pop(ctx)),
-        },
-        {
-          'title': 'Penafian',
-          'icon': CupertinoIcons.exclamationmark_shield,
-          'color': const Color(0xFF501F66),
-          'page': (BuildContext ctx) => const PenafianPage(),
-        },
-      ],
-    };
-  }
-
-  Widget _buildMenuGridPage() {
-    final categories = _getMenuCategories();
-    const categoryIcons = {
-      'Perkuliahan & Akademik': CupertinoIcons.book_fill,
-      'Persuratan & Mandiri': CupertinoIcons.doc_on_clipboard_fill,
-      'Kemahasiswaan & Keuangan': CupertinoIcons.person_3_fill,
-      'Informasi & Dokumen Kampus': CupertinoIcons.info_circle_fill,
-    };
-
-    return ListView(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        16,
-        16,
-        MediaQuery.of(context).padding.bottom + 130,
-      ),
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics(),
-      ),
-      children: [
-        for (final entry in categories.entries) ...[
-          _buildMenuCategorySection(
-            entry.key,
-            categoryIcons[entry.key] ?? CupertinoIcons.square_grid_2x2_fill,
-            entry.value,
+            ],
           ),
-          const SizedBox(height: 20),
-        ],
-      ],
+        ),
+      ),
     );
   }
 
-  Widget _buildMenuCategorySection(
-    String title,
-    IconData icon,
-    List<Map<String, dynamic>> items,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 18, color: const Color(0xFF501F66)),
-            const SizedBox(width: 8),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF501F66),
+  /// Presensi (QR) — fitur yang paling sering dibuka mahasiswa, karena itu
+  /// diletakkan di tengah bar navigasi agar paling mudah dijangkau jempol.
+  Widget _absensiButton() {
+    return Expanded(
+      child: Center(
+        child: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.28),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 0.95,
+            ],
           ),
-          itemCount: items.length,
-          itemBuilder: (ctx, index) {
-            final item = items[index];
-            final Color itemColor = item['color'] as Color;
-            return GlassCard(
-              borderRadius: 16,
-              padding: EdgeInsets.zero,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () {
-                  final WidgetBuilder builder = item['page'];
-                  Navigator.push(context, MaterialPageRoute(builder: builder));
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 12,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: itemColor.withValues(alpha: 0.08),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          item['icon'] as IconData,
-                          color: itemColor,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        item['title'] as String,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                          height: 1.2,
-                        ),
-                      ),
-                    ],
-                  ),
+          child: Material(
+            color: AppColors.primary,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: () => _openPage(
+                AbsensiPage(onBack: () => Navigator.pop(context)),
+              ),
+              child: const SizedBox(
+                width: 46,
+                height: 46,
+                child: Icon(
+                  CupertinoIcons.qrcode_viewfinder,
+                  color: Colors.white,
+                  size: 23,
                 ),
               ),
-            );
-          },
+            ),
+          ),
         ),
-      ],
+      ),
     );
   }
 }

@@ -6,8 +6,14 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/pengumuman.dart';
 import '../services/pengumuman_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
+/// Detail Pengumuman Akademik — halaman baca.
+///
+/// Susunannya dibuat mengikuti cara orang membaca dokumen: judul & meta di
+/// header, isi paragraf di badan, lampiran sebagai daftar di bagian bawah.
+/// Lebar baca dibatasi agar tidak melebar di tablet.
 class PengumumanDetailPage extends StatefulWidget {
   final dynamic id;
   final String? detailUrl;
@@ -92,239 +98,165 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFAFCFF), // Pearl White
-            Color(0xFFE3F2FD), // Ice Blue
-          ],
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text('Detail Pengumuman',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.white.withValues(alpha: 0.5),
-          leading: IconButton(
-            icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-            onPressed: () => Navigator.pop(context),
+    return AppScaffold(
+      title: 'Detail Pengumuman',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      body: AppAsyncView<PengumumanDetail>(
+        loading: _loading,
+        error: _error,
+        data: _detail,
+        onRetry: _load,
+        loadingMessage: 'Memuat pengumuman…',
+        builder: (detail) => SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.xxl,
           ),
-          elevation: 0,
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(detail),
+                  const SizedBox(height: AppSpacing.lg),
+                  _buildKonten(detail),
+                  if (detail.lampiran.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.xl),
+                    _buildLampiran(detail),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ),
-        body: _buildBody(),
       ),
     );
   }
 
-  Widget _buildBody() {
-    if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF501F66)),
-      );
-    }
-
-    if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(CupertinoIcons.exclamationmark_circle,
-                  size: 48, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.red),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: _load,
-                icon: const Icon(CupertinoIcons.refresh),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF501F66),
-                  foregroundColor: Colors.white,
-                ),
-                label: const Text('Coba Lagi'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (_detail == null) {
-      return const Center(child: Text('Tidak ada data pengumuman'));
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      physics: const BouncingScrollPhysics(),
+  Widget _buildHeader(PengumumanDetail detail) {
+    return AppSurface(
+      variant: AppSurfaceVariant.hero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Card
-          GlassCard(
-            padding: const EdgeInsets.all(20),
-            borderRadius: 20,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Text(
+            detail.judul.isNotEmpty ? detail.judul : 'Pengumuman Akademik',
+            style: AppText.h1,
+          ),
+          if (detail.oleh.isNotEmpty || detail.pukul.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            Row(
               children: [
-                Text(
-                  _detail!.judul.isNotEmpty
-                      ? _detail!.judul
-                      : 'Pengumuman Akademik',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF501F66),
-                    height: 1.3,
+                if (detail.oleh.isNotEmpty) ...[
+                  const Icon(
+                    CupertinoIcons.person_circle,
+                    size: 14,
+                    color: AppColors.textMuted,
                   ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    if (_detail!.oleh.isNotEmpty) ...[
-                      Icon(CupertinoIcons.person_circle,
-                          size: 15, color: Colors.grey.shade700),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          _detail!.oleh,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade700,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                    if (_detail!.pukul.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Icon(CupertinoIcons.clock,
-                          size: 14, color: Colors.grey.shade600),
-                      const SizedBox(width: 4),
-                      Text(
-                        _detail!.pukul,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ).animate().fadeIn().slideY(begin: 0.1),
-          const SizedBox(height: 16),
-
-          // Konten / Isi Paragraf
-          if (_detail!.konten.isNotEmpty)
-            GlassCard(
-              padding: const EdgeInsets.all(20),
-              borderRadius: 20,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (int i = 0; i < _detail!.konten.length; i++) ...[
-                    if (_detail!.konten[i].contains('<') &&
-                        _detail!.konten[i].contains('>'))
-                      Html(
-                        data: _detail!.konten[i],
-                        style: {
-                          "body": Style(
-                            margin: Margins.zero,
-                            padding: HtmlPaddings.zero,
-                            fontSize: FontSize(14),
-                            color: Colors.black87,
-                            lineHeight: LineHeight.number(1.5),
-                          ),
-                        },
-                      )
-                    else
-                      SelectableText(
-                        _detail!.konten[i],
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black87,
-                          height: 1.6,
-                        ),
-                      ),
-                    if (i < _detail!.konten.length - 1)
-                      const SizedBox(height: 12),
-                  ],
-                ],
-              ),
-            ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1)
-          else
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(
-                child: Text(
-                  'Tidak ada rincian teks tambahan.',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
-            ),
-
-          // Lampiran File (jika ada)
-          if (_detail!.lampiran.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            const Text(
-              'Lampiran Dokumen',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF501F66),
-              ),
-            ),
-            const SizedBox(height: 10),
-            for (final lamp in _detail!.lampiran)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: InkWell(
-                  onTap: () => _openLampiran(lamp),
-                  borderRadius: BorderRadius.circular(12),
-                  child: GlassCard(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    borderRadius: 12,
-                    child: Row(
-                      children: [
-                        const Icon(CupertinoIcons.paperclip,
-                            color: Color(0xFF501F66), size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            lamp.nama,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const Icon(
-                          CupertinoIcons.arrow_up_right_square,
-                          color: Color(0xFF501F66),
-                          size: 18,
-                        ),
-                      ],
+                  const SizedBox(width: AppSpacing.xs),
+                  Flexible(
+                    child: Text(
+                      detail.oleh,
+                      style: AppText.label,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
-              ).animate().fadeIn(delay: 250.ms),
+                ],
+                if (detail.pukul.isNotEmpty) ...[
+                  const SizedBox(width: AppSpacing.md),
+                  const Icon(
+                    CupertinoIcons.clock,
+                    size: 14,
+                    color: AppColors.textMuted,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(detail.pukul, style: AppText.label),
+                ],
+              ],
+            ),
           ],
         ],
       ),
-    );
+    ).animate().fadeIn(duration: 250.ms).slideY(begin: 0.06);
+  }
+
+  Widget _buildKonten(PengumumanDetail detail) {
+    if (detail.konten.isEmpty) {
+      return AppSurface(
+        child: const Text('Tidak ada rincian teks tambahan.'),
+      );
+    }
+
+    return AppSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (int i = 0; i < detail.konten.length; i++) ...[
+            if (detail.konten[i].contains('<') &&
+                detail.konten[i].contains('>'))
+              Html(
+                data: detail.konten[i],
+                style: {
+                  'body': Style(
+                    margin: Margins.zero,
+                    padding: HtmlPaddings.zero,
+                    fontSize: FontSize(14.5),
+                    color: AppColors.textPrimary,
+                    lineHeight: LineHeight.number(1.65),
+                  ),
+                },
+              )
+            else
+              SelectableText(
+                detail.konten[i],
+                style: AppText.body.copyWith(fontSize: 14.5, height: 1.65),
+              ),
+            if (i < detail.konten.length - 1)
+              const SizedBox(height: AppSpacing.md),
+          ],
+        ],
+      ),
+    ).animate().fadeIn(delay: 120.ms).slideY(begin: 0.06);
+  }
+
+  Widget _buildLampiran(PengumumanDetail detail) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('LAMPIRAN DOKUMEN', style: AppText.overline),
+        const SizedBox(height: AppSpacing.sm),
+        AppListGroup.from([
+          for (final lamp in detail.lampiran)
+            AppListRow(
+              leading: Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+                child: const Icon(
+                  CupertinoIcons.paperclip,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
+              ),
+              title: lamp.nama,
+              subtitle: 'Ketuk untuk membuka',
+              trailing: const Icon(
+                CupertinoIcons.arrow_up_right_square,
+                size: 18,
+                color: AppColors.primary,
+              ),
+              onTap: () => _openLampiran(lamp),
+            ),
+        ]),
+      ],
+    ).animate().fadeIn(delay: 220.ms);
   }
 }
