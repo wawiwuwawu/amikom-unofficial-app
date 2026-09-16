@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/notifikasi.dart';
 import '../models/pengumuman.dart'; // for Lampiran
 import '../services/notifikasi_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
 class NotifikasiDetailPage extends StatefulWidget {
   final String id;
 
-  const NotifikasiDetailPage({
-    super.key,
-    required this.id,
-  });
+  const NotifikasiDetailPage({super.key, required this.id});
 
   @override
   State<NotifikasiDetailPage> createState() => _NotifikasiDetailPageState();
@@ -80,247 +77,150 @@ class _NotifikasiDetailPageState extends State<NotifikasiDetailPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal membuka lampiran: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal membuka lampiran: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFAFCFF), // Pearl White
-            Color(0xFFE3F2FD), // Ice Blue
-          ],
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text('Detail Notifikasi',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.white.withValues(alpha: 0.5),
-          leading: IconButton(
-            icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-            onPressed: () => Navigator.pop(context),
-          ),
-          elevation: 0,
-        ),
-        body: _buildBody(),
+    return AppScaffold(
+      title: 'Detail Notifikasi',
+      subtitle: 'Isi lengkap & lampiran',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      body: AppAsyncView<NotifikasiDetail>(
+        loading: _loading,
+        error: _error,
+        data: _detail,
+        onRetry: _load,
+        loadingMessage: 'Memuat detail notifikasi…',
+        emptyTitle: 'Tidak ada detail notifikasi',
+        emptyMessage: 'Rincian notifikasi ini belum bisa ditampilkan.',
+        emptyIcon: CupertinoIcons.doc_text,
+        builder: _buildContent,
       ),
     );
   }
 
-  Widget _buildBody() {
-    if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF501F66)),
-      );
-    }
-
-    if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(CupertinoIcons.exclamationmark_circle,
-                  size: 48, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.red),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: _load,
-                icon: const Icon(CupertinoIcons.refresh),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF501F66),
-                  foregroundColor: Colors.white,
-                ),
-                label: const Text('Coba Lagi'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (_detail == null) {
-      return const Center(child: Text('Tidak ada detail notifikasi'));
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+  /// Konten utama. Keterbacaan jadi prioritas: judul tegas, meta ringkas,
+  /// dan isi paragraf dengan tinggi baris lega (1.7).
+  Widget _buildContent(NotifikasiDetail detail) {
+    return ListView(
+      padding: AppSpacing.page,
       physics: const BouncingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Card
-          GlassCard(
-            padding: const EdgeInsets.all(20),
-            borderRadius: 20,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _detail!.judul.isNotEmpty
-                      ? _detail!.judul
-                      : 'Informasi Notifikasi',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF501F66),
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 12),
+      children: [
+        AppSurface(
+          variant: AppSurfaceVariant.hero,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                detail.judul.isNotEmpty ? detail.judul : 'Informasi Notifikasi',
+                style: AppText.h2,
+              ),
+              if (detail.oleh.isNotEmpty || detail.pukul.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
                 Row(
                   children: [
-                    if (_detail!.oleh.isNotEmpty) ...[
-                      Icon(CupertinoIcons.person_circle,
-                          size: 15, color: Colors.grey.shade700),
-                      const SizedBox(width: 4),
+                    if (detail.oleh.isNotEmpty) ...[
+                      const Icon(
+                        CupertinoIcons.person_circle,
+                        size: 15,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
                       Expanded(
                         child: Text(
-                          _detail!.oleh,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade700,
+                          detail.oleh,
+                          style: AppText.bodySm.copyWith(
+                            color: AppColors.textSecondary,
                             fontWeight: FontWeight.w500,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
-                    if (_detail!.pukul.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Icon(CupertinoIcons.clock,
-                          size: 14, color: Colors.grey.shade600),
-                      const SizedBox(width: 4),
-                      Text(
-                        _detail!.pukul,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
+                    if (detail.pukul.isNotEmpty) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      const Icon(
+                        CupertinoIcons.clock,
+                        size: 14,
+                        color: AppColors.textMuted,
                       ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(detail.pukul, style: AppText.label),
                     ],
                   ],
                 ),
               ],
-            ),
-          ).animate().fadeIn().slideY(begin: 0.1),
-          const SizedBox(height: 16),
-
-          // Konten / Isi Paragraf
-          if (_detail!.konten.isNotEmpty)
-            GlassCard(
-              padding: const EdgeInsets.all(20),
-              borderRadius: 20,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (int i = 0; i < _detail!.konten.length; i++) ...[
-                    if (_detail!.konten[i].contains('<') &&
-                        _detail!.konten[i].contains('>'))
-                      Html(
-                        data: _detail!.konten[i],
-                        style: {
-                          "body": Style(
-                            margin: Margins.zero,
-                            padding: HtmlPaddings.zero,
-                            fontSize: FontSize(14),
-                            color: Colors.black87,
-                            lineHeight: LineHeight.number(1.5),
-                          ),
-                        },
-                      )
-                    else
-                      SelectableText(
-                        _detail!.konten[i],
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black87,
-                          height: 1.6,
-                        ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        AppSurface(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (int i = 0; i < detail.konten.length; i++) ...[
+                if (i > 0) const SizedBox(height: AppSpacing.md),
+                if (detail.konten[i].contains('<') &&
+                    detail.konten[i].contains('>'))
+                  Html(
+                    data: detail.konten[i],
+                    style: {
+                      "body": Style(
+                        margin: Margins.zero,
+                        padding: HtmlPaddings.zero,
+                        fontSize: FontSize(14),
+                        color: AppColors.textPrimary,
+                        lineHeight: LineHeight.number(1.7),
                       ),
-                    if (i < _detail!.konten.length - 1)
-                      const SizedBox(height: 12),
-                  ],
-                ],
-              ),
-            ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1)
-          else
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(
-                child: Text(
+                    },
+                  )
+                else
+                  SelectableText(
+                    detail.konten[i],
+                    style: AppText.body.copyWith(height: 1.7),
+                  ),
+              ],
+              if (detail.konten.isEmpty)
+                Text(
                   'Tidak ada rincian teks tambahan.',
-                  style: TextStyle(color: Colors.grey),
+                  style: AppText.bodySm.copyWith(color: AppColors.textMuted),
                 ),
-              ),
-            ),
-
-          // Lampiran File (jika ada)
-          if (_detail!.lampiran.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            const Text(
-              'Lampiran Dokumen',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF501F66),
-              ),
-            ),
-            const SizedBox(height: 10),
-            for (final lamp in _detail!.lampiran)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: InkWell(
-                  onTap: () => _openLampiran(lamp),
-                  borderRadius: BorderRadius.circular(12),
-                  child: GlassCard(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    borderRadius: 12,
-                    child: Row(
-                      children: [
-                        const Icon(CupertinoIcons.paperclip,
-                            color: Color(0xFF501F66), size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            lamp.nama,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const Icon(
-                          CupertinoIcons.arrow_up_right_square,
-                          color: Color(0xFF501F66),
-                          size: 18,
-                        ),
-                      ],
+            ],
+          ),
+        ),
+        if (detail.lampiran.isNotEmpty)
+          AppSection(
+            title: 'Lampiran Dokumen',
+            child: AppListGroup.from([
+              for (final lamp in detail.lampiran)
+                AppListRow(
+                  leading: Container(
+                    width: 38,
+                    height: 38,
+                    alignment: Alignment.center,
+                    decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+                    child: const Icon(
+                      CupertinoIcons.paperclip,
+                      size: 18,
+                      color: AppColors.primary,
                     ),
                   ),
+                  title: lamp.nama,
+                  trailing: const Icon(
+                    CupertinoIcons.arrow_up_right_square,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                  onTap: () => _openLampiran(lamp),
                 ),
-              ).animate().fadeIn(delay: 250.ms),
-          ],
-        ],
-      ),
+            ]),
+          ),
+      ],
     );
   }
 }

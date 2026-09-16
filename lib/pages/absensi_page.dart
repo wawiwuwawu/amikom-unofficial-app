@@ -1,12 +1,23 @@
-import 'dart:ui';
-import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/material.dart';
+
 import '../models/absensi.dart';
 import '../services/absensi_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 import 'absensi_detail_page.dart';
 
+/// Halaman presensi mahasiswa.
+///
+/// Presensi adalah menu yang paling sering dibuka mahasiswa, jadi urutan
+/// tampilannya dioptimalkan untuk sekali lihat:
+///   1. status pertemuan terakhir — paling atas, langsung terbaca;
+///   2. presensi yang menunggu validasi + aksinya;
+///   3. filter tahun akademik / semester / matakuliah;
+///   4. ringkasan kehadiran (AppStatTile) + riwayat pertemuan (daftar).
+///
+/// Tombol kembali disediakan otomatis oleh [AppScaffold] mengikuti route,
+/// sehingga `onBack` hanya dipertahankan untuk kompatibilitas pemanggil lama.
 class AbsensiPage extends StatefulWidget {
   final VoidCallback? onBack;
   const AbsensiPage({super.key, this.onBack});
@@ -71,8 +82,6 @@ class _AbsensiPageState extends State<AbsensiPage> {
       if (mounted) setState(() => _loadingBelumValidasi = false);
     }
   }
-
-
 
   Future<void> _loadSemesterList() async {
     if (_selectedThn == null || _selectedThn!.isEmpty) return;
@@ -140,14 +149,20 @@ class _AbsensiPageState extends State<AbsensiPage> {
   }
 
   Future<void> _validasiSemua(MakulBelumValidasi item) async {
-    final confirm = await showCupertinoDialog<bool>(
+    final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => CupertinoAlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Validasi Semua'),
         content: Text('Validasi ${item.count} pertemuan "${item.makul}" dengan nilai default?'),
         actions: [
-          CupertinoDialogAction(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
-          CupertinoDialogAction(isDefaultAction: true, onPressed: () => Navigator.pop(ctx, true), child: const Text('Validasi')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Validasi'),
+          ),
         ],
       ),
     );
@@ -185,9 +200,8 @@ class _AbsensiPageState extends State<AbsensiPage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Validasi: $success berhasil, $failed gagal', style: const TextStyle(color: Colors.white)),
-          backgroundColor: const Color(0xFF501F66),
-          behavior: SnackBarBehavior.floating,
+          content: Text('Validasi: $success berhasil, $failed gagal'),
+          backgroundColor: AppColors.primary,
         ),
       );
     }
@@ -195,263 +209,365 @@ class _AbsensiPageState extends State<AbsensiPage> {
     setState(() => _validatingAll = false);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFAFCFF), // Pearl White
-            Color(0xFFE3F2FD), // Ice Blue
-          ],
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent, // Inherit gradient from MainPage
-        extendBodyBehindAppBar: true,
-        appBar: AppBar(
-          leading: widget.onBack != null ? IconButton(icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)), onPressed: widget.onBack) : null,
-          title: const Text('Absensi Mahasiswa', style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.white.withValues(alpha: 0.5),
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          flexibleSpace: ClipRRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(color: Colors.transparent),
-            ),
-          ),
-        ),
-        body: SafeArea(
-          child: RefreshIndicator(
-            onRefresh: () async {
-              await _loadBelumValidasi();
-              if (_selectedThn != null && _selectedSmt != null && _selectedMakul != null) {
-                await _loadMahasiswa();
-              }
-            },
-            color: const Color(0xFF501F66),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildBelumValidasi().animate().fadeIn(duration: 400.ms).slideY(begin: 0.1),
-                const SizedBox(height: 24),
-                _buildFilter().animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
-                if (_errorFilter != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: GlassCard(
-                      child: Column(
-                        children: [
-                          const Icon(CupertinoIcons.exclamationmark_triangle_fill, color: Colors.orange, size: 32),
-                          const SizedBox(height: 8),
-                          Text(_errorFilter!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black87)),
-                          TextButton(onPressed: _loadBelumValidasi, child: const Text('Coba Lagi')),
-                        ],
-                      ),
-                    ),
-                  ).animate().shake(),
-                if (_loadingMahasiswa)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 48),
-                    child: Center(child: CircularProgressIndicator(color: Color(0xFFBBDEFB))),
-                  ),
-                if (_mahasiswa != null && !_loadingMahasiswa)
-                  _buildHasil().animate().fadeIn(delay: 200.ms),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
+  // ── Turunan tampilan ───────────────────────────────────────────────────────
 
-  Widget _buildBelumValidasi() {
-    if (_loadingBelumValidasi) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFFBBDEFB)));
+  /// Jumlah pertemuan yang masih menunggu validasi.
+  int get _totalBelumValidasi =>
+      _belumValidasi.fold(0, (sum, item) => sum + item.count);
+
+  /// Label matakuliah yang sedang dipilih (untuk keterangan di riwayat).
+  String? get _selectedMakulLabel {
+    final selected = _selectedMakul;
+    if (selected == null) return null;
+    for (final option in _matkulList) {
+      if (option.value == selected) return option.label;
     }
-    if (_belumValidasi.isEmpty) return const SizedBox.shrink();
+    return null;
+  }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(CupertinoIcons.exclamationmark_triangle_fill, color: Colors.orange, size: 20),
-            const SizedBox(width: 8),
-            const Text('Perlu Validasi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF501F66))),
-            const Spacer(),
-            if (_validatingAll)
-              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        ..._belumValidasi.map((item) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: _buildBelumValidasiCard(item),
-        )),
-      ],
+  static AppPillTone _statusTone(String status) {
+    switch (status.toUpperCase()) {
+      case 'H':
+        return AppPillTone.success;
+      case 'B':
+        return AppPillTone.danger;
+      case 'I':
+        return AppPillTone.info;
+      case 'S':
+        return AppPillTone.warning;
+      default:
+        return AppPillTone.neutral;
+    }
+  }
+
+  static String _statusLabel(String status) {
+    switch (status.toUpperCase()) {
+      case 'H':
+        return 'Hadir';
+      case 'B':
+        return 'Bolos';
+      case 'I':
+        return 'Izin';
+      case 'S':
+        return 'Sakit';
+      default:
+        return status;
+    }
+  }
+
+  /// Warna latar/teks untuk satu nada status (selaras dengan [AppPill]).
+  static (Color, Color) _toneColors(AppPillTone tone) {
+    switch (tone) {
+      case AppPillTone.success:
+        return (AppColors.successBg, AppColors.success);
+      case AppPillTone.warning:
+        return (AppColors.warningBg, AppColors.warning);
+      case AppPillTone.danger:
+        return (AppColors.dangerBg, AppColors.danger);
+      case AppPillTone.info:
+        return (AppColors.infoBg, AppColors.info);
+      case AppPillTone.neutral:
+        return (AppColors.surfaceMuted, AppColors.textSecondary);
+    }
+  }
+
+  static Widget _iconBadge(IconData icon) {
+    return Container(
+      width: 40,
+      height: 40,
+      alignment: Alignment.center,
+      decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+      child: Icon(icon, size: 20, color: AppColors.primary),
     );
   }
 
-  Widget _buildBelumValidasiCard(MakulBelumValidasi item) {
-    return GlassCard(
-      padding: const EdgeInsets.all(12),
-      gradient: LinearGradient(
-        colors: [Colors.orange.shade50.withValues(alpha: 0.7), Colors.white.withValues(alpha: 0.5)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
+  @override
+  Widget build(BuildContext context) {
+    return AppScaffold(
+      title: 'Absensi Mahasiswa',
+      subtitle: 'Kehadiran & validasi presensi',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await _loadBelumValidasi();
+          if (_selectedThn != null && _selectedSmt != null && _selectedMakul != null) {
+            await _loadMahasiswa();
+          }
+        },
+        child: SingleChildScrollView(
+          padding: AppSpacing.page,
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStatusHero(),
+              _buildBelumValidasi(),
+              _buildFilter(),
+              if (_errorFilter != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xl),
+                  child: AppErrorState(
+                    message: _errorFilter!,
+                    onRetry: _loadBelumValidasi,
+                  ),
+                ),
+              if (_loadingMahasiswa)
+                const AppLoading(message: 'Memuat data kehadiran…'),
+              if (_mahasiswa != null && !_loadingMahasiswa) _buildHasil(),
+            ],
+          ),
+        ),
       ),
-      child: Row(
+    );
+  }
+
+  /// Status teratas — pertemuan terakhir yang sudah tercatat (atau ajakan
+  /// memilih matakuliah bila belum ada data). Sengaja ditaruh paling atas
+  /// supaya status kehadiran terbaca tanpa perlu menggulir.
+  Widget _buildStatusHero() {
+    final m = _mahasiswa;
+
+    if (m == null || m.riwayatPertemuan.isEmpty) {
+      final belumValidasi = _totalBelumValidasi;
+      return AppSurface(
+        variant: AppSurfaceVariant.hero,
+        child: Row(
+          children: [
+            _iconBadge(CupertinoIcons.qrcode_viewfinder),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Status kehadiran', style: AppText.h3),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Pilih semester & matakuliah untuk melihat status dan riwayat kehadiran.',
+                    style: AppText.bodySm,
+                  ),
+                  if (belumValidasi > 0) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    AppPill('$belumValidasi perlu validasi', tone: AppPillTone.warning),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final terakhir = m.riwayatPertemuan.first;
+    final tone = _statusTone(terakhir.status);
+    final (bg, fg) = _toneColors(tone);
+    final kehadiran = m.statistik.kehadiran;
+
+    return AppSurface(
+      variant: AppSurfaceVariant.hero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: Colors.orange.shade100, shape: BoxShape.circle),
-            child: Center(child: Text('${item.count}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepOrange, fontSize: 16))),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.makul, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
-                const SizedBox(height: 2),
-                Text(item.kelasgab.isNotEmpty ? item.kelasgab[0] : item.kode, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+          Text('PERTEMUAN TERAKHIR', style: AppText.overline),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: Text(
+                  terakhir.status.toUpperCase(),
+                  style: AppText.h3.copyWith(
+                    color: fg,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_statusLabel(terakhir.status), style: AppText.h2),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${terakhir.tanggal} · ${terakhir.materi}',
+                      style: AppText.bodySm,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (kehadiran != null) ...[
+                const SizedBox(width: AppSpacing.md),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${kehadiran.toStringAsFixed(0)}%',
+                      style: AppText.metric,
+                    ),
+                    Text('kehadiran', style: AppText.label),
+                  ],
+                ),
               ],
-            ),
-          ),
-          ElevatedButton(
-            onPressed: _validatingAll ? null : () => _validasiSemua(item),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange.shade100,
-              foregroundColor: Colors.deepOrange,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            ),
-            child: const Text('Validasi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildBelumValidasi() {
+    if (_loadingBelumValidasi) {
+      return const AppLoading(message: 'Memeriksa presensi yang perlu divalidasi…');
+    }
+    if (_belumValidasi.isEmpty) return const SizedBox.shrink();
+
+    return AppSection(
+      title: 'Perlu validasi',
+      trailing: _validatingAll
+          ? const AppPill('Memvalidasi…', tone: AppPillTone.warning)
+          : null,
+      child: AppListGroup.from([
+        for (final item in _belumValidasi)
+          AppListRow(
+            leading: Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: AppColors.warningBg,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '${item.count}',
+                style: AppText.h3.copyWith(color: AppColors.warning),
+              ),
+            ),
+            title: item.makul,
+            subtitle: item.kelasgab.isNotEmpty ? item.kelasgab[0] : item.kode,
+            trailing: FilledButton(
+              onPressed: _validatingAll ? null : () => _validasiSemua(item),
+              child: const Text('Validasi'),
+            ),
+          ),
+      ]),
     );
   }
 
   Widget _buildFilter() {
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Filter Presensi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF501F66))),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildGlassDropdown(
-                  value: _selectedThn,
-                  items: [if (_selectedThn != null) OptionItem(value: _selectedThn!, label: _selectedThn!)], 
-                  hint: 'Tahun Akademik',
-                  onChanged: null, // Readonly representation
+    return AppSection(
+      title: 'Filter presensi',
+      child: AppSurface(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _iconBadge(CupertinoIcons.calendar),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Tahun akademik', style: AppText.label),
+                      const SizedBox(height: 2),
+                      Text(_selectedThn ?? '—', style: AppText.h3),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)]),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(color: const Color(0xFFBBDEFB).withValues(alpha: 0.5), blurRadius: 8, offset: const Offset(0, 4)),
-                  ],
-                ),
-                child: IconButton(
-                  icon: const Icon(CupertinoIcons.refresh, color: Color(0xFF501F66)),
-                  tooltip: 'Muat ulang semester',
+                IconButton(
                   onPressed: () {
                     _initAcademicYear();
                     _loadSemesterList();
                   },
+                  tooltip: 'Muat ulang semester',
+                  icon: const Icon(CupertinoIcons.refresh, color: AppColors.primary),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            if (_loadingSemester)
+              const AppLoading(message: 'Memuat semester…')
+            else
+              _buildDropdown(
+                value: _semesterList.isNotEmpty ? _selectedSmt : null,
+                items: _semesterList,
+                hint: 'Semester',
+                onChanged: _selectedThn != null && _selectedThn!.isNotEmpty
+                    ? (v) {
+                        setState(() {
+                          _selectedSmt = v;
+                          _matkulList = [];
+                          _selectedMakul = null;
+                          _mahasiswa = null;
+                        });
+                        if (v != null) _loadMatkulList();
+                      }
+                    : null,
+              ),
+            const SizedBox(height: AppSpacing.md),
+            if (_loadingMatkul)
+              const AppLoading(message: 'Memuat matakuliah…')
+            else
+              _buildDropdown(
+                value: _matkulList.isNotEmpty ? _selectedMakul : null,
+                items: _matkulList,
+                hint: 'Matakuliah',
+                onChanged: _selectedSmt != null
+                    ? (v) {
+                        setState(() => _selectedMakul = v);
+                        if (v != null) _loadMahasiswa();
+                      }
+                    : null,
+              ),
+            if (_selectedThn != null && _selectedThn!.isNotEmpty && _semesterList.isEmpty && !_loadingSemester)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.sm),
+                child: OutlinedButton.icon(
+                  onPressed: _loadSemesterList,
+                  icon: const Icon(CupertinoIcons.search, size: 18),
+                  label: const Text('Cari Semester'),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (_loadingSemester)
-            const Center(child: CircularProgressIndicator(color: Color(0xFFBBDEFB)))
-          else
-            _buildGlassDropdown(
-              value: _semesterList.isNotEmpty ? _selectedSmt : null,
-              items: _semesterList,
-              hint: 'Semester',
-              onChanged: _selectedThn != null && _selectedThn!.isNotEmpty
-                  ? (v) {
-                      setState(() {
-                        _selectedSmt = v;
-                        _matkulList = [];
-                        _selectedMakul = null;
-                        _mahasiswa = null;
-                      });
-                      if (v != null) _loadMatkulList();
-                    }
-                  : null,
-            ),
-          const SizedBox(height: 12),
-          if (_loadingMatkul)
-            const Center(child: CircularProgressIndicator(color: Color(0xFFBBDEFB)))
-          else
-            _buildGlassDropdown(
-              value: _matkulList.isNotEmpty ? _selectedMakul : null,
-              items: _matkulList,
-              hint: 'Matakuliah',
-              onChanged: _selectedSmt != null
-                  ? (v) {
-                      setState(() => _selectedMakul = v);
-                      if (v != null) _loadMahasiswa();
-                    }
-                  : null,
-            ),
-          if (_selectedThn != null && _selectedThn!.isNotEmpty && _semesterList.isEmpty && !_loadingSemester)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: TextButton.icon(
-                onPressed: _loadSemesterList,
-                icon: const Icon(CupertinoIcons.search, size: 18, color: Color(0xFF501F66)),
-                label: const Text('Cari Semester', style: TextStyle(color: Color(0xFF501F66), fontWeight: FontWeight.bold)),
-              ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildGlassDropdown({
+  Widget _buildDropdown({
     required String? value,
     required List<OptionItem> items,
     required String hint,
     required ValueChanged<String?>? onChanged,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(16),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.xs,
       ),
+      decoration: AppDeco.card(),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
-          hint: Text(hint, style: const TextStyle(fontSize: 14, color: Colors.black54)),
+          hint: Text(hint, style: AppText.bodySm),
           isExpanded: true,
-          icon: const Icon(CupertinoIcons.chevron_down, color: Color(0xFF501F66), size: 16),
-          items: items.map((e) => DropdownMenuItem(
-            value: e.value,
-            child: Text(e.label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87)),
-          )).toList(),
+          icon: const Icon(CupertinoIcons.chevron_down, size: 16, color: AppColors.textMuted),
+          items: items
+              .map((e) => DropdownMenuItem(
+                    value: e.value,
+                    child: Text(e.label, style: AppText.body),
+                  ))
+              .toList(),
           onChanged: onChanged,
         ),
       ),
@@ -460,166 +576,149 @@ class _AbsensiPageState extends State<AbsensiPage> {
 
   Widget _buildHasil() {
     final m = _mahasiswa!;
+    final s = m.statistik;
+    final kehadiran = s.kehadiran;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            const Icon(CupertinoIcons.person_fill, size: 20, color: Color(0xFF501F66)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(m.namaDosen, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF501F66))),
+        AppSection(
+          title: 'Pengajar',
+          child: AppSurface(
+            child: Row(
+              children: [
+                _iconBadge(CupertinoIcons.person_fill),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(m.namaDosen, style: AppText.h3),
+                      const SizedBox(height: 2),
+                      Text('Jenis: ${m.jenisPerkuliahan}', style: AppText.bodySm),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-        const SizedBox(height: 4),
-        Text('Jenis: ${m.jenisPerkuliahan}', style: const TextStyle(color: Colors.black54, fontSize: 13, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 16),
-        _buildStatistik(m.statistik),
-        const SizedBox(height: 24),
-        const Text('Riwayat Pertemuan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF501F66))),
-        const SizedBox(height: 12),
-        ...m.riwayatPertemuan.map((r) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _buildRiwayatCard(r),
-        )),
+        AppSection(
+          title: 'Ringkasan kehadiran',
+          child: Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              if (kehadiran != null)
+                AppStatTile(
+                  value: '${kehadiran.toStringAsFixed(0)}%',
+                  label: 'Kehadiran',
+                  icon: Icons.pie_chart_outline,
+                ),
+              AppStatTile(
+                value: '${s.hadir.toStringAsFixed(0)}%',
+                label: 'Hadir',
+                icon: Icons.check_circle_outline,
+                accent: AppColors.success,
+              ),
+              AppStatTile(
+                value: '${s.izin.toStringAsFixed(0)}%',
+                label: 'Izin',
+                icon: Icons.mail_outline,
+                accent: AppColors.info,
+              ),
+              AppStatTile(
+                value: '${s.sakit.toStringAsFixed(0)}%',
+                label: 'Sakit',
+                icon: Icons.medical_services_outlined,
+                accent: AppColors.warning,
+              ),
+              AppStatTile(
+                value: '${s.tanpaKeterangan.toStringAsFixed(0)}%',
+                label: 'Bolos',
+                icon: Icons.block,
+                accent: AppColors.danger,
+              ),
+              AppStatTile(
+                value: '${s.belumValidasi.toStringAsFixed(0)}%',
+                label: 'Pending',
+                icon: Icons.hourglass_empty,
+                accent: AppColors.textMuted,
+              ),
+            ],
+          ),
+        ),
+        AppSection(
+          title: 'Riwayat pertemuan',
+          trailing: m.riwayatPertemuan.isEmpty
+              ? null
+              : AppPill('${m.riwayatPertemuan.length} pertemuan'),
+          child: m.riwayatPertemuan.isEmpty
+              ? const AppEmptyState(
+                  title: 'Belum ada riwayat pertemuan',
+                  message: 'Riwayat akan muncul setelah dosen membuka presensi.',
+                  icon: CupertinoIcons.time,
+                )
+              : AppListGroup.from([
+                  for (final r in m.riwayatPertemuan) _buildRiwayatRow(r),
+                ]),
+        ),
       ],
     );
   }
 
-  Widget _buildStatistik(StatistikAbsensi s) {
-    final items = [
-      ('Hadir', s.hadir, Colors.green),
-      ('Izin', s.izin, Colors.blue),
-      ('Sakit', s.sakit, Colors.orange),
-      ('Bolos', s.tanpaKeterangan, Colors.red),
-      ('Pending', s.belumValidasi, Colors.grey),
-    ];
+  Widget _buildRiwayatRow(RiwayatPertemuan r) {
+    final tone = _statusTone(r.status);
+    final (bg, fg) = _toneColors(tone);
 
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
+    return AppListRow(
+      leading: Container(
+        width: 40,
+        height: 40,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
+        child: Text(
+          r.status.toUpperCase(),
+          style: AppText.h3.copyWith(color: fg, fontWeight: FontWeight.w800),
+        ),
+      ),
+      title: r.tanggal,
+      subtitle: _riwayatSubtitle(r),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          for (final item in items)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 60,
-                    child: Text(item.$1, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87)),
-                  ),
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: LinearProgressIndicator(
-                        value: item.$2 / 100,
-                        backgroundColor: Colors.white.withValues(alpha: 0.5),
-                        color: item.$3,
-                        minHeight: 12,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 45,
-                    child: Text('${item.$2.toStringAsFixed(1)}%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: item.$3)),
-                  ),
-                ],
-              ),
-            ),
+          AppPill(_statusLabel(r.status), tone: tone),
+          if (r.idPresensi != null) ...[
+            const SizedBox(width: AppSpacing.sm),
+            const Icon(CupertinoIcons.chevron_forward, size: 18, color: AppColors.textMuted),
+          ],
         ],
       ),
+      onTap: r.idPresensi != null
+          ? () async {
+              final result = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(builder: (_) => AbsensiDetailPage(idPresensi: r.idPresensi!)),
+              );
+              if (result == true) {
+                _loadBelumValidasi();
+                if (_selectedMakul != null) _loadMahasiswa();
+              }
+            }
+          : null,
     );
   }
 
-  Widget _buildRiwayatCard(RiwayatPertemuan r) {
-    final Color statusColor;
-    final String statusLabel;
-    switch (r.status.toUpperCase()) {
-      case 'H':
-        statusColor = Colors.green;
-        statusLabel = 'Hadir';
-        break;
-      case 'B':
-        statusColor = Colors.red;
-        statusLabel = 'Bolos';
-        break;
-      case 'I':
-        statusColor = Colors.blue;
-        statusLabel = 'Izin';
-        break;
-      case 'S':
-        statusColor = Colors.orange;
-        statusLabel = 'Sakit';
-        break;
-      default:
-        statusColor = Colors.grey;
-        statusLabel = r.status;
-    }
-
-    return GlassCard(
-      padding: EdgeInsets.zero, // Padding is handled by InkWell
-      child: InkWell(
-        onTap: r.idPresensi != null
-            ? () async {
-                final result = await Navigator.push<bool>(
-                  context,
-                  MaterialPageRoute(builder: (_) => AbsensiDetailPage(idPresensi: r.idPresensi!)),
-                );
-                if (result == true) {
-                  _loadBelumValidasi();
-                  if (_selectedMakul != null) _loadMahasiswa();
-                }
-              }
-            : null,
-        borderRadius: BorderRadius.circular(24),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Text(r.status.toUpperCase(), style: TextStyle(fontWeight: FontWeight.w900, color: statusColor, fontSize: 18)),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(r.tanggal, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
-                    const SizedBox(height: 4),
-                    Text(r.materi, style: const TextStyle(color: Colors.black54, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
-                  ],
-                ),
-              ),
-              if (r.idPresensi != null)
-                Container(
-                  margin: const EdgeInsets.only(left: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(statusLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: statusColor)),
-                ),
-              if (r.idPresensi != null)
-                const Padding(
-                  padding: EdgeInsets.only(left: 8),
-                  child: Icon(CupertinoIcons.chevron_right, color: Colors.black26, size: 20),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
+  /// "Matakuliah · materi" — keterangan tiap baris riwayat.
+  String? _riwayatSubtitle(RiwayatPertemuan r) {
+    final makul = _selectedMakulLabel;
+    final parts = <String>[
+      if (makul != null && makul.isNotEmpty) makul,
+      if (r.materi.isNotEmpty) r.materi,
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
   }
 }

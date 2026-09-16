@@ -5,7 +5,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import '../services/api_client.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -88,7 +89,7 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Silakan tunggu $_retryCountdown detik sebelum mencoba kembali.'),
-          backgroundColor: Colors.orange.shade800,
+          backgroundColor: AppColors.warning,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -99,7 +100,7 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Harap setujui Penafian & Ketentuan terlebih dahulu'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.danger,
         ),
       );
       return;
@@ -133,9 +134,8 @@ class _LoginPageState extends State<LoginPage> {
           SnackBar(
             content: Text(
               'Terlalu banyak percobaan login. Silakan tunggu $waitSeconds detik sebelum mencoba kembali.',
-              style: const TextStyle(color: Colors.white),
             ),
-            backgroundColor: Colors.orange.shade800,
+            backgroundColor: AppColors.warning,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -145,8 +145,8 @@ class _LoginPageState extends State<LoginPage> {
             : (e.message ?? 'Terjadi kesalahan saat login');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(serverMsg, style: const TextStyle(color: Colors.white)),
-            backgroundColor: Colors.redAccent,
+            content: Text(serverMsg),
+            backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -160,17 +160,16 @@ class _LoginPageState extends State<LoginPage> {
           SnackBar(
             content: const Text(
               'Terlalu banyak percobaan login. Silakan tunggu 60 detik sebelum mencoba kembali.',
-              style: TextStyle(color: Colors.white),
             ),
-            backgroundColor: Colors.orange,
+            backgroundColor: AppColors.warning,
             behavior: SnackBarBehavior.floating,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errStr, style: const TextStyle(color: Colors.white)),
-            backgroundColor: Colors.redAccent,
+            content: Text(errStr),
+            backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -183,193 +182,190 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.scaffold,
       body: Stack(
         children: [
-          // Background Gradient (Frosted Pearl & Ice Blue)
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFFE3F2FD), // Soft Ice Blue
-                  Color(0xFFFAFCFF), // Pearl White
-                  Color(0xFFBBDEFB), // Ice Blue Deep
-                ],
-                stops: [0.0, 0.5, 1.0],
+          // Latar lembut bernuansa brand (menggantikan gradasi ice-blue lama).
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.10),
+                    AppColors.scaffold,
+                    AppColors.primary.withValues(alpha: 0.05),
+                  ],
+                  stops: const [0.0, 0.45, 1.0],
+                ),
               ),
             ),
           ),
-          
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(CupertinoIcons.book_fill, size: 64, color: Color(0xFF501F66)),
-                  ).animate().scale(delay: 200.ms, duration: 600.ms, curve: Curves.easeOutBack),
-                  
-                  const SizedBox(height: 24),
-                  
-                  const Text(
-                    'Ini Amikom?',
-                    style: TextStyle(
-                      fontSize: 28, 
-                      fontWeight: FontWeight.w900, 
-                      color: Color(0xFF501F66),
-                      letterSpacing: -0.5,
-                    ),
-                  ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2, end: 0),
-                  
-                  const Text(
-                    'Unofficial App',
-                    style: TextStyle(
-                      fontSize: 16, 
-                      color: Colors.black54,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2, end: 0),
-                  
-                  const SizedBox(height: 48),
-                  
-                  GlassCard(
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          TextFormField(
-                            controller: _nimController,
-                            style: const TextStyle(color: Color(0xFF501F66), fontWeight: FontWeight.w600),
-                            decoration: InputDecoration(
-                              labelText: 'NIM',
-                              labelStyle: const TextStyle(color: Colors.black54),
-                              prefixIcon: const Icon(CupertinoIcons.person_fill, color: Color(0xFF501F66)),
-                              filled: true,
-                              fillColor: Colors.white.withValues(alpha: 0.4),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
+
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xl,
+                  vertical: AppSpacing.xxl,
+                ),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Logo pada bulatan brand
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(AppSpacing.xl),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
                           ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: _obscureText,
-                            style: const TextStyle(color: Color(0xFF501F66), fontWeight: FontWeight.w600),
-                            decoration: InputDecoration(
-                              labelText: 'Password',
-                              labelStyle: const TextStyle(color: Colors.black54),
-                              prefixIcon: const Icon(CupertinoIcons.lock_fill, color: Color(0xFF501F66)),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscureText ? CupertinoIcons.eye_slash_fill : CupertinoIcons.eye_fill,
-                                  color: const Color(0xFF501F66),
-                                ),
-                                onPressed: () => setState(() => _obscureText = !_obscureText),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white.withValues(alpha: 0.4),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
+                          child: const Icon(
+                            CupertinoIcons.book_fill,
+                            size: 52,
+                            color: Colors.white,
                           ),
-                          const SizedBox(height: 16),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
+                        ).animate().scale(delay: 200.ms, duration: 600.ms, curve: Curves.easeOutBack),
+                      ),
+
+                      const SizedBox(height: AppSpacing.xl),
+
+                      Text(
+                        'Ini Amikom?',
+                        textAlign: TextAlign.center,
+                        style: AppText.display.copyWith(color: AppColors.primary),
+                      ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2, end: 0),
+
+                      const SizedBox(height: AppSpacing.sm),
+
+                      const Center(
+                        child: AppPill('Unofficial App'),
+                      ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2, end: 0),
+
+                      const SizedBox(height: AppSpacing.xxl),
+
+                      AppSurface(
+                        padding: const EdgeInsets.all(AppSpacing.xl),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: Checkbox(
-                                  value: _agreedToDisclaimer,
-                                  activeColor: const Color(0xFF501F66),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(4),
+                              TextFormField(
+                                controller: _nimController,
+                                textInputAction: TextInputAction.next,
+                                style: AppText.body.copyWith(fontWeight: FontWeight.w600),
+                                decoration: const InputDecoration(
+                                  labelText: 'NIM',
+                                  prefixIcon: Icon(
+                                    CupertinoIcons.person_fill,
+                                    color: AppColors.primary,
                                   ),
-                                  onChanged: (val) {
-                                    setState(() => _agreedToDisclaimer = val ?? false);
-                                  },
                                 ),
+                                validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Wrap(
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    const Text(
-                                      'Saya menyetujui ',
-                                      style: TextStyle(fontSize: 13, color: Colors.black87),
+                              const SizedBox(height: AppSpacing.lg),
+                              TextFormField(
+                                controller: _passwordController,
+                                obscureText: _obscureText,
+                                textInputAction: TextInputAction.done,
+                                style: AppText.body.copyWith(fontWeight: FontWeight.w600),
+                                decoration: InputDecoration(
+                                  labelText: 'Password',
+                                  prefixIcon: const Icon(
+                                    CupertinoIcons.lock_fill,
+                                    color: AppColors.primary,
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscureText ? CupertinoIcons.eye_slash_fill : CupertinoIcons.eye_fill,
+                                      color: AppColors.primary,
                                     ),
-                                    GestureDetector(
-                                      onTap: () => Navigator.pushNamed(context, '/penafian'),
-                                      child: const Text(
-                                        'Penafian & Ketentuan',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Color(0xFF501F66),
-                                          fontWeight: FontWeight.bold,
-                                          decoration: TextDecoration.underline,
-                                        ),
+                                    onPressed: () => setState(() => _obscureText = !_obscureText),
+                                  ),
+                                ),
+                                validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: Checkbox(
+                                      value: _agreedToDisclaimer,
+                                      activeColor: AppColors.primary,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(AppRadius.sm),
                                       ),
+                                      onChanged: (val) {
+                                        setState(() => _agreedToDisclaimer = val ?? false);
+                                      },
                                     ),
-                                  ],
+                                  ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  Expanded(
+                                    child: Wrap(
+                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      children: [
+                                        Text(
+                                          'Saya menyetujui ',
+                                          style: AppText.bodySm.copyWith(
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                        GestureDetector(
+                                          onTap: () => Navigator.pushNamed(context, '/penafian'),
+                                          child: Text(
+                                            'Penafian & Ketentuan',
+                                            style: AppText.bodySm.copyWith(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.w700,
+                                              decoration: TextDecoration.underline,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: AppSpacing.xl),
+                              SizedBox(
+                                height: 52,
+                                child: FilledButton(
+                                  onPressed: (_loading || _retryCountdown > 0) ? null : _login,
+                                  child: _loading
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : Text(
+                                          _retryCountdown > 0
+                                              ? 'Coba lagi dalam $_retryCountdown detik'
+                                              : 'Login',
+                                          style: AppText.button.copyWith(
+                                            fontSize: _retryCountdown > 0 ? 14 : 15,
+                                          ),
+                                        ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 24),
-                          SizedBox(
-                            height: 56,
-                            child: ElevatedButton(
-                              onPressed: (_loading || _retryCountdown > 0) ? null : _login,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFBBDEFB), // Ice Blue
-                                foregroundColor: const Color(0xFF501F66), // Amikom Purple text
-                                disabledBackgroundColor: Colors.grey.shade300,
-                                disabledForegroundColor: Colors.grey.shade600,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              child: _loading
-                                  ? const SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Color(0xFF501F66),
-                                      ),
-                                    )
-                                  : Text(
-                                      _retryCountdown > 0
-                                          ? 'Coba lagi dalam $_retryCountdown detik'
-                                          : 'Login',
-                                      style: TextStyle(
-                                        fontSize: _retryCountdown > 0 ? 15 : 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1, end: 0),
-                ],
+                        ),
+                      ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1, end: 0),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),

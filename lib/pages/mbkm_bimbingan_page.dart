@@ -1,12 +1,12 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_html/flutter_html.dart';
 import '../models/mbkm.dart';
 import '../services/mbkm_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
+/// Log bimbingan MBKM — identitas program, ringkasan jumlah log, lalu
+/// kronologi bimbingan sebagai daftar bergaris (tanggal sebagai penanda depan).
 class MbkmBimbinganPage extends StatefulWidget {
   final MbkmFakultas mbkm;
   const MbkmBimbinganPage({super.key, required this.mbkm});
@@ -61,7 +61,7 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
     // In our model, we have `no` (which is often just a row number) and `aksi`.
     // Let's assume `aksi` or `no` is the id, or we might need to extract the ID from HTML.
     // For now we'll pass `idBimbingan` which might be mapped to `no`.
-    
+
     // Show confirmation
     bool? confirm = await showDialog(
       context: context,
@@ -69,10 +69,16 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
         title: const Text('Hapus Bimbingan?'),
         content: const Text('Apakah Anda yakin ingin menghapus data bimbingan ini?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
           TextButton(
-            onPressed: () => Navigator.pop(ctx, true), 
-            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              'Hapus',
+              style: AppText.button.copyWith(color: AppColors.danger),
+            ),
           ),
         ],
       ),
@@ -84,14 +90,20 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
       await _service.hapusBimbingan(idBimbingan);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Berhasil menghapus bimbingan'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Berhasil menghapus bimbingan'),
+            backgroundColor: AppColors.success,
+          ),
         );
         _loadData();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: AppColors.danger,
+          ),
         );
       }
     }
@@ -102,7 +114,7 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      showDragHandle: true,
       builder: (context) => _buildInputBottomSheet(),
     );
   }
@@ -111,7 +123,7 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
     if (_inputController.text.trim().isEmpty) return;
 
     setState(() => _isSubmitting = true);
-    
+
     // ponytail: lightweight native markdown-to-HTML converter without 700KB package:markdown
     final htmlContent = _convertMarkdownToHtml(_inputController.text.trim());
 
@@ -120,14 +132,20 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
       if (mounted) {
         Navigator.pop(context); // close bottom sheet
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Berhasil menambah bimbingan'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Berhasil menambah bimbingan'),
+            backgroundColor: AppColors.success,
+          ),
         );
         _loadData(); // refresh list
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: AppColors.danger,
+          ),
         );
       }
     } finally {
@@ -204,104 +222,92 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
   Widget _buildInputBottomSheet() {
     return StatefulBuilder(
       builder: (context, setSheetState) {
-        return Container(
+        return Padding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 16, right: 16, top: 16,
           ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Tambah Log Bimbingan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
-              const SizedBox(height: 12),
-              // Toolbar Markdown
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(CupertinoIcons.bold, size: 20),
-                      onPressed: () => _insertMarkdown('**', '**'),
-                      tooltip: 'Tebal',
-                      constraints: const BoxConstraints(),
-                      padding: const EdgeInsets.all(8),
-                    ),
-                    IconButton(
-                      icon: const Icon(CupertinoIcons.textformat_size, size: 20), // H1
-                      onPressed: () => _insertMarkdown('# ', ''),
-                      tooltip: 'Heading 1',
-                      constraints: const BoxConstraints(),
-                      padding: const EdgeInsets.all(8),
-                    ),
-                    IconButton(
-                      icon: const Icon(CupertinoIcons.textformat_size, size: 16), // H2
-                      onPressed: () => _insertMarkdown('## ', ''),
-                      tooltip: 'Heading 2',
-                      constraints: const BoxConstraints(),
-                      padding: const EdgeInsets.all(8),
-                    ),
-                    IconButton(
-                      icon: const Icon(CupertinoIcons.list_bullet, size: 20),
-                      onPressed: () => _insertMarkdown('- ', ''),
-                      tooltip: 'List',
-                      constraints: const BoxConstraints(),
-                      padding: const EdgeInsets.all(8),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _inputController,
-                maxLines: 8,
-                minLines: 4,
-                decoration: InputDecoration(
-                  hintText: 'Ketik laporan bimbingan di sini...\n(Mendukung format Markdown: **Tebal**, # Judul)',
-                  hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              0,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Tambah Log Bimbingan', style: AppText.h2),
+                const SizedBox(height: AppSpacing.md),
+                // Toolbar Markdown
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xs,
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF501F66), width: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceMuted,
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isSubmitting ? null : () {
-                    setSheetState(() => _isSubmitting = true);
-                    _submitBimbingan().then((_) {
-                      if (mounted) setSheetState(() => _isSubmitting = false);
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF501F66),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.format_bold, size: 20),
+                        onPressed: () => _insertMarkdown('**', '**'),
+                        tooltip: 'Tebal',
+                        constraints: const BoxConstraints(),
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.title, size: 20), // H1
+                        onPressed: () => _insertMarkdown('# ', ''),
+                        tooltip: 'Heading 1',
+                        constraints: const BoxConstraints(),
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.text_fields, size: 16), // H2
+                        onPressed: () => _insertMarkdown('## ', ''),
+                        tooltip: 'Heading 2',
+                        constraints: const BoxConstraints(),
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.format_list_bulleted, size: 20),
+                        onPressed: () => _insertMarkdown('- ', ''),
+                        tooltip: 'List',
+                        constraints: const BoxConstraints(),
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                      ),
+                    ],
                   ),
-                  child: _isSubmitting
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Kirim Bimbingan', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
-              ),
-              const SizedBox(height: 16),
-            ],
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: _inputController,
+                  maxLines: 8,
+                  minLines: 4,
+                  decoration: const InputDecoration(
+                    hintText: 'Ketik laporan bimbingan di sini...\n(Mendukung format Markdown: **Tebal**, # Judul)',
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _isSubmitting ? null : () {
+                      setSheetState(() => _isSubmitting = true);
+                      _submitBimbingan().then((_) {
+                        if (mounted) setSheetState(() => _isSubmitting = false);
+                      });
+                    },
+                    child: _isSubmitting
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('Kirim Bimbingan'),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -310,187 +316,182 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('Log Bimbingan', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
-        backgroundColor: Colors.white.withValues(alpha: 0.8),
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        flexibleSpace: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(color: Colors.transparent),
-          ),
-        ),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeaderCard(),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)))
-                  : _error != null
-                      ? _buildErrorState()
-                      : _buildList(),
-            ),
-          ],
-        ),
-      ),
+    return AppScaffold(
+      title: 'Log Bimbingan',
+      scrollable: false,
+      padding: EdgeInsets.zero,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _tambahBimbingan,
-        backgroundColor: const Color(0xFF501F66),
-        icon: const Icon(CupertinoIcons.add, color: Colors.white),
-        label: const Text('Tambah', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('Tambah'),
+      ),
+      body: AppAsyncView<List<MbkmBimbingan>>(
+        loading: _loading,
+        error: _error,
+        data: _list,
+        isEmpty: (data) => data.isEmpty,
+        onRetry: _loadData,
+        loadingMessage: 'Memuat log bimbingan…',
+        emptyTitle: 'Belum ada log bimbingan',
+        emptyMessage: 'Tekan tombol Tambah untuk menulis laporan bimbingan.',
+        emptyIcon: Icons.history_edu_outlined,
+        builder: (items) => RefreshIndicator(
+          onRefresh: _loadData,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              MediaQuery.of(context).padding.bottom + AppSpacing.xxl * 3,
+            ),
+            children: [
+              _buildIdentity(),
+              const SizedBox(height: AppSpacing.md),
+              _buildStats(items),
+              AppSection(
+                title: 'Riwayat Bimbingan',
+                child: AppListGroup.from([
+                  for (final item in items) _buildLogEntry(item),
+                ]),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildHeaderCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))
-        ],
-      ),
+  /// Identitas program MBKM yang sedang dibuka.
+  Widget _buildIdentity() {
+    return AppSurface(
+      variant: AppSurfaceVariant.hero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(widget.mbkm.mitra, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF501F66))),
-          const SizedBox(height: 4),
-          Text(widget.mbkm.program, style: const TextStyle(color: Colors.black54, fontSize: 13)),
-          const SizedBox(height: 8),
-          const Divider(height: 1),
-          const SizedBox(height: 8),
-          Text('Dosbing: ${widget.mbkm.dosbing}', style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(CupertinoIcons.exclamationmark_triangle, size: 48, color: Colors.redAccent),
-          const SizedBox(height: 16),
-          Text(_error!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _loadData,
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66), foregroundColor: Colors.white),
-            child: const Text('Coba Lagi'),
+          Text(widget.mbkm.mitra, style: AppText.h2),
+          const SizedBox(height: AppSpacing.xs),
+          Text(widget.mbkm.program, style: AppText.bodySm),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              const Icon(
+                Icons.people_outline,
+                size: 16,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Dosbing: ${widget.mbkm.dosbing}',
+                  style: AppText.body.copyWith(fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildList() {
-    if (_list.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(CupertinoIcons.doc_text, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
-            Text('Belum ada log bimbingan', style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
-          ],
-        ).animate().fadeIn(),
-      );
-    }
+  /// Ringkasan: jumlah log bimbingan dan yang sudah tervalidasi.
+  Widget _buildStats(List<MbkmBimbingan> items) {
+    final valid = items
+        .where((e) => e.status.toLowerCase() == 'valid')
+        .length;
 
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      child: ListView.builder(
-        padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 100),
-        itemCount: _list.length,
-        itemBuilder: (context, index) {
-          final item = _list[index];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: GlassCard(
-              padding: const EdgeInsets.all(0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(CupertinoIcons.calendar, size: 16, color: Colors.black54),
-                        const SizedBox(width: 8),
-                        Text(item.tanggal, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: item.status.toLowerCase() == 'valid' ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                item.status,
-                                style: TextStyle(
-                                  color: item.status.toLowerCase() == 'valid' ? Colors.green : Colors.orange,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 10,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Action menu for delete, only if status is not valid
-                        if (item.no.isNotEmpty && item.status.toLowerCase() != 'valid') ...[
-                          const SizedBox(width: 8),
-                          InkWell(
-                            onTap: () => _hapusBimbingan(item.no),
-                            child: const Icon(CupertinoIcons.trash, size: 18, color: Colors.redAccent),
-                          ),
-                        ]
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1, color: Colors.black12),
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Html(
-                      data: item.bimbingan,
-                      style: {
-                        "body": Style(
-                          margin: Margins.zero,
-                          padding: HtmlPaddings.zero,
-                          fontSize: FontSize(14.0),
-                          color: Colors.black87,
-                          lineHeight: LineHeight.number(1.5),
-                        ),
-                      },
-                    ),
-                  ),
-                ],
+    return Row(
+      children: [
+        Expanded(
+          child: AppStatTile(
+            value: '${items.length}',
+            label: 'Log Bimbingan',
+            icon: Icons.list_alt,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: AppStatTile(
+            value: '$valid',
+            label: 'Sudah Valid',
+            icon: Icons.verified_outlined,
+            accent: AppColors.success,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Satu entri kronologi: tanggal (penanda depan) + status + isi laporan.
+  Widget _buildLogEntry(MbkmBimbingan item) {
+    final isValid = item.status.toLowerCase() == 'valid';
+    final canDelete = item.no.isNotEmpty && !isValid;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppListRow(
+          leading: Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+            child: const Icon(
+              Icons.calendar_today_outlined,
+              size: 18,
+              color: AppColors.primary,
+            ),
+          ),
+          title: item.tanggal,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppPill(
+                item.status,
+                tone: isValid ? AppPillTone.success : AppPillTone.warning,
               ),
-            ).animate().fadeIn(delay: (50 * index).clamp(0, 500).ms).slideX(begin: 0.1, end: 0),
-          );
-        },
-      ),
+              if (canDelete) ...[
+                const SizedBox(width: AppSpacing.xs),
+                IconButton(
+                  onPressed: () => _hapusBimbingan(item.no),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 18,
+                    color: AppColors.danger,
+                  ),
+                  tooltip: 'Hapus',
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            0,
+            AppSpacing.lg,
+            AppSpacing.lg,
+          ),
+          child: Html(
+            data: item.bimbingan,
+            style: {
+              'body': Style(
+                margin: Margins.zero,
+                padding: HtmlPaddings.zero,
+                fontSize: FontSize(AppText.body.fontSize ?? 14),
+                color: AppColors.textPrimary,
+                lineHeight: LineHeight.number(AppText.body.height ?? 1.45),
+              ),
+            },
+          ),
+        ),
+      ],
     );
   }
 }

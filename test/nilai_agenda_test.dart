@@ -370,8 +370,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Login'), findsOneWidget);
-      expect(find.byType(ElevatedButton), findsOneWidget);
-      final button = tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+      // Redesign: tombol utama kini FilledButton (tema global), bukan ElevatedButton.
+      expect(find.byType(FilledButton), findsOneWidget);
+      final button = tester.widget<FilledButton>(find.byType(FilledButton));
       expect(button.enabled, isTrue);
     });
   });

@@ -1,11 +1,16 @@
-import 'dart:ui';
-import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/material.dart';
+
 import '../models/absensi.dart';
 import '../services/absensi_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
+/// Detail satu pertemuan presensi.
+///
+/// Dibuka dari riwayat di halaman absensi. Jika pertemuan belum divalidasi,
+/// halaman ini menampilkan form validasi; jika sudah, form disembunyikan dan
+/// hanya informasi pertemuan yang tampil.
 class AbsensiDetailPage extends StatefulWidget {
   final String idPresensi;
   const AbsensiDetailPage({super.key, required this.idPresensi});
@@ -86,9 +91,8 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Validasi berhasil', style: TextStyle(color: Colors.white)),
-            backgroundColor: Color(0xFF501F66),
-            behavior: SnackBarBehavior.floating,
+            content: Text('Validasi berhasil'),
+            backgroundColor: AppColors.primary,
           ),
         );
         Navigator.pop(context, true);
@@ -100,10 +104,8 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
           SnackBar(
             content: Text(
               message.isNotEmpty ? message : 'Gagal melakukan validasi presensi',
-              style: const TextStyle(color: Colors.white),
             ),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -112,229 +114,233 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
     }
   }
 
+  static AppPillTone _statusTone(String status) {
+    switch (status.toUpperCase()) {
+      case 'H':
+        return AppPillTone.success;
+      case 'B':
+        return AppPillTone.danger;
+      case 'I':
+        return AppPillTone.info;
+      case 'S':
+        return AppPillTone.warning;
+      default:
+        return AppPillTone.neutral;
+    }
+  }
+
+  static (Color, Color) _toneColors(AppPillTone tone) {
+    switch (tone) {
+      case AppPillTone.success:
+        return (AppColors.successBg, AppColors.success);
+      case AppPillTone.warning:
+        return (AppColors.warningBg, AppColors.warning);
+      case AppPillTone.danger:
+        return (AppColors.dangerBg, AppColors.danger);
+      case AppPillTone.info:
+        return (AppColors.infoBg, AppColors.info);
+      case AppPillTone.neutral:
+        return (AppColors.surfaceMuted, AppColors.textSecondary);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text('Detail Presensi', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white.withValues(alpha: 0.5),
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        flexibleSpace: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(color: Colors.transparent),
-          ),
-        ),
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFFAFCFF), Color(0xFFE3F2FD)], // Pearl White to Ice Blue
-          ),
-        ),
-        child: SafeArea(child: _buildBody()),
+    return AppScaffold(
+      title: 'Detail Presensi',
+      subtitle: 'Validasi kehadiran satu pertemuan',
+      body: AppAsyncView<PresensiDetail>(
+        loading: _loading,
+        error: _error,
+        data: _detail,
+        onRetry: _load,
+        loadingMessage: 'Memuat detail presensi…',
+        emptyTitle: 'Detail presensi tidak tersedia',
+        emptyMessage: 'Data pertemuan ini belum bisa ditampilkan. Coba muat ulang.',
+        emptyIcon: CupertinoIcons.time,
+        builder: _buildContent,
       ),
     );
   }
 
-  Widget _buildBody() {
-    if (_loading) {
-      return Center(
-        child: const CircularProgressIndicator(color: Color(0xFFBBDEFB))
-            .animate()
-            .scale(duration: 400.ms, curve: Curves.easeOutBack),
-      );
-    }
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(CupertinoIcons.exclamationmark_circle, size: 64, color: Colors.redAccent)
-                .animate()
-                .shake(),
-            const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black87)),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _load,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFBBDEFB),
-                foregroundColor: const Color(0xFF501F66),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              child: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      );
-    }
-    
-    final d = _detail!;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GlassCard(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _infoTile(CupertinoIcons.person_fill, 'Dosen', d.nama),
-                const SizedBox(height: 12),
-                _infoTile(CupertinoIcons.creditcard, 'NIK', d.nik),
-                const SizedBox(height: 12),
-                _infoTile(CupertinoIcons.calendar, 'Tanggal', d.tanggal),
-                const SizedBox(height: 12),
-                _infoTile(CupertinoIcons.book_fill, 'Materi', d.judulMateri),
-                const SizedBox(height: 12),
-                _infoTile(CupertinoIcons.clock_fill, 'Jam', d.jam),
-                const SizedBox(height: 12),
-                _infoTile(CupertinoIcons.checkmark_seal_fill, 'Status', _statusLabel(d.keterangan)),
-                if (d.validasi != null) ...[
-                  const SizedBox(height: 12),
-                  _infoTile(CupertinoIcons.check_mark_circled_solid, 'Validasi', d.validasi!),
-                ]
-              ],
-            ),
-          ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1),
-          
-          if (d.validasi == null) ...[
-            const SizedBox(height: 32),
-            const Padding(
-              padding: EdgeInsets.only(left: 8, bottom: 16),
-              child: Text(
-                'Form Validasi',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF501F66)),
-              ),
-            ),
-            GlassCard(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+  Widget _buildContent(PresensiDetail d) {
+    final tone = _statusTone(d.keterangan);
+    final (bg, fg) = _toneColors(tone);
+    final sudahValidasi = d.validasi != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Status pertemuan — dibaca lebih dulu sebelum detail lainnya.
+        AppSurface(
+          variant: AppSurfaceVariant.hero,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  _buildGlassDropdown(
-                    'Kesesuaian Perkuliahan',
-                    _kesesuaianPerkuliahan,
-                    ['1 (Sesuai)'],
-                    ['1'],
+                  Expanded(
+                    child: Text('STATUS KEHADIRAN', style: AppText.overline),
                   ),
-                  _buildGlassDropdown(
-                    'Kesesuaian Materi',
-                    _kesesuaianMateri,
-                    ['1 (Ya)', '2 (Tidak)'],
-                    ['1', '2'],
-                  ),
-                  _buildGlassDropdown(
-                    'Penilaian Mahasiswa',
-                    _penilaianMhs,
-                    ['4 (Sangat Baik)', '3 (Baik)', '2 (Cukup)', '1 (Kurang)'],
-                    ['4', '3', '2', '1'],
-                  ),
-                  for (final k in d.kriterias) ...[
-                    const SizedBox(height: 12),
-                    _buildApiDropdown(k),
-                  ],
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _kritikSaran,
-                    decoration: InputDecoration(
-                      labelText: 'Kritik & Saran (opsional)',
-                      labelStyle: const TextStyle(color: Colors.black54),
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.5),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    maxLines: 3,
+                  AppPill(
+                    sudahValidasi ? 'Tervalidasi' : 'Belum divalidasi',
+                    tone: sudahValidasi ? AppPillTone.success : AppPillTone.warning,
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
-            
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton.icon(
-                onPressed: _submitting ? null : _submitValidasi,
-                icon: _submitting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF501F66)),
-                      )
-                    : const Icon(CupertinoIcons.check_mark_circled_solid),
-                label: Text(
-                  _submitting ? 'Memvalidasi...' : 'Validasi Presensi',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFBBDEFB),
-                  foregroundColor: const Color(0xFF501F66),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: bg,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: Text(
+                      d.keterangan.toUpperCase(),
+                      style: AppText.h3.copyWith(
+                        color: fg,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_statusLabel(d.keterangan), style: AppText.h2),
+                        const SizedBox(height: 2),
+                        Text('${d.tanggal} · ${d.jam}', style: AppText.bodySm),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _infoTile(IconData icon, String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: const Color(0xFF501F66)),
-        const SizedBox(width: 12),
-        SizedBox(
-          width: 80,
-          child: Text(label, style: const TextStyle(color: Colors.black54, fontSize: 13, fontWeight: FontWeight.w600)),
+            ],
+          ),
         ),
-        Expanded(
-          child: Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.black87)),
+        AppSection(
+          title: 'Informasi pertemuan',
+          child: AppSurface(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppKeyValue(label: 'Dosen', value: d.nama),
+                AppKeyValue(label: 'NIK', value: d.nik),
+                AppKeyValue(label: 'Tanggal', value: d.tanggal),
+                AppKeyValue(label: 'Materi', value: d.judulMateri, emphasize: true),
+                AppKeyValue(label: 'Jam', value: d.jam),
+                AppKeyValue(label: 'Status', value: _statusLabel(d.keterangan)),
+                if (d.validasi != null)
+                  AppKeyValue(
+                    label: 'Validasi',
+                    value: d.validasi!,
+                    emphasize: true,
+                  ),
+              ],
+            ),
+          ),
         ),
+        if (!sudahValidasi)
+          AppSection(
+            title: 'Form validasi',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppSurface(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFormDropdown(
+                        'Kesesuaian Perkuliahan',
+                        _kesesuaianPerkuliahan,
+                        ['1 (Sesuai)'],
+                        ['1'],
+                      ),
+                      _buildFormDropdown(
+                        'Kesesuaian Materi',
+                        _kesesuaianMateri,
+                        ['1 (Ya)', '2 (Tidak)'],
+                        ['1', '2'],
+                      ),
+                      _buildFormDropdown(
+                        'Penilaian Mahasiswa',
+                        _penilaianMhs,
+                        ['4 (Sangat Baik)', '3 (Baik)', '2 (Cukup)', '1 (Kurang)'],
+                        ['4', '3', '2', '1'],
+                      ),
+                      for (final k in d.kriterias) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        _buildKriteriaDropdown(k),
+                      ],
+                      const SizedBox(height: AppSpacing.md),
+                      Text('Kritik & Saran (opsional)', style: AppText.label),
+                      const SizedBox(height: AppSpacing.sm),
+                      TextField(
+                        controller: _kritikSaran,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          hintText: 'Tulis masukan untuk dosen atau kelas…',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                FilledButton.icon(
+                  onPressed: _submitting ? null : _submitValidasi,
+                  icon: const Icon(CupertinoIcons.check_mark_circled_solid),
+                  label: Text(_submitting ? 'Memvalidasi…' : 'Validasi Presensi'),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
 
-  Widget _buildGlassDropdown(
-      String label, TextEditingController controller, List<String> labels, List<String> values) {
+  Widget _buildFormDropdown(
+    String label,
+    TextEditingController controller,
+    List<String> labels,
+    List<String> values,
+  ) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8),
-            child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
+          Text(
+            label,
+            style: AppText.label.copyWith(color: AppColors.primary),
           ),
+          const SizedBox(height: AppSpacing.sm),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.xs,
             ),
+            decoration: AppDeco.card(),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 key: ValueKey('${label}_${controller.text}'),
                 value: controller.text,
                 isExpanded: true,
-                icon: const Icon(CupertinoIcons.chevron_down, color: Color(0xFF501F66), size: 16),
+                icon: const Icon(
+                  CupertinoIcons.chevron_down,
+                  color: AppColors.textMuted,
+                  size: 16,
+                ),
                 items: List.generate(
                   labels.length,
                   (i) => DropdownMenuItem(
                     value: values[i],
-                    child: Text(labels[i], style: const TextStyle(fontSize: 14, color: Colors.black87)),
+                    child: Text(labels[i], style: AppText.body),
                   ),
                 ),
                 onChanged: (v) {
@@ -348,30 +354,37 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
     );
   }
 
-  Widget _buildApiDropdown(Kriteria k) {
+  Widget _buildKriteriaDropdown(Kriteria k) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(k.isi, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF501F66))),
+        Text(
+          k.isi,
+          style: AppText.label.copyWith(color: AppColors.primary),
         ),
+        const SizedBox(height: AppSpacing.sm),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(16),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.xs,
           ),
+          decoration: AppDeco.card(),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               key: ValueKey('krit_${k.id}_${_asdosPenilaian[k.id]}'),
               value: _asdosPenilaian[k.id],
               isExpanded: true,
-              icon: const Icon(CupertinoIcons.chevron_down, color: Color(0xFF501F66), size: 16),
-              items: k.nilai.map((n) => DropdownMenuItem(
-                value: n.id,
-                child: Text('${n.isi} (${n.nilai})', style: const TextStyle(fontSize: 14, color: Colors.black87)),
-              )).toList(),
+              icon: const Icon(
+                CupertinoIcons.chevron_down,
+                color: AppColors.textMuted,
+                size: 16,
+              ),
+              items: k.nilai
+                  .map((n) => DropdownMenuItem(
+                        value: n.id,
+                        child: Text('${n.isi} (${n.nilai})', style: AppText.body),
+                      ))
+                  .toList(),
               onChanged: (v) {
                 if (v != null) setState(() => _asdosPenilaian[k.id] = v);
               },

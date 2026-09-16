@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 import '../models/notifikasi.dart';
 import '../services/notifikasi_service.dart';
 import '../services/api_client.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 import 'notifikasi_detail_page.dart';
 
 class NotifikasiListPage extends StatefulWidget {
@@ -78,7 +78,7 @@ class _NotifikasiListPageState extends State<NotifikasiListPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Semua notifikasi ditandai telah dibaca'),
-        backgroundColor: Color(0xFF501F66),
+        backgroundColor: AppColors.primary,
       ),
     );
   }
@@ -94,208 +94,124 @@ class _NotifikasiListPageState extends State<NotifikasiListPage> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => NotifikasiDetailPage(id: item.id),
-      ),
+      MaterialPageRoute(builder: (_) => NotifikasiDetailPage(id: item.id)),
     );
   }
 
   bool get _hasUnread => _list.any((item) => !_readIds.contains(item.id));
 
+  int get _unreadCount =>
+      _list.where((item) => !_readIds.contains(item.id)).length;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFAFCFF), // Pearl White
-            Color(0xFFE3F2FD), // Ice Blue
-          ],
-        ),
+    return AppScaffold(
+      title: 'Notifikasi & Pengumuman',
+      subtitle: 'Kabar terbaru dari kampus',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      actions: [
+        if (_list.isNotEmpty && _hasUnread)
+          TextButton.icon(
+            onPressed: _markAllAsRead,
+            icon: const Icon(CupertinoIcons.checkmark_seal_fill, size: 16),
+            label: const Text('Tandai Dibaca'),
+          ),
+      ],
+      body: RefreshIndicator(
+        onRefresh: _loadData,
+        color: AppColors.primary,
+        child: _buildBody(),
       ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text('Notifikasi & Pengumuman',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.white.withValues(alpha: 0.5),
-          leading: widget.onBack != null
-              ? IconButton(
-                  icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-                  onPressed: widget.onBack,
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading) {
+      return const AppLoading(message: 'Memuat notifikasi…');
+    }
+
+    if (_error != null) {
+      return ListView(
+        padding: AppSpacing.page,
+        children: [
+          AppErrorState(message: _error!, onRetry: _retryWithSilentLogin),
+        ],
+      );
+    }
+
+    if (_list.isEmpty) {
+      return ListView(
+        padding: AppSpacing.page,
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: AppSpacing.xxl),
+          AppEmptyState(
+            title: 'Tidak ada notifikasi saat ini',
+            message: 'Notifikasi dan pengumuman baru akan tampil di sini.',
+            icon: CupertinoIcons.bell_slash,
+          ),
+        ],
+      );
+    }
+
+    return ListView(
+      padding: AppSpacing.page,
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        AppSection(
+          title: 'Daftar Notifikasi',
+          topGap: 0,
+          trailing: _hasUnread
+              ? AppPill('$_unreadCount belum dibaca', tone: AppPillTone.info)
+              : null,
+          child: AppListGroup.from([for (final item in _list) _buildRow(item)]),
+        ),
+      ],
+    );
+  }
+
+  /// Satu baris notifikasi. Item yang belum dibaca diberi latar lembut,
+  /// ikon lonceng terisi, dan lencana "Baru" agar langsung tertangkap mata.
+  Widget _buildRow(NotifikasiItem item) {
+    final isRead = _readIds.contains(item.id);
+
+    return Container(
+      color: isRead ? null : AppColors.primary.withValues(alpha: 0.05),
+      child: AppListRow(
+        leading: Container(
+          width: 38,
+          height: 38,
+          alignment: Alignment.center,
+          decoration: isRead
+              ? BoxDecoration(
+                  color: AppColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 )
-              : (Navigator.canPop(context)
-                  ? IconButton(
-                      icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-                      onPressed: () => Navigator.pop(context),
-                    )
-                  : null),
-          elevation: 0,
-          actions: [
-            if (_list.isNotEmpty && _hasUnread)
-              TextButton.icon(
-                onPressed: _markAllAsRead,
-                icon: const Icon(CupertinoIcons.checkmark_seal_fill,
-                    size: 16, color: Color(0xFF501F66)),
-                label: const Text(
-                  'Tandai Dibaca',
-                  style: TextStyle(
-                    color: Color(0xFF501F66),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              : AppDeco.softPrimary(radius: AppRadius.sm),
+          child: Icon(
+            isRead ? CupertinoIcons.bell : CupertinoIcons.bell_fill,
+            size: 18,
+            color: isRead ? AppColors.textMuted : AppColors.primary,
+          ),
+        ),
+        title: item.judul,
+        subtitle: item.tanggal,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!isRead) ...[
+              const AppPill('Baru', tone: AppPillTone.info),
+              const SizedBox(width: AppSpacing.sm),
+            ],
+            const Icon(
+              CupertinoIcons.chevron_forward,
+              size: 16,
+              color: AppColors.textMuted,
+            ),
           ],
         ),
-        body: RefreshIndicator(
-          onRefresh: _loadData,
-          color: const Color(0xFF501F66),
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(CupertinoIcons.exclamationmark_circle,
-                                color: Colors.red, size: 48),
-                            const SizedBox(height: 16),
-                            Text(_error!,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(color: Colors.red)),
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: _retryWithSilentLogin,
-                              icon: const Icon(CupertinoIcons.refresh),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF501F66),
-                                foregroundColor: Colors.white,
-                              ),
-                              label: const Text('Coba Lagi / Re-connect'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : _list.isEmpty
-                      ? ListView(
-                          children: const [
-                            SizedBox(height: 120),
-                            Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(CupertinoIcons.bell_slash,
-                                      size: 64, color: Colors.grey),
-                                  SizedBox(height: 16),
-                                  Text(
-                                    'Tidak ada notifikasi saat ini',
-                                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _list.length,
-                          itemBuilder: (context, index) {
-                            final item = _list[index];
-                            final isRead = _readIds.contains(item.id);
-
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: InkWell(
-                                onTap: () => _onTapItem(item),
-                                borderRadius: BorderRadius.circular(16),
-                                child: GlassCard(
-                                  padding: const EdgeInsets.all(16),
-                                  borderRadius: 16,
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 2),
-                                        child: Icon(
-                                          isRead
-                                              ? CupertinoIcons.bell
-                                              : CupertinoIcons.bell_fill,
-                                          color: isRead
-                                              ? Colors.grey.shade500
-                                              : const Color(0xFF501F66),
-                                          size: 22,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: Text(
-                                                    item.judul,
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight: isRead
-                                                          ? FontWeight.normal
-                                                          : FontWeight.bold,
-                                                      color: isRead
-                                                          ? Colors.black87
-                                                          : const Color(0xFF501F66),
-                                                    ),
-                                                  ),
-                                                ),
-                                                if (!isRead) ...[
-                                                  const SizedBox(width: 8),
-                                                  Container(
-                                                    width: 8,
-                                                    height: 8,
-                                                    decoration: const BoxDecoration(
-                                                      color: Colors.red,
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                            const SizedBox(height: 6),
-                                            Row(
-                                              children: [
-                                                Icon(CupertinoIcons.calendar,
-                                                    size: 13, color: Colors.grey.shade600),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  item.tanggal,
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    color: Colors.grey.shade600,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Icon(CupertinoIcons.chevron_right,
-                                          size: 16, color: Colors.grey),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ).animate().fadeIn().slideY(
-                                begin: 0.1, delay: Duration(milliseconds: 40 * index));
-                          },
-                        ),
-        ),
+        onTap: () => _onTapItem(item),
       ),
     );
   }

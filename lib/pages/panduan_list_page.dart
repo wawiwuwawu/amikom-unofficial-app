@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+
 import '../models/panduan.dart';
 import '../services/panduan_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
 class PanduanListPage extends StatefulWidget {
   const PanduanListPage({super.key});
@@ -18,7 +21,7 @@ class _PanduanListPageState extends State<PanduanListPage> {
   bool _loading = true;
   String? _error;
   bool _showSearch = false;
-  
+
   String? _downloadingLink;
   double _downloadProgress = 0.0;
 
@@ -44,7 +47,7 @@ class _PanduanListPageState extends State<PanduanListPage> {
       } else {
         _filteredList = _list.where((item) {
           return item.judul.toLowerCase().contains(query) ||
-                 item.tanggal.toLowerCase().contains(query);
+              item.tanggal.toLowerCase().contains(query);
         }).toList();
       }
     });
@@ -72,32 +75,34 @@ class _PanduanListPageState extends State<PanduanListPage> {
 
   Future<void> _downloadAndOpen(PanduanItem item) async {
     if (_downloadingLink != null) return; // Prevent multiple downloads at once
-    
+
     setState(() {
       _downloadingLink = item.link;
       _downloadProgress = 0.0;
     });
 
     try {
-      final String filename = item.judul.replaceAll(RegExp(r'[^a-zA-Z0-9_\-\.]'), '_');
-      final savePath = await _service.downloadPanduan(
-        item.link,
-        filename,
-        (received, total) {
-          if (total != -1 && mounted) {
-            setState(() {
-              _downloadProgress = received / total;
-            });
-          }
-        },
+      final String filename = item.judul.replaceAll(
+        RegExp(r'[^a-zA-Z0-9_\-\.]'),
+        '_',
       );
-      
+      final savePath = await _service.downloadPanduan(item.link, filename, (
+        received,
+        total,
+      ) {
+        if (total != -1 && mounted) {
+          setState(() {
+            _downloadProgress = received / total;
+          });
+        }
+      });
+
       if (!mounted) return;
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Tersimpan di $savePath', style: const TextStyle(color: Colors.white)),
-          backgroundColor: const Color(0xFF501F66),
+          content: Text('Tersimpan di $savePath'),
+          backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -105,8 +110,10 @@ class _PanduanListPageState extends State<PanduanListPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal mengunduh: ${e.toString().replaceFirst('Exception: ', '')}', style: const TextStyle(color: Colors.white)),
-          backgroundColor: Colors.redAccent,
+          content: Text(
+            'Gagal mengunduh: ${e.toString().replaceFirst('Exception: ', '')}',
+          ),
+          backgroundColor: AppColors.danger,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -131,183 +138,128 @@ class _PanduanListPageState extends State<PanduanListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: _showSearch
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                style: const TextStyle(fontSize: 16, color: Color(0xFF501F66)),
-                decoration: const InputDecoration(
-                  hintText: 'Cari panduan...',
-                  hintStyle: TextStyle(color: Colors.grey, fontWeight: FontWeight.normal),
-                  border: InputBorder.none,
-                ),
-              )
-            : const Text('Panduan Akademik', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFFFAFCFF),
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        actions: [
-          IconButton(
-            icon: Icon(
-              _showSearch ? CupertinoIcons.xmark : CupertinoIcons.search,
-              color: const Color(0xFF501F66),
-            ),
-            onPressed: _toggleSearch,
+    return AppScaffold(
+      title: 'Panduan Akademik',
+      subtitle: 'Dokumen & pedoman perkuliahan',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      actions: [
+        IconButton(
+          icon: Icon(
+            _showSearch ? CupertinoIcons.xmark : CupertinoIcons.search,
           ),
-        ],
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFAFCFF),
-              Color(0xFFE3F2FD),
-            ],
-          ),
+          onPressed: _toggleSearch,
         ),
-        child: _buildBody(),
+      ],
+      body: Column(
+        children: [
+          if (_showSearch)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.md,
+                AppSpacing.lg,
+                0,
+              ),
+              child: AppSearchField(
+                controller: _searchController,
+                hint: 'Cari panduan...',
+                onClear: () => _searchController.clear(),
+              ),
+            ),
+          Expanded(child: _buildBody()),
+        ],
       ),
     );
   }
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF501F66)),
-      );
+      return const AppLoading(message: 'Memuat panduan…');
     }
+
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(CupertinoIcons.exclamationmark_triangle, size: 64, color: Colors.redAccent),
-            const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent)),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _load,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF501F66),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Coba Lagi'),
-            ),
-          ],
-        ),
+      return ListView(
+        padding: AppSpacing.page,
+        children: [AppErrorState(message: _error!, onRetry: _load)],
       );
     }
+
     if (_list.isEmpty) {
-      return const Center(child: Text('Tidak ada panduan akademik', style: TextStyle(color: Colors.black54)));
-    }
-    if (_filteredList.isEmpty && _searchController.text.isNotEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(CupertinoIcons.search, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
-            Text(
-              'Tidak ditemukan panduan untuk\n"${_searchController.text}"',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 15),
-            ),
-          ],
-        ),
+      return const AppEmptyState(
+        title: 'Tidak ada panduan akademik',
+        message: 'Dokumen panduan akan tampil di sini setelah tersedia.',
+        icon: CupertinoIcons.book,
       );
     }
+
+    if (_filteredList.isEmpty && _searchController.text.isNotEmpty) {
+      return AppEmptyState(
+        title: 'Tidak ada hasil',
+        message: 'Tidak ditemukan panduan untuk "${_searchController.text}"',
+        icon: CupertinoIcons.search,
+      );
+    }
+
     return RefreshIndicator(
       onRefresh: _load,
-      color: const Color(0xFF501F66),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: _filteredList.length,
-        itemBuilder: (_, i) => _card(_filteredList[i]),
+      color: AppColors.primary,
+      child: ListView(
+        padding: AppSpacing.page,
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          AppSection(
+            title: 'Dokumen Panduan',
+            topGap: 0,
+            child: AppListGroup.from([
+              for (final item in _filteredList) _buildRow(item),
+            ]),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _card(PanduanItem item) {
+  /// Baris dokumen panduan: judul + keterangan, dengan aksi unduh/buka.
+  Widget _buildRow(PanduanItem item) {
     final bool isDownloading = _downloadingLink == item.link;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      elevation: 0,
-      color: Colors.white.withValues(alpha: 0.7),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: isDownloading ? null : () => _downloadAndOpen(item),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFBBDEFB).withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(CupertinoIcons.book, color: Color(0xFF501F66), size: 28),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.judul,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Color(0xFF501F66),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.tanggal,
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              if (isDownloading)
-                SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    value: _downloadProgress > 0 ? _downloadProgress : null,
-                    strokeWidth: 2.5,
-                    color: const Color(0xFF501F66),
-                  ),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF501F66).withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(CupertinoIcons.cloud_download, color: Color(0xFF501F66), size: 20),
-                ),
-            ],
-          ),
+    return AppListRow(
+      leading: Container(
+        width: 38,
+        height: 38,
+        alignment: Alignment.center,
+        decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+        child: const Icon(
+          CupertinoIcons.book,
+          size: 18,
+          color: AppColors.primary,
         ),
       ),
+      title: item.judul,
+      subtitle: item.tanggal,
+      trailing: isDownloading
+          ? SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                value: _downloadProgress > 0 ? _downloadProgress : null,
+                strokeWidth: 2.5,
+                color: AppColors.primary,
+              ),
+            )
+          : Container(
+              width: 34,
+              height: 34,
+              alignment: Alignment.center,
+              decoration: AppDeco.softPrimary(),
+              child: const Icon(
+                CupertinoIcons.cloud_download,
+                size: 18,
+                color: AppColors.primary,
+              ),
+            ),
+      onTap: isDownloading ? null : () => _downloadAndOpen(item),
     );
   }
 }

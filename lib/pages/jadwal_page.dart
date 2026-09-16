@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:share_plus/share_plus.dart';
 import '../services/akademik_service.dart';
 import '../services/krs_service.dart';
 import '../models/agenda_terpadu.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
+/// Jadwal perkuliahan (agenda terpadu) — fitur yang dibuka hampir tiap hari,
+/// jadi disajikan sebagai DAFTAR PER HARI yang bisa dipindai sekejap:
+/// jam (info depan) → mata kuliah (judul) → ruang/dosen (keterangan).
+///
+/// Hari yang sedang berjalan ditonjolkan lewat `AppSurface` varian `hero`
+/// plus label "Hari ini", supaya kelas berikutnya langsung terlihat.
 class JadwalPage extends StatefulWidget {
   final bool showDownloadKrs;
   const JadwalPage({super.key, this.showDownloadKrs = false});
@@ -62,9 +68,8 @@ class _JadwalPageState extends State<JadwalPage> {
         if (!silent) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('KRS tersimpan di $path', style: const TextStyle(color: Colors.white)),
-              backgroundColor: const Color(0xFF501F66),
-              behavior: SnackBarBehavior.floating,
+              content: Text('KRS tersimpan di $path'),
+              backgroundColor: AppColors.primary,
             ),
           );
         }
@@ -73,9 +78,8 @@ class _JadwalPageState extends State<JadwalPage> {
       if (mounted && !silent) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', ''), style: const TextStyle(color: Colors.white)),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -121,52 +125,31 @@ class _JadwalPageState extends State<JadwalPage> {
   @override
   Widget build(BuildContext context) {
     final canPop = Navigator.canPop(context);
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFFFAFCFF), Color(0xFFE3F2FD)],
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: canPop
-            ? AppBar(
-                title: const Text('Jadwal Perkuliahan', style: TextStyle(fontWeight: FontWeight.bold)),
-                backgroundColor: Colors.white.withValues(alpha: 0.8),
-                elevation: 0,
-                surfaceTintColor: Colors.transparent,
-                leading: IconButton(
-                  icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              )
-            : null,
-        body: SafeArea(child: _buildBody()),
-      ),
+    if (!canPop) {
+      // Dipakai sebagai isi tab (mis. tab "Cetak & Jadwal" di halaman KRS):
+      // kerangka halaman sudah disediakan induknya, jadi tampilkan isinya saja.
+      return _buildBody(showInlineTools: true);
+    }
+
+    return AppScaffold(
+      title: 'Jadwal Perkuliahan',
+      subtitle: 'Kuliah, asisten, dan ujian dalam satu agenda',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      actions: [_downloadAction(), _shareAction()],
+      body: _buildBody(showInlineTools: false),
     );
   }
 
-  Widget _buildBody() {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)));
-    }
-    if (_error != null) {
+  Widget _buildBody({required bool showInlineTools}) {
+    if (_loading) return const AppLoading(message: 'Memuat jadwal…');
+
+    final error = _error;
+    if (error != null) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(CupertinoIcons.exclamationmark_triangle, size: 64, color: Colors.redAccent),
-            const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent)),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _load,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66), foregroundColor: Colors.white),
-              child: const Text('Coba Lagi'),
-            ),
-          ],
+        child: SingleChildScrollView(
+          padding: AppSpacing.page,
+          child: AppErrorState(message: error, onRetry: _load),
         ),
       );
     }
@@ -175,11 +158,20 @@ class _JadwalPageState extends State<JadwalPage> {
     if (data == null || data.agenda.isEmpty) {
       return RefreshIndicator(
         onRefresh: _load,
-        color: const Color(0xFF501F66),
+        color: AppColors.primary,
         child: ListView(
-          children: const [
-            SizedBox(height: 100),
-            Center(child: Text('Tidak ada jadwal agenda terpadu', style: TextStyle(color: Colors.black54))),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).padding.bottom + 130,
+          ),
+          children: [
+            SizedBox(height: MediaQuery.of(context).size.height * 0.15),
+            const AppEmptyState(
+              title: 'Belum ada agenda',
+              message: 'Tidak ada jadwal agenda terpadu untuk ditampilkan. '
+                  'Tarik ke bawah untuk menyegarkan.',
+              icon: CupertinoIcons.calendar,
+            ),
           ],
         ),
       );
@@ -190,72 +182,68 @@ class _JadwalPageState extends State<JadwalPage> {
 
     return RefreshIndicator(
       onRefresh: _load,
-      color: const Color(0xFF501F66),
+      color: AppColors.primary,
       child: ListView(
-        padding: EdgeInsets.only(
-          top: 16,
-          left: 16,
-          right: 16,
-          bottom: MediaQuery.of(context).padding.bottom + 130,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          MediaQuery.of(context).padding.bottom + 130,
         ),
         children: [
-          // Filter Chips & KRS Buttons Row
-          Row(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildFilterChip('semua', 'Semua (${data.totalAgenda})'),
-                      const SizedBox(width: 6),
-                      _buildFilterChip('kuliah', 'Kuliah 📘'),
-                      const SizedBox(width: 6),
-                      _buildFilterChip('asisten', 'Asisten 🟣'),
-                      const SizedBox(width: 6),
-                      _buildFilterChip('ujian', 'Ujian 🔴'),
-                    ],
-                  ),
-                ),
-              ),
-              IconButton(
-                icon: _downloading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF501F66)),
-                      )
-                    : const Icon(CupertinoIcons.cloud_download, color: Color(0xFF501F66)),
-                tooltip: 'Download KRS',
-                onPressed: _downloading ? null : _downloadKrs,
-              ),
-              IconButton(
-                icon: const Icon(CupertinoIcons.share, color: Color(0xFF501F66)),
-                tooltip: 'Bagikan KRS',
-                onPressed: _downloading ? null : _shareKrs,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          for (var day in sortedDays) ...[
-            _buildDaySection(day, data.agenda[day]!),
-          ],
+          _filterRow(showInlineTools: showInlineTools, total: data.totalAgenda),
+          for (final day in sortedDays) _daySection(day, data.agenda[day]!),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(String value, String label) {
+  // ── Baris alat: filter tipe + unduh/bagikan KRS ────────────────────────────
+
+  Widget _filterRow({required bool showInlineTools, required int total}) {
+    return Row(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _filterChip('semua', 'Semua ($total)'),
+                const SizedBox(width: AppSpacing.sm),
+                _filterChip('kuliah', 'Kuliah 📘'),
+                const SizedBox(width: AppSpacing.sm),
+                _filterChip('asisten', 'Asisten 🟣'),
+                const SizedBox(width: AppSpacing.sm),
+                _filterChip('ujian', 'Ujian 🔴'),
+              ],
+            ),
+          ),
+        ),
+        if (showInlineTools) ...[
+          _downloadAction(),
+          _shareAction(),
+        ],
+      ],
+    );
+  }
+
+  Widget _filterChip(String value, String label) {
     final isSelected = _filterTipe == value;
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
-      selectedColor: const Color(0xFF501F66),
-      labelStyle: TextStyle(
+      showCheckmark: false,
+      backgroundColor: AppColors.surface,
+      selectedColor: AppColors.primary,
+      side: isSelected ? BorderSide.none : const BorderSide(color: AppColors.border),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      labelStyle: AppText.label.copyWith(
         fontSize: 12,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        color: isSelected ? Colors.white : Colors.black87,
+        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+        color: isSelected ? Colors.white : AppColors.textSecondary,
       ),
       onSelected: (val) {
         if (val) setState(() => _filterTipe = value);
@@ -263,7 +251,28 @@ class _JadwalPageState extends State<JadwalPage> {
     );
   }
 
-  Widget _buildDaySection(String day, List<AgendaItem> items) {
+  Widget _downloadAction() {
+    return IconButton(
+      tooltip: 'Download KRS',
+      icon: Icon(
+        _downloading ? CupertinoIcons.hourglass : CupertinoIcons.cloud_download,
+        color: AppColors.primary,
+      ),
+      onPressed: _downloading ? null : () => _downloadKrs(),
+    );
+  }
+
+  Widget _shareAction() {
+    return IconButton(
+      tooltip: 'Bagikan KRS',
+      icon: const Icon(CupertinoIcons.share, color: AppColors.primary),
+      onPressed: _downloading ? null : _shareKrs,
+    );
+  }
+
+  // ── Satu seksi per hari ────────────────────────────────────────────────────
+
+  Widget _daySection(String day, List<AgendaItem> items) {
     final filteredItems = items.where((item) {
       if (_filterTipe == 'semua') return true;
       if (_filterTipe == 'kuliah') return item.tipe == 'kuliah';
@@ -274,145 +283,83 @@ class _JadwalPageState extends State<JadwalPage> {
 
     if (filteredItems.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-          child: Row(
-            children: [
-              const Icon(CupertinoIcons.calendar, size: 18, color: Color(0xFF501F66)),
-              const SizedBox(width: 8),
-              Text(
-                day,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF501F66)),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF501F66).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '${filteredItems.length}',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF501F66)),
-                ),
-              ),
-            ],
+    final isToday = _dayValue(day) == DateTime.now().weekday;
+    final rows = [for (final item in filteredItems) _agendaRow(item)];
+
+    return AppSection(
+      title: day,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isToday) ...[
+            const AppPill('Hari ini', tone: AppPillTone.info),
+            const SizedBox(width: AppSpacing.sm),
+          ],
+          Text(
+            '${filteredItems.length} kegiatan',
+            style: AppText.label.copyWith(fontWeight: FontWeight.w400),
           ),
-        ),
-        for (var item in filteredItems) _buildAgendaCard(item),
-      ],
+        ],
+      ),
+      // Hari aktif dibungkus permukaan `hero` supaya paling menonjol.
+      child: isToday
+          ? AppSurface(
+              variant: AppSurfaceVariant.hero,
+              radius: AppRadius.lg,
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              child: AppListGroup.from(rows),
+            )
+          : AppListGroup.from(rows),
     );
   }
 
-  Widget _buildAgendaCard(AgendaItem item) {
-    Color badgeBg;
-    Color badgeText;
-    IconData badgeIcon;
-    String badgeLabel;
+  Widget _agendaRow(AgendaItem item) {
+    final (label, tone) = _tipeStyle(item.tipe);
 
-    switch (item.tipe.toLowerCase()) {
-      case 'kuliah':
-        badgeBg = const Color(0xFFE3F2FD);
-        badgeText = const Color(0xFF1565C0);
-        badgeIcon = CupertinoIcons.book_fill;
-        badgeLabel = 'Kuliah KRS';
-        break;
-      case 'asisten':
-        badgeBg = const Color(0xFFF3E5F5);
-        badgeText = const Color(0xFF501F66);
-        badgeIcon = CupertinoIcons.briefcase_fill;
-        badgeLabel = 'Asisten Praktikum';
-        break;
-      case 'uts':
-      case 'uas':
-        badgeBg = const Color(0xFFFFEBEE);
-        badgeText = const Color(0xFFC62828);
-        badgeIcon = CupertinoIcons.doc_text_fill;
-        badgeLabel = item.tipe.toUpperCase();
-        break;
-      default:
-        badgeBg = Colors.grey.shade200;
-        badgeText = Colors.black87;
-        badgeIcon = CupertinoIcons.info;
-        badgeLabel = item.tipe;
-    }
+    final keterangan = <String>[
+      item.ruang.isEmpty ? '-' : item.ruang,
+      if (item.detail.isNotEmpty) item.detail,
+    ];
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: GlassCard(
-        borderRadius: 16,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: badgeBg,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(badgeIcon, size: 13, color: badgeText),
-                      const SizedBox(width: 4),
-                      Text(
-                        badgeLabel,
-                        style: TextStyle(color: badgeText, fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-                Row(
-                  children: [
-                    const Icon(CupertinoIcons.time, size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Text(
-                      item.jam.isEmpty ? '-' : item.jam,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              item.matakuliah,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF501F66)),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(CupertinoIcons.location_solid, size: 15, color: Colors.grey),
-                const SizedBox(width: 6),
-                Text(
-                  item.ruang.isEmpty ? '-' : item.ruang,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87),
-                ),
-                if (item.detail.isNotEmpty) ...[
-                  const SizedBox(width: 12),
-                  const Text('•', style: TextStyle(color: Colors.grey)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      item.detail,
-                      style: const TextStyle(fontSize: 12, color: Colors.black54),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
+    return AppListRow(
+      // Jam jadi info depan: yang dicari pertama saat melihat jadwal.
+      leading: Container(
+        width: 64,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.xs,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+        child: Text(
+          item.jam.isEmpty ? '-' : item.jam,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: AppText.label.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
-    ).animate().fadeIn(duration: 300.ms);
+      title: item.matakuliah.isEmpty ? '-' : item.matakuliah,
+      subtitle: keterangan.join(' • '),
+      trailing: AppPill(label, tone: tone),
+    );
+  }
+
+  /// Label + warna pil per tipe agenda (kuliah / asisten / ujian).
+  (String, AppPillTone) _tipeStyle(String tipe) {
+    switch (tipe.toLowerCase()) {
+      case 'kuliah':
+        return ('Kuliah', AppPillTone.info);
+      case 'asisten':
+        return ('Asisten', AppPillTone.neutral);
+      case 'uts':
+      case 'uas':
+        return (tipe.toUpperCase(), AppPillTone.danger);
+      default:
+        return (tipe, AppPillTone.neutral);
+    }
   }
 }

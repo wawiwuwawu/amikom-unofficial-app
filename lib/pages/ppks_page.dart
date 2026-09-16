@@ -1,10 +1,27 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/material.dart';
+
 import '../models/ppks.dart';
 import '../services/ppks_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
+/// Halaman Satgas PPKS Amikom (layanan & formulir pengaduan).
+///
+/// Redesign memakai design system dengan prioritas keterbacaan:
+///   * jaminan kerahasiaan jadi [AppSection] + [AppSurface] sukses, bukan
+///     `Container` berwarna mentah;
+///   * formulir dipecah per topik memakai [AppSection] ("Formulir Pengaduan
+///     Kekerasan Seksual", "Alasan Pengaduan", "Identifikasi Kebutuhan Korban",
+///     "Detail Kejadian") sehingga tidak lagi satu kartu raksasa;
+///   * daftar pilihan (alasan & kebutuhan) disajikan sebagai baris di dalam
+///     [AppListGroup] — pola daftar, bukan tumpukan kartu;
+///   * seluruh warna teks memakai [AppText] (line-height 1.4–1.45) agar paragraf
+///     panjang tetap nyaman dibaca, dan lebar baca dibatasi 640 pada layar lebar.
+/// Semua field, panggilan service, state, dan navigasi tidak berubah.
+///
+/// Tombol kembali disediakan otomatis oleh [AppScaffold] mengikuti route,
+/// sehingga `onBack` hanya dipertahankan untuk kompatibilitas pemanggil lama.
 class PpksPage extends StatefulWidget {
   final VoidCallback? onBack;
 
@@ -37,11 +54,14 @@ class _PpksPageState extends State<PpksPage> {
 
   final Set<String> _selectedAlasan = {};
   final Set<String> _selectedKebutuhan = {};
-  final TextEditingController _kebutuhanLainnyaController = TextEditingController();
+  final TextEditingController _kebutuhanLainnyaController =
+      TextEditingController();
 
   DateTime? _tanggalKejadian;
-  final TextEditingController _lokasiKejadianController = TextEditingController();
-  final TextEditingController _kronologiKejadianController = TextEditingController();
+  final TextEditingController _lokasiKejadianController =
+      TextEditingController();
+  final TextEditingController _kronologiKejadianController =
+      TextEditingController();
   final TextEditingController _buktiController = TextEditingController();
   final TextEditingController _nomorHpController = TextEditingController();
 
@@ -139,8 +159,9 @@ class _PpksPageState extends State<PpksPage> {
           _selectedStatusKorban == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Harap lengkapi Nama, Jenis Kelamin, dan Status Korban'),
-            backgroundColor: Colors.orange,
+            content:
+                Text('Harap lengkapi Nama, Jenis Kelamin, dan Status Korban'),
+            backgroundColor: AppColors.warning,
           ),
         );
         return;
@@ -152,8 +173,9 @@ class _PpksPageState extends State<PpksPage> {
         _selectedStatusTerlapor == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Harap lengkapi Nama, Jenis Kelamin, dan Status Terlapor'),
-          backgroundColor: Colors.orange,
+          content:
+              Text('Harap lengkapi Nama, Jenis Kelamin, dan Status Terlapor'),
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -162,18 +184,21 @@ class _PpksPageState extends State<PpksPage> {
     if (_selectedAlasan.isEmpty || _selectedKebutuhan.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Harap pilih minimal satu Alasan Pengaduan dan Kebutuhan Korban'),
-          backgroundColor: Colors.orange,
+          content: Text(
+            'Harap pilih minimal satu Alasan Pengaduan dan Kebutuhan Korban',
+          ),
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
     }
 
-    if (_selectedKebutuhan.contains('Lainnya') && _kebutuhanLainnyaController.text.trim().isEmpty) {
+    if (_selectedKebutuhan.contains('Lainnya') &&
+        _kebutuhanLainnyaController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Harap sebutkan Kebutuhan Lainnya'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -183,7 +208,7 @@ class _PpksPageState extends State<PpksPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Harap pilih Tanggal Kejadian'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -194,7 +219,7 @@ class _PpksPageState extends State<PpksPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Harap isi Lokasi Kejadian dan Kronologi Kejadian'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -204,7 +229,7 @@ class _PpksPageState extends State<PpksPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Harap isi Nomor HP yang dapat dihubungi'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -226,7 +251,8 @@ class _PpksPageState extends State<PpksPage> {
     };
 
     if (_selectedKebutuhan.contains('Lainnya')) {
-      body['kebutuhan_korban_lainnya'] = _kebutuhanLainnyaController.text.trim();
+      body['kebutuhan_korban_lainnya'] =
+          _kebutuhanLainnyaController.text.trim();
     }
 
     if (_statusPelapor == 'saksi') {
@@ -242,7 +268,7 @@ class _PpksPageState extends State<PpksPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(res['message'] ?? 'Pengaduan berhasil dikirim'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -253,7 +279,7 @@ class _PpksPageState extends State<PpksPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString().replaceFirst('Exception: ', '')),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -264,135 +290,161 @@ class _PpksPageState extends State<PpksPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAFCFF),
-      appBar: AppBar(
-        title: const Text(
-          'Satgas PPKS Amikom',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        backgroundColor: Colors.white.withValues(alpha: 0.9),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-          onPressed: widget.onBack ?? () => Navigator.pop(context),
-        ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)))
-          : _error.isNotEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(CupertinoIcons.exclamationmark_triangle, size: 50, color: Colors.red),
-                      const SizedBox(height: 16),
-                      Text(_error, style: const TextStyle(color: Colors.black54)),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _fetchData,
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66)),
-                        child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
-                      ),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _fetchData,
-                  color: const Color(0xFF501F66),
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      _buildPrivacyBanner(),
-                      const SizedBox(height: 16),
-                      _buildFormCard(),
-                    ],
-                  ),
-                ),
+    return AppScaffold(
+      title: 'Satgas PPKS Amikom',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      body: _buildBody(),
     );
   }
 
-  Widget _buildPrivacyBanner() {
-    final info = _data?.infoPrivacy;
-    if (info == null || info.isEmpty) return const SizedBox.shrink();
+  Widget _buildBody() {
+    if (_isLoading) return const AppLoading();
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8F5E9),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFA5D6A7)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    if (_error.isNotEmpty) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: AppErrorState(message: _error, onRetry: _fetchData),
+          ),
+        ),
+      );
+    }
+
+    final data = _data;
+    if (data == null) return const SizedBox.shrink();
+
+    return RefreshIndicator(
+      onRefresh: _fetchData,
+      child: ListView(
+        padding: AppSpacing.page,
+        physics: const AlwaysScrollableScrollPhysics(),
         children: [
-          const Icon(CupertinoIcons.shield_fill, color: Color(0xFF2E7D32), size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Kerahasiaan & Keamanan Dijamin',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1B5E20)),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  info,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF2E7D32), height: 1.4),
-                ),
-              ],
+          Center(
+            // Batasi lebar baca agar baris teks tidak terlalu panjang.
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildPrivacySection(data),
+                  _buildIdentitasSection(data),
+                  _buildCheckboxSection(
+                    title: 'Alasan Pengaduan',
+                    options: data.options.alasanPengaduan,
+                    selected: _selectedAlasan,
+                  ),
+                  _buildCheckboxSection(
+                    title: 'Identifikasi Kebutuhan Korban',
+                    options: data.options.kebutuhanKorban,
+                    selected: _selectedKebutuhan,
+                    footer: _selectedKebutuhan.contains('Lainnya')
+                        ? TextField(
+                            controller: _kebutuhanLainnyaController,
+                            decoration: const InputDecoration(
+                              labelText: 'Sebutkan Kebutuhan Lainnya',
+                              prefixIcon: Icon(
+                                CupertinoIcons.pencil,
+                                color: AppColors.primarySoft,
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
+                  _buildDetailKejadianSection(),
+                  const SizedBox(height: AppSpacing.xl),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _isSubmitting ? null : _submitForm,
+                      icon: _isSubmitting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.surface,
+                              ),
+                            )
+                          : const Icon(
+                              CupertinoIcons.paperplane_fill,
+                              size: 18,
+                            ),
+                      label: const Text('Kirim Pengaduan PPKS'),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xxl),
+                ],
+              ),
             ),
           ),
         ],
       ),
-    ).animate().fadeIn();
+    );
   }
 
-  Widget _buildFormCard() {
-    final opts = _data?.options;
-    if (opts == null) return const SizedBox.shrink();
+  /// Jaminan kerahasiaan — informasi penting, jadi ditaruh paling atas.
+  Widget _buildPrivacySection(PpksData data) {
+    if (data.infoPrivacy.isEmpty) return const SizedBox.shrink();
 
-    return GlassCard(
-      borderRadius: 16,
-      padding: const EdgeInsets.all(16),
+    return AppSection(
+      title: 'Kerahasiaan & Keamanan Dijamin',
+      topGap: AppSpacing.xs,
+      child: AppSurface(
+        variant: AppSurfaceVariant.success,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              CupertinoIcons.shield_fill,
+              color: AppColors.success,
+              size: 22,
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                data.infoPrivacy,
+                style: AppText.body.copyWith(color: AppColors.textSecondary),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Identitas pelapor, korban (bila saksi), dan terlapor.
+  Widget _buildIdentitasSection(PpksData data) {
+    final opts = data.options;
+
+    return AppSection(
+      title: 'Formulir Pengaduan Kekerasan Seksual',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: const [
-              Icon(CupertinoIcons.doc_text_fill, color: Color(0xFF501F66), size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Formulir Pengaduan Kekerasan Seksual',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF501F66)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Radio Anda Sebagai (Status Pelapor)
-          const Text('Anda Melapor Sebagai:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF501F66))),
-          const SizedBox(height: 8),
+          Text('Anda Melapor Sebagai:', style: AppText.h3),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: opts.statusPelapor.map((opt) {
               final isSelected = _statusPelapor == opt.value;
               return Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                  ),
                   child: ChoiceChip(
-                    label: Center(
-                      child: Text(
-                        opt.label,
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.black87,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                    label: SizedBox(
+                      width: double.infinity,
+                      child: Center(child: Text(opt.label)),
                     ),
                     selected: isSelected,
-                    selectedColor: const Color(0xFF501F66),
+                    selectedColor: AppColors.primary,
+                    labelStyle: AppText.label.copyWith(
+                      color: isSelected ? Colors.white : AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
                     onSelected: (val) {
                       if (val) setState(() => _statusPelapor = opt.value);
                     },
@@ -401,302 +453,295 @@ class _PpksPageState extends State<PpksPage> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 16),
-
-          // Fields Korban jika Status Pelapor == 'saksi'
           if (_statusPelapor == 'saksi') ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF501F66).withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF501F66).withValues(alpha: 0.15)),
-              ),
+            const SizedBox(height: AppSpacing.lg),
+            AppSurface(
+              variant: AppSurfaceVariant.hero,
               child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Identitas Korban (Pelapor Saksi):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF501F66))),
-                  const SizedBox(height: 10),
-
+                  Text(
+                    'Identitas Korban (Pelapor Saksi):',
+                    style: AppText.h3,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
                   TextField(
                     controller: _namaKorbanController,
                     decoration: const InputDecoration(
                       labelText: 'Nama Korban',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(CupertinoIcons.person, color: Color(0xFF501F66)),
+                      prefixIcon: Icon(
+                        CupertinoIcons.person,
+                        color: AppColors.primarySoft,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-
+                  const SizedBox(height: AppSpacing.lg),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedJkKorban,
                     isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Jenis Kelamin Korban',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(CupertinoIcons.person_2, color: Color(0xFF501F66)),
+                      prefixIcon: Icon(
+                        CupertinoIcons.person_2,
+                        color: AppColors.primarySoft,
+                      ),
                     ),
                     items: opts.jenisKelamin.map((jk) {
                       return DropdownMenuItem<String>(
                         value: jk,
-                        child: Text(jk, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          jk,
+                          style: AppText.body,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       );
                     }).toList(),
                     onChanged: (val) => setState(() => _selectedJkKorban = val),
                   ),
-                  const SizedBox(height: 12),
-
+                  const SizedBox(height: AppSpacing.lg),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedStatusKorban,
                     isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Status Korban',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(CupertinoIcons.briefcase, color: Color(0xFF501F66)),
+                      prefixIcon: Icon(
+                        CupertinoIcons.briefcase,
+                        color: AppColors.primarySoft,
+                      ),
                     ),
                     items: opts.statusPihak.map((st) {
                       return DropdownMenuItem<String>(
                         value: st,
-                        child: Text(st, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          st,
+                          style: AppText.body,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       );
                     }).toList(),
-                    onChanged: (val) => setState(() => _selectedStatusKorban = val),
+                    onChanged: (val) =>
+                        setState(() => _selectedStatusKorban = val),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
           ],
-
-          // Disabilitas Korban
+          const SizedBox(height: AppSpacing.lg),
           DropdownButtonFormField<String>(
             initialValue: _selectedDisabilitasKorban,
             isExpanded: true,
             decoration: const InputDecoration(
               labelText: 'Korban Memiliki Disabilitas?',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(CupertinoIcons.exclamationmark_circle, color: Color(0xFF501F66)),
+              prefixIcon: Icon(
+                CupertinoIcons.exclamationmark_circle,
+                color: AppColors.primarySoft,
+              ),
             ),
             items: opts.disabilitas.map((d) {
               return DropdownMenuItem<String>(
                 value: d,
-                child: Text(d, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
+                child: Text(
+                  d,
+                  style: AppText.body,
+                  overflow: TextOverflow.ellipsis,
+                ),
               );
             }).toList(),
-            onChanged: (val) => setState(() => _selectedDisabilitasKorban = val),
+            onChanged: (val) =>
+                setState(() => _selectedDisabilitasKorban = val),
           ),
-          const SizedBox(height: 16),
-
-          // Identitas Terlapor Card
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.red.withValues(alpha: 0.03),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.red.withValues(alpha: 0.15)),
-            ),
+          const SizedBox(height: AppSpacing.lg),
+          AppSurface(
+            variant: AppSurfaceVariant.danger,
             child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Identitas Terlapor (Pelaku):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.red)),
-                const SizedBox(height: 10),
-
+                Text(
+                  'Identitas Terlapor (Pelaku):',
+                  style: AppText.h3.copyWith(color: AppColors.danger),
+                ),
+                const SizedBox(height: AppSpacing.md),
                 TextField(
                   controller: _namaTerlaporController,
                   decoration: const InputDecoration(
                     labelText: 'Nama Terlapor',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(CupertinoIcons.person_badge_minus, color: Colors.red),
+                    prefixIcon: Icon(
+                      CupertinoIcons.person_badge_minus,
+                      color: AppColors.primarySoft,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
-
+                const SizedBox(height: AppSpacing.lg),
                 DropdownButtonFormField<String>(
                   initialValue: _selectedJkTerlapor,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Jenis Kelamin Terlapor',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(CupertinoIcons.person_2, color: Colors.red),
+                    prefixIcon: Icon(
+                      CupertinoIcons.person_2,
+                      color: AppColors.primarySoft,
+                    ),
                   ),
                   items: opts.jenisKelamin.map((jk) {
                     return DropdownMenuItem<String>(
                       value: jk,
-                      child: Text(jk, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        jk,
+                        style: AppText.body,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     );
                   }).toList(),
                   onChanged: (val) => setState(() => _selectedJkTerlapor = val),
                 ),
-                const SizedBox(height: 12),
-
+                const SizedBox(height: AppSpacing.lg),
                 DropdownButtonFormField<String>(
                   initialValue: _selectedStatusTerlapor,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Status Terlapor',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(CupertinoIcons.briefcase, color: Colors.red),
+                    prefixIcon: Icon(
+                      CupertinoIcons.briefcase,
+                      color: AppColors.primarySoft,
+                    ),
                   ),
                   items: opts.statusPihak.map((st) {
                     return DropdownMenuItem<String>(
                       value: st,
-                      child: Text(st, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        st,
+                        style: AppText.body,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     );
                   }).toList(),
-                  onChanged: (val) => setState(() => _selectedStatusTerlapor = val),
+                  onChanged: (val) =>
+                      setState(() => _selectedStatusTerlapor = val),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
 
-          // Multi Checkbox Alasan Pengaduan
-          const Text('Alasan Pengaduan:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF501F66))),
-          const SizedBox(height: 6),
-          ...opts.alasanPengaduan.map((alasan) {
-            final isChecked = _selectedAlasan.contains(alasan);
-            return CheckboxListTile(
-              dense: true,
-              value: isChecked,
-              activeColor: const Color(0xFF501F66),
-              title: Text(alasan, style: const TextStyle(fontSize: 12)),
-              onChanged: (val) {
-                setState(() {
-                  if (val == true) {
-                    _selectedAlasan.add(alasan);
-                  } else {
-                    _selectedAlasan.remove(alasan);
-                  }
-                });
-              },
-            );
-          }),
-          const SizedBox(height: 16),
-
-          // Multi Checkbox Kebutuhan Korban
-          const Text('Identifikasi Kebutuhan Korban:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF501F66))),
-          const SizedBox(height: 6),
-          ...opts.kebutuhanKorban.map((kebutuhan) {
-            final isChecked = _selectedKebutuhan.contains(kebutuhan);
-            return CheckboxListTile(
-              dense: true,
-              value: isChecked,
-              activeColor: const Color(0xFF501F66),
-              title: Text(kebutuhan, style: const TextStyle(fontSize: 12)),
-              onChanged: (val) {
-                setState(() {
-                  if (val == true) {
-                    _selectedKebutuhan.add(kebutuhan);
-                  } else {
-                    _selectedKebutuhan.remove(kebutuhan);
-                  }
-                });
-              },
-            );
-          }),
-
-          // Input Kebutuhan Lainnya jika "Lainnya" dicentang
-          if (_selectedKebutuhan.contains('Lainnya')) ...[
-            const SizedBox(height: 10),
-            TextField(
-              controller: _kebutuhanLainnyaController,
-              decoration: const InputDecoration(
-                labelText: 'Sebutkan Kebutuhan Lainnya',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(CupertinoIcons.pencil, color: Color(0xFF501F66)),
+  /// Daftar centang (alasan / kebutuhan) disajikan sebagai baris dalam satu
+  /// grup sehingga mudah dipindai, bukan tumpukan kartu terpisah.
+  Widget _buildCheckboxSection({
+    required String title,
+    required List<String> options,
+    required Set<String> selected,
+    Widget? footer,
+  }) {
+    return AppSection(
+      title: title,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppListGroup.from([
+            for (final option in options)
+              CheckboxListTile(
+                dense: true,
+                value: selected.contains(option),
+                activeColor: AppColors.primary,
+                title: Text(option, style: AppText.body),
+                onChanged: (val) {
+                  setState(() {
+                    if (val == true) {
+                      selected.add(option);
+                    } else {
+                      selected.remove(option);
+                    }
+                  });
+                },
               ),
-            ),
+          ]),
+          if (footer != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            footer,
           ],
-          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
 
-          // Date Picker Tanggal Kejadian
+  /// Tanggal, lokasi, kronologi, bukti, dan nomor kontak.
+  Widget _buildDetailKejadianSection() {
+    return AppSection(
+      title: 'Detail Kejadian',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           InkWell(
             onTap: _selectTanggalKejadian,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
             child: InputDecorator(
               decoration: const InputDecoration(
                 labelText: 'Tanggal Kejadian',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(CupertinoIcons.calendar, color: Color(0xFF501F66)),
+                prefixIcon: Icon(
+                  CupertinoIcons.calendar,
+                  color: AppColors.primarySoft,
+                ),
               ),
               child: Text(
-                _tanggalKejadian != null ? _formatDateDisplay(_tanggalKejadian!) : 'Pilih Tanggal Kejadian',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: _tanggalKejadian != null ? Colors.black87 : Colors.grey,
+                _tanggalKejadian != null
+                    ? _formatDateDisplay(_tanggalKejadian!)
+                    : 'Pilih Tanggal Kejadian',
+                style: AppText.body.copyWith(
+                  color: _tanggalKejadian != null
+                      ? AppColors.textPrimary
+                      : AppColors.textMuted,
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 16),
-
-          // Lokasi Kejadian
+          const SizedBox(height: AppSpacing.lg),
           TextField(
             controller: _lokasiKejadianController,
             maxLines: 2,
             decoration: const InputDecoration(
               labelText: 'Lokasi Kejadian',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(CupertinoIcons.location_solid, color: Color(0xFF501F66)),
+              prefixIcon: Icon(
+                CupertinoIcons.location_solid,
+                color: AppColors.primarySoft,
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-
-          // Kronologi Kejadian
+          const SizedBox(height: AppSpacing.lg),
           TextField(
             controller: _kronologiKejadianController,
             maxLines: 4,
+            style: AppText.body,
             decoration: const InputDecoration(
               labelText: 'Kronologi Kejadian',
               alignLabelWithHint: true,
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(CupertinoIcons.text_quote, color: Color(0xFF501F66)),
+              prefixIcon: Icon(
+                CupertinoIcons.text_quote,
+                color: AppColors.primarySoft,
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-
-          // Link Bukti
+          const SizedBox(height: AppSpacing.lg),
           TextField(
             controller: _buktiController,
             decoration: const InputDecoration(
               labelText: 'Link Bukti (Google Drive / URL)',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(CupertinoIcons.link, color: Color(0xFF501F66)),
+              prefixIcon: Icon(
+                CupertinoIcons.link,
+                color: AppColors.primarySoft,
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-
-          // Nomor HP
+          const SizedBox(height: AppSpacing.lg),
           TextField(
             controller: _nomorHpController,
             keyboardType: TextInputType.phone,
             decoration: const InputDecoration(
               labelText: 'Nomor HP Saksi/Korban yang Dapat Dihubungi',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(CupertinoIcons.phone_fill, color: Color(0xFF501F66)),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Submit Button
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton.icon(
-              onPressed: _isSubmitting ? null : _submitForm,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF501F66),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              icon: _isSubmitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                  : const Icon(CupertinoIcons.paperplane_fill, color: Colors.white, size: 18),
-              label: const Text(
-                'Kirim Pengaduan PPKS',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              prefixIcon: Icon(
+                CupertinoIcons.phone_fill,
+                color: AppColors.primarySoft,
               ),
             ),
           ),

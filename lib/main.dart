@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'theme/app_theme.dart';
 import 'pages/login_page.dart';
 import 'pages/main_page.dart';
 import 'pages/splash_page.dart';
@@ -36,12 +36,7 @@ class MyApp extends StatelessWidget {
       navigatorKey: NavigationService.instance.navigatorKey,
       title: 'Ini Amikom?',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: const Color(0xFF501F66), // Amikom Deep Purple
-        useMaterial3: true,
-        textTheme: GoogleFonts.interTextTheme(),
-        scaffoldBackgroundColor: const Color(0xFFFAFCFF), // Pearl White
-      ),
+      theme: AppTheme.light(),
       initialRoute: '/splash',
       routes: {
         '/splash': (_) => const SplashPage(),

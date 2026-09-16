@@ -3,7 +3,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../models/transkrip.dart';
 import '../pages/sp_page.dart';
-import 'glass_card.dart';
+import '../theme/app_theme.dart';
+import 'app_kit.dart';
 
 class ProgressKelulusanCard extends StatefulWidget {
   final ProgressKelulusanData data;
@@ -24,272 +25,302 @@ class _ProgressKelulusanCardState extends State<ProgressKelulusanCard> {
     final wisuda = d.kelayakanAkademikWisuda;
     final jalur = d.jalurKelulusan;
 
-    return GlassCard(
-      borderRadius: 20,
-      padding: const EdgeInsets.all(16),
+    return AppSurface(
+      variant: AppSurfaceVariant.hero,
+      radius: AppRadius.lg,
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header Row
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF501F66).withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: AppDeco.softPrimary(),
+                child: const Icon(
+                  CupertinoIcons.checkmark_seal_fill,
+                  color: AppColors.primary,
+                  size: 22,
                 ),
-                child: const Icon(CupertinoIcons.checkmark_seal_fill, color: Color(0xFF501F66), size: 22),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Progress Kelulusan & Wisuda',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Color(0xFF501F66),
-                      ),
-                    ),
+                    Text('Progress Kelulusan & Wisuda', style: AppText.h3),
+                    const SizedBox(height: 2),
                     Text(
                       '${d.prodi} (${d.jenjang})',
-                      style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
+                      style: AppText.label.copyWith(color: AppColors.textMuted),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: AppSpacing.sm),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.xs,
+                ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF501F66),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: Text(
                   '${d.persentaseKelulusan.toStringAsFixed(1)}%',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                  style: AppText.label.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.md),
 
           // Linear Progress Bar
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadius.sm),
             child: LinearProgressIndicator(
               value: pct,
               minHeight: 10,
-              backgroundColor: Colors.grey.shade200,
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF501F66)),
+              backgroundColor: AppColors.surfaceMuted,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm),
 
-          // Stats Subrow
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Stats — Wrap: turun baris sendiri di layar sempit (tidak overflow)
+          Wrap(
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(
                 '${d.totalSksLulus} / ${d.targetSks} SKS Lulus',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87),
+                style: AppText.h3.copyWith(fontSize: 13),
               ),
               Text(
                 'Sisa ${d.sisaSks} SKS • ~${d.estimasiSisaSemester} Smt Lg',
-                style: const TextStyle(fontSize: 11, color: Colors.black54, fontWeight: FontWeight.w600),
+                style: AppText.label.copyWith(color: AppColors.textSecondary),
               ),
             ],
           ),
-          const SizedBox(height: 16),
 
           // Wisuda Eligibility Warning (If D/E exists)
           if (!wisuda.bebasNilaiDEEligible && wisuda.warningWisuda.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF3E0),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.orange.shade300),
-              ),
+            const SizedBox(height: AppSpacing.lg),
+            AppSurface(
+              variant: AppSurfaceVariant.warning,
+              radius: AppRadius.sm,
+              padding: const EdgeInsets.all(AppSpacing.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(CupertinoIcons.exclamationmark_triangle_fill, color: Colors.deepOrange, size: 16),
-                      const SizedBox(width: 6),
-                      const Text(
-                        'Syarat Bebas Nilai D/E Wisuda',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFFE65100)),
+                      const Icon(
+                        CupertinoIcons.exclamationmark_triangle_fill,
+                        color: AppColors.warning,
+                        size: 16,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'Syarat Bebas Nilai D/E Wisuda',
+                          style: AppText.h3.copyWith(
+                            fontSize: 13,
+                            color: AppColors.warning,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     wisuda.warningWisuda,
-                    style: const TextStyle(fontSize: 11.5, color: Colors.black87, height: 1.3),
+                    style: AppText.bodySm.copyWith(height: 1.35),
                   ),
                   if (wisuda.dEMatkulItems.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    ...wisuda.dEMatkulItems.map((item) => Text(
+                    const SizedBox(height: AppSpacing.sm),
+                    ...wisuda.dEMatkulItems.map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Text(
                           '• ${item.kode} - ${item.mkl} (${item.sks} SKS): Nilai ${item.nilai}',
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.deepOrange),
-                        )),
-                    const SizedBox(height: 8),
+                          style: AppText.label.copyWith(
+                            color: AppColors.warning,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
                     SizedBox(
-                      height: 32,
                       width: double.infinity,
-                      child: ElevatedButton.icon(
+                      child: FilledButton.icon(
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => SpPage(onBack: () => Navigator.pop(context))),
+                            MaterialPageRoute(
+                              builder: (_) => SpPage(onBack: () => Navigator.pop(context)),
+                            ),
                           );
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE65100),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.warning,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          elevation: 0,
+                          minimumSize: const Size(0, 40),
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                          ),
                         ),
                         icon: const Icon(CupertinoIcons.layers_alt_fill, size: 14),
-                        label: const Text('Daftar Semester Pendek (SP)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        label: Text(
+                          'Daftar Semester Pendek (SP)',
+                          style: AppText.label.copyWith(color: Colors.white),
+                        ),
                       ),
                     ),
                   ],
                 ],
               ),
             ),
-            const SizedBox(height: 16),
           ],
+          const SizedBox(height: AppSpacing.lg),
 
           // Segmented Control Jalur Kelulusan
           Container(
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(AppSpacing.xs),
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.surfaceMuted,
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Row(
               children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => _selectedJalur = 0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: _selectedJalur == 0 ? Colors.white : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: _selectedJalur == 0
-                            ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)]
-                            : [],
-                      ),
-                      child: Text(
-                        '📘 Skripsi Reguler',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: _selectedJalur == 0 ? FontWeight.bold : FontWeight.w500,
-                          color: _selectedJalur == 0 ? const Color(0xFF501F66) : Colors.grey,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => _selectedJalur = 1),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: _selectedJalur == 1 ? Colors.white : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: _selectedJalur == 1
-                            ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)]
-                            : [],
-                      ),
-                      child: Text(
-                        '🚀 Technopreneur IT',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: _selectedJalur == 1 ? FontWeight.bold : FontWeight.w500,
-                          color: _selectedJalur == 1 ? const Color(0xFF501F66) : Colors.grey,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                Expanded(child: _jalurTab(0, '📘 Skripsi Reguler')),
+                Expanded(child: _jalurTab(1, '🚀 Technopreneur IT')),
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
 
           // Content based on Selected Jalur
           if (_selectedJalur == 0) ...[
             // Skripsi Reguler
-            Row(
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
               children: [
                 _statusCheckBadge('PKL / Magang', jalur.skripsiReguler.pklEligible),
-                const SizedBox(width: 8),
                 _statusCheckBadge('Skripsi', jalur.skripsiReguler.skripsiEligible),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               jalur.skripsiReguler.skripsiEligible
                   ? 'Anda sudah memenuhi syarat untuk mengajukan Skripsi.'
                   : 'Membutuhkan ${jalur.skripsiReguler.sisaSksMenujuSkripsi} SKS lagi menuju pengajuan Skripsi.',
-              style: const TextStyle(fontSize: 11, color: Colors.black54),
+              style: AppText.bodySm.copyWith(color: AppColors.textSecondary),
             ),
           ] else ...[
             // Technopreneur IT
-            Row(
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 _statusCheckBadge('SKS & IPK (>=140 SKS)', jalur.technopreneurIt.eligibleSksIpk),
-                const SizedBox(width: 8),
                 Text(
                   'Sisa ${jalur.technopreneurIt.sisaSksMenuju140} SKS',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF501F66)),
+                  style: AppText.label.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            const Text(
+            const SizedBox(height: AppSpacing.sm),
+            Text(
               'Syarat Tambahan Jalur Startup:',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black87),
+              style: AppText.h3.copyWith(fontSize: 12),
             ),
-            const SizedBox(height: 4),
-            ...jalur.technopreneurIt.syaratTambahan.map((syarat) => Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
-                  child: Row(
-                    children: [
-                      const Icon(CupertinoIcons.smallcircle_fill_circle, size: 10, color: Color(0xFF501F66)),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          syarat,
-                          style: const TextStyle(fontSize: 10.5, color: Colors.black87),
-                        ),
+            const SizedBox(height: AppSpacing.xs),
+            ...jalur.technopreneurIt.syaratTambahan.map(
+              (syarat) => Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Icon(
+                        CupertinoIcons.smallcircle_fill_circle,
+                        size: 10,
+                        color: AppColors.primary,
                       ),
-                    ],
-                  ),
-                )),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        syarat,
+                        style: AppText.bodySm.copyWith(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ],
       ),
     ).animate().fadeIn().slideY(begin: 0.05, end: 0);
   }
 
+  /// Tab jalur kelulusan (segmented) — Expanded di parent, jadi aman di layar sempit.
+  Widget _jalurTab(int index, String label) {
+    final selected = _selectedJalur == index;
+    return InkWell(
+      onTap: () => setState(() => _selectedJalur = index),
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? AppColors.surface : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          border: selected ? Border.all(color: AppColors.border) : null,
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: AppText.label.copyWith(
+            color: selected ? AppColors.primary : AppColors.textMuted,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _statusCheckBadge(String label, bool isOk) {
+    final (bg, fg) = isOk
+        ? (AppColors.successBg, AppColors.success)
+        : (AppColors.dangerBg, AppColors.danger);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
-        color: isOk ? Colors.green.shade50 : Colors.red.shade50,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: isOk ? Colors.green.shade300 : Colors.red.shade300),
+        color: bg,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -297,15 +328,13 @@ class _ProgressKelulusanCardState extends State<ProgressKelulusanCard> {
           Icon(
             isOk ? CupertinoIcons.checkmark_alt_circle_fill : CupertinoIcons.xmark_circle_fill,
             size: 12,
-            color: isOk ? Colors.green.shade800 : Colors.red.shade800,
+            color: fg,
           ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.bold,
-              color: isOk ? Colors.green.shade900 : Colors.red.shade900,
+          const SizedBox(width: AppSpacing.sm),
+          Flexible(
+            child: Text(
+              label,
+              style: AppText.label.copyWith(color: fg, fontWeight: FontWeight.w700),
             ),
           ),
         ],

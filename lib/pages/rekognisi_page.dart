@@ -5,9 +5,22 @@ import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/rekognisi.dart';
 import '../services/rekognisi_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 import '../widgets/rekognisi_form_sheet.dart';
 
+/// Halaman Rekognisi Mahasiswa.
+///
+/// Redesign memakai design system:
+///   * kerangka halaman memakai [AppScaffold] — tombol kembali disediakan
+///     otomatis mengikuti route, `onBack` dipertahankan untuk pemanggil lama;
+///   * daftar rekognisi disajikan sebagai baris [AppListRow] bertumpuk dalam
+///     satu [AppListGroup] (bukan satu kartu per item), status verifikasi jadi
+///     [AppPill], detail kontribusi/tautan/catatan memakai [AppKeyValue], dan
+///     aksi Edit/Hapus/Unduh tetap pada baris yang sama;
+///   * keadaan memuat / galat / kosong memakai [AppLoading], [AppErrorState],
+///     dan [AppEmptyState].
+/// Semua panggilan service, state, dan navigasi tidak berubah.
 class RekognisiPage extends StatefulWidget {
   final VoidCallback? onBack;
 
@@ -73,10 +86,10 @@ class _RekognisiPageState extends State<RekognisiPage> {
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Batal'),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+            child: const Text('Hapus'),
           ),
         ],
       ),
@@ -147,196 +160,168 @@ class _RekognisiPageState extends State<RekognisiPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFAFCFF), // Pearl White
-            Color(0xFFE3F2FD), // Ice Blue
-          ],
-        ),
+    return AppScaffold(
+      title: 'Rekognisi Mahasiswa',
+      subtitle: 'Prestasi & kegiatan yang diakui',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showForm(),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        child: const Icon(CupertinoIcons.add),
       ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text('Rekognisi Mahasiswa', style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-            onPressed: widget.onBack ?? () => Navigator.pop(context),
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    return AppAsyncView<List<RekognisiItem>>(
+      loading: _loading,
+      error: _error,
+      data: _items,
+      isEmpty: (list) => list.isEmpty,
+      onRetry: _load,
+      emptyTitle: 'Belum ada data rekognisi mahasiswa',
+      emptyMessage: 'Tambahkan rekognisi lewat tombol + di kanan bawah.',
+      emptyIcon: CupertinoIcons.rosette,
+      builder: (list) => RefreshIndicator(
+        onRefresh: _load,
+        color: AppColors.primary,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            MediaQuery.of(context).padding.bottom + 130,
           ),
-        ),
-        body: _buildBody(),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => _showForm(),
-          backgroundColor: const Color(0xFF501F66),
-          child: const Icon(CupertinoIcons.add, color: Colors.white),
+          children: [
+            AppListGroup(
+              children: [
+                for (var i = 0; i < list.length; i++) ...[
+                  if (i > 0)
+                    const Divider(height: 1, thickness: 1, color: AppColors.border),
+                  _buildItemBlock(list[i]),
+                ],
+              ],
+            ).animate().fadeIn(duration: 220.ms),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildBody() {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF501F66)));
-    }
+  /// Satu blok data rekognisi: baris utama + detail + aksi.
+  Widget _buildItemBlock(RekognisiItem item) {
+    final isValid = item.verifikasi == 1 || item.status.toLowerCase() == 'valid';
 
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(CupertinoIcons.exclamationmark_circle, size: 48, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _load,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF501F66)),
-              child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppListRow(
+          leading: Container(
+            width: 34,
+            height: 34,
+            alignment: Alignment.center,
+            decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+            child: const Icon(
+              CupertinoIcons.rosette,
+              size: 18,
+              color: AppColors.primary,
             ),
-          ],
+          ),
+          title: item.judul,
+          subtitle: 'Tingkat: ${item.tingkat} • Tahun: ${item.tahun}',
+          trailing: AppPill(
+            isValid ? 'Valid' : 'Belum Verifikasi',
+            tone: isValid ? AppPillTone.success : AppPillTone.warning,
+          ),
         ),
-      );
-    }
-
-    if (_items.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(CupertinoIcons.rosette, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
-            const Text(
-              'Belum ada data rekognisi mahasiswa',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _load,
-      color: const Color(0xFF501F66),
-      child: ListView.builder(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 130),
-        itemCount: _items.length,
-        itemBuilder: (context, index) {
-          final item = _items[index];
-          final isValid = item.verifikasi == 1 || item.status.toLowerCase() == 'valid';
-
-          return Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            child: GlassCard(
-              padding: const EdgeInsets.all(16),
-              borderRadius: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.judul,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Color(0xFF501F66),
-                          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            0,
+            AppSpacing.lg,
+            AppSpacing.md,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (item.kontribusi.isNotEmpty)
+                AppKeyValue(label: 'Kontribusi', value: item.kontribusi),
+              if (item.link.isNotEmpty)
+                InkWell(
+                  onTap: () async {
+                    final uri = Uri.tryParse(item.link);
+                    if (uri != null && await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          CupertinoIcons.link,
+                          size: 14,
+                          color: AppColors.info,
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isValid
-                              ? Colors.green.withValues(alpha: 0.1)
-                              : Colors.orange.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isValid ? Colors.green : Colors.orange,
-                          ),
-                        ),
-                        child: Text(
-                          isValid ? 'Valid' : 'Belum Verifikasi',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: isValid ? Colors.green : Colors.orange,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text('Tingkat: ${item.tingkat}', style: const TextStyle(color: Colors.black87)),
-                  Text('Tahun: ${item.tahun}', style: const TextStyle(color: Colors.black87)),
-                  if (item.kontribusi.isNotEmpty)
-                    Text('Kontribusi: ${item.kontribusi}', style: const TextStyle(color: Colors.black87)),
-                  if (item.link.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    InkWell(
-                      onTap: () async {
-                        final uri = Uri.tryParse(item.link);
-                        if (uri != null && await canLaunchUrl(uri)) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
-                        }
-                      },
-                      child: Row(
-                        children: [
-                          const Icon(CupertinoIcons.link, size: 14, color: Colors.blue),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              item.link,
-                              style: const TextStyle(color: Colors.blue, fontSize: 12, decoration: TextDecoration.underline),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Text(
+                            item.link,
+                            style: AppText.bodySm.copyWith(
+                              color: AppColors.info,
+                              decoration: TextDecoration.underline,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  if (item.keterangan.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text('Catatan: ${item.keterangan}', style: const TextStyle(color: Colors.red, fontSize: 12)),
-                  ],
-                  const Divider(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if (!isValid) ...[
-                        TextButton.icon(
-                          onPressed: () => _showForm(item),
-                          icon: const Icon(CupertinoIcons.pencil, color: Color(0xFF501F66), size: 18),
-                          label: const Text('Edit', style: TextStyle(color: Color(0xFF501F66))),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => _deleteItem(item),
-                          icon: const Icon(CupertinoIcons.trash, color: Colors.red, size: 18),
-                          label: const Text('Hapus', style: TextStyle(color: Colors.red)),
                         ),
                       ],
-                      if (item.file.isNotEmpty)
-                        TextButton.icon(
-                          onPressed: () => _downloadFile(item),
-                          icon: const Icon(CupertinoIcons.cloud_download, color: Color(0xFF501F66), size: 18),
-                          label: const Text('Unduh Berkas', style: TextStyle(color: Color(0xFF501F66))),
-                        ),
-                    ],
+                    ),
                   ),
+                ),
+              if (item.keterangan.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xs),
+                  child: Text(
+                    'Catatan: ${item.keterangan}',
+                    style: AppText.bodySm.copyWith(color: AppColors.danger),
+                  ),
+                ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (!isValid) ...[
+                    TextButton.icon(
+                      onPressed: () => _showForm(item),
+                      icon: const Icon(CupertinoIcons.pencil, size: 18),
+                      label: const Text('Edit'),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _deleteItem(item),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.danger,
+                      ),
+                      icon: const Icon(CupertinoIcons.trash, size: 18),
+                      label: const Text('Hapus'),
+                    ),
+                  ],
+                  if (item.file.isNotEmpty)
+                    TextButton.icon(
+                      onPressed: () => _downloadFile(item),
+                      icon: const Icon(CupertinoIcons.cloud_download, size: 18),
+                      label: const Text('Unduh Berkas'),
+                    ),
                 ],
               ),
-            ),
-          ).animate().fadeIn().slideY(begin: 0.1, delay: Duration(milliseconds: 50 * index));
-        },
-      ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

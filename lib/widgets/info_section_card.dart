@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'glass_card.dart';
+import '../theme/app_theme.dart';
+import 'app_kit.dart';
 
 /// ponytail: reusable card for bulleted information in Visi Misi & institutional pages
 class InfoSectionCard extends StatelessWidget {
@@ -20,44 +21,39 @@ class InfoSectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isList = content.length > 1;
 
-    return GlassCard(
-      padding: const EdgeInsets.all(20),
-      borderRadius: 20,
-      opacity: 0.8,
+    return AppSurface(
+      radius: AppRadius.lg,
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
-                child: Icon(icon, color: color, size: 24),
+                child: Icon(icon, color: color, size: 22),
               ),
-              const SizedBox(width: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF501F66),
-                ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(title, style: AppText.h2),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           ...content.map((text) {
             return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (isList)
                     Container(
-                      margin: const EdgeInsets.only(top: 6, right: 12),
+                      margin: const EdgeInsets.only(top: 6, right: AppSpacing.md),
                       width: 6,
                       height: 6,
                       decoration: BoxDecoration(
@@ -68,11 +64,7 @@ class InfoSectionCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       text,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black87,
-                        height: 1.5,
-                      ),
+                      style: AppText.body.copyWith(height: 1.5),
                       textAlign: isList ? TextAlign.left : TextAlign.justify,
                     ),
                   ),

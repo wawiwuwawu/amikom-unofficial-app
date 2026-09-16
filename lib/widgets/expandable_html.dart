@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
+import '../theme/app_theme.dart';
 
 class ExpandableHtml extends StatefulWidget {
   final String htmlData;
@@ -34,10 +35,10 @@ class _ExpandableHtmlState extends State<ExpandableHtml> {
                     data: widget.htmlData,
                     style: {
                       "body": Style(
-                        margin: Margins.zero, 
-                        padding: HtmlPaddings.zero, 
+                        margin: Margins.zero,
+                        padding: HtmlPaddings.zero,
                         fontSize: FontSize(13),
-                        color: Colors.black87,
+                        color: AppColors.textPrimary,
                       ),
                     },
                   ),
@@ -54,8 +55,8 @@ class _ExpandableHtmlState extends State<ExpandableHtml> {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.white.withValues(alpha: 0.0),
-                            Colors.white,
+                            AppColors.surface.withValues(alpha: 0.0),
+                            AppColors.surface,
                           ],
                         ),
                       ),
@@ -69,15 +70,24 @@ class _ExpandableHtmlState extends State<ExpandableHtml> {
           InkWell(
             onTap: () => setState(() => _isExpanded = !_isExpanded),
             child: Padding(
-              padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
+              padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: AppSpacing.xs),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    _isExpanded ? 'Tampilkan Lebih Sedikit' : 'Selengkapnya',
-                    style: const TextStyle(color: Color(0xFF501F66), fontWeight: FontWeight.bold, fontSize: 12),
+                  Flexible(
+                    child: Text(
+                      _isExpanded ? 'Tampilkan Lebih Sedikit' : 'Selengkapnya',
+                      style: AppText.label.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                  Icon(_isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: const Color(0xFF501F66), size: 16),
+                  Icon(
+                    _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    color: AppColors.primary,
+                    size: 16,
+                  ),
                 ],
               ),
             ),

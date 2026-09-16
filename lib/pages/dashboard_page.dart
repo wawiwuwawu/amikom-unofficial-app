@@ -7,14 +7,24 @@ import '../models/sp.dart';
 import '../services/api_client.dart';
 import '../services/akademik_service.dart';
 import '../services/sp_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 import '../widgets/histori_ipk_sheet.dart';
 import 'absensi_page.dart';
 import 'jadwal_page.dart';
 import 'sp_page.dart';
-import 'khs_page.dart';
 import 'keuangan_page.dart';
 
+/// Beranda (Dashboard).
+///
+/// Prinsip: **beranda menampilkan INFORMASI, bukan navigasi.** Navigasi adalah
+/// tugas bottom navigation.
+///
+/// Versi lama menaruh baris "aksi cepat" (Presensi / Jadwal / Nilai / Tagihan)
+/// di sini, padahal 3 dari 4 tombolnya hanya menuju tab yang sudah ada di
+/// bottom nav — dan Presensi bahkan sudah menjadi tombol QR di tengah bar.
+/// Baris itu dihapus dan digantikan informasi yang benar-benar dibutuhkan saat
+/// membuka aplikasi: jadwal hari ini, peringatan tagihan, dan ringkasan nilai.
 class DashboardPage extends StatefulWidget {
   final int refreshTrigger;
   const DashboardPage({super.key, this.refreshTrigger = 0});
@@ -53,15 +63,17 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       final results = await Future.wait([
         ApiClient.instance.getDashboard(),
-        _akademikService.getAgendaTerpadu().catchError((_) => AgendaTerpaduData(totalAgenda: 0, agenda: {})),
+        _akademikService
+            .getAgendaTerpadu()
+            .catchError((_) => AgendaTerpaduData(totalAgenda: 0, agenda: {})),
         _spService.getRekomendasi().catchError((_) => SpRekomendasiData(
-          hasRekomendasi: false,
-          warningMessage: '',
-          totalRekomendasi: 0,
-          totalSks: 0,
-          kategoriSangatDianjurkan: [],
-          kategoriOpsionalSksBesar: [],
-        )),
+              hasRekomendasi: false,
+              warningMessage: '',
+              totalRekomendasi: 0,
+              totalSks: 0,
+              kategoriSangatDianjurkan: [],
+              kategoriOpsionalSksBesar: [],
+            )),
       ]);
       if (!mounted) return;
       setState(() {
@@ -78,266 +90,425 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  // ── Bangun halaman ────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return Center(
-        child: const CircularProgressIndicator(color: Color(0xFFBBDEFB)) // Ice Blue
-            .animate()
-            .scale(duration: 400.ms, curve: Curves.easeOutBack),
-      );
-    }
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(CupertinoIcons.exclamationmark_circle, size: 64, color: Colors.redAccent)
-                .animate()
-                .shake(),
-            const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black87)),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _load,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFBBDEFB),
-                foregroundColor: const Color(0xFF501F66),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              child: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      );
-    }
-    if (_data == null) return const SizedBox.shrink();
+    if (_loading) return const AppLoading(message: 'Memuat beranda…');
 
-    final d = _data!;
+    if (_error != null) {
+      return SingleChildScrollView(
+        padding: AppSpacing.page,
+        child: AppErrorState(message: _error!, onRetry: _load),
+      );
+    }
+
+    final d = _data;
+    if (d == null) return const SizedBox.shrink();
+
+    final perluBayar = d.status.status != 'Aktif' || d.status.status.isEmpty;
+    final adaSp = _spRekomendasiData?.hasRekomendasi ?? false;
+
     return RefreshIndicator(
       onRefresh: _load,
-      color: const Color(0xFF501F66),
+      color: AppColors.primary,
       child: ListView(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 130),
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.xxl,
+        ),
+        physics: const AlwaysScrollableScrollPhysics(),
         children: [
-          _buildGreeting(d.profile).animate().fadeIn(duration: 400.ms).slideX(begin: -0.05, end: 0),
-          const SizedBox(height: 16),
-          _buildNextAgendaCard().animate().fadeIn(delay: 100.ms).slideY(begin: 0.05, end: 0),
-          const SizedBox(height: 16),
-          _buildQuickActions().animate().fadeIn(delay: 150.ms).slideY(begin: 0.05, end: 0),
-          const SizedBox(height: 16),
-          _buildProfileCard(d.profile).animate().fadeIn(delay: 200.ms).slideY(begin: 0.05, end: 0),
-          const SizedBox(height: 16),
-          if (_spRekomendasiData != null && _spRekomendasiData!.hasRekomendasi) ...[
-            _buildSpRekomendasiBanner(_spRekomendasiData!).animate().fadeIn(delay: 220.ms).slideY(begin: 0.05, end: 0),
-            const SizedBox(height: 16),
+          _buildGreeting(d.profile).animate().fadeIn(duration: 300.ms),
+
+          // Peringatan hanya muncul bila memang ada masalah — tidak permanen.
+          if (perluBayar) ...[
+            const SizedBox(height: AppSpacing.lg),
+            _buildTagihanAlert().animate().fadeIn(delay: 80.ms),
           ],
-          _buildInfoPenting(d).animate().fadeIn(delay: 250.ms).slideY(begin: 0.05, end: 0),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'IPK Kumulatif',
-                  d.statistik.ipk.toStringAsFixed(2),
-                  CupertinoIcons.rosette,
-                  subtitle: 'Grafik Tren >',
-                  onTap: () => showHistoriIpkBottomSheet(context),
-                ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.05, end: 0),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  'Progres SKS',
-                  '${d.statistik.totalSks} SKS',
-                  CupertinoIcons.book_fill,
-                  subtitle: 'Target: 144 SKS',
-                ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.05, end: 0),
-              ),
-            ],
-          ),
+          if (adaSp) ...[
+            const SizedBox(height: AppSpacing.lg),
+            _buildSpRekomendasiBanner(_spRekomendasiData!)
+                .animate()
+                .fadeIn(delay: 120.ms),
+          ],
+
+          // Informasi paling dicari saat membuka aplikasi.
+          _buildJadwalHariIni().animate().fadeIn(delay: 160.ms),
+
+          _buildRingkasan(d).animate().fadeIn(delay: 200.ms),
+
+          AppSection(
+            title: 'Data Mahasiswa',
+            child: _buildProfileCard(d.profile),
+          ).animate().fadeIn(delay: 240.ms),
         ],
       ),
     );
   }
+
+  // ── Sapaan ────────────────────────────────────────────────────────────────
 
   Widget _buildGreeting(Profile p) {
     final namaDepan = p.nama.split(' ').first;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Halo, $namaDepan!',
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF501F66),
-            letterSpacing: -0.5,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          p.prodi,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.black54,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        Text('Halo, $namaDepan', style: AppText.display),
+        const SizedBox(height: AppSpacing.xs),
+        Text(p.prodi, style: AppText.bodySm),
       ],
     );
   }
 
-  Widget _buildQuickActions() {
-    final actions = [
-      {
-        'label': 'Presensi',
-        'icon': CupertinoIcons.qrcode_viewfinder,
-        'page': const AbsensiPage(),
-      },
-      {
-        'label': 'Jadwal',
-        'icon': CupertinoIcons.calendar,
-        'page': const JadwalPage(),
-      },
-      {
-        'label': 'Nilai / KHS',
-        'icon': CupertinoIcons.doc_text_fill,
-        'page': const KhsPage(),
-      },
-      {
-        'label': 'Tagihan VA',
-        'icon': CupertinoIcons.creditcard_fill,
-        'page': const KeuanganPage(),
-      },
-    ];
+  // ── Peringatan tagihan ────────────────────────────────────────────────────
 
-    return Row(
-      children: actions.map((act) {
-        return Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: GlassCard(
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
-              borderRadius: 16,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => act['page'] as Widget),
-                );
-              },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF501F66).withValues(alpha: 0.08),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      act['icon'] as IconData,
-                      size: 20,
-                      color: const Color(0xFF501F66),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    act['label'] as String,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF501F66),
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildInfoPenting(Dashboard d) {
-    if (d.status.status != 'Aktif' || d.status.status.isEmpty) {
-      return _buildAlert(
-          CupertinoIcons.exclamationmark_triangle, 'Pembayaran tertunda', Colors.orange);
-    }
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildAlert(IconData icon, String message, Color color) {
-    return GlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+  Widget _buildTagihanAlert() {
+    return AppSurface(
+      variant: AppSurfaceVariant.warning,
+      onTap: () => _push(KeuanganPage(onBack: () => Navigator.pop(context))),
       child: Row(
         children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 12),
-          Text(
-            message,
-            style: TextStyle(color: color, fontWeight: FontWeight.bold),
+          const Icon(
+            CupertinoIcons.exclamationmark_triangle_fill,
+            size: 20,
+            color: AppColors.warning,
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Pembayaran tertunda',
+                  style: AppText.h3.copyWith(color: AppColors.warning),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Status akademik belum aktif. Ketuk untuk lihat tagihan.',
+                  style: AppText.bodySm,
+                ),
+              ],
+            ),
+          ),
+          const Icon(
+            CupertinoIcons.chevron_forward,
+            size: 16,
+            color: AppColors.warning,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon, {
-    String? subtitle,
-    VoidCallback? onTap,
-  }) {
-    return GlassCard(
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  // ── Jadwal hari ini: daftar, bukan tombol menuju jadwal ────────────────────
+
+  Widget _buildJadwalHariIni() {
+    final todayName = _getHariIndo(DateTime.now().weekday);
+    final items = _agendaData?.agenda[todayName] ?? [];
+    final ongoing = _ongoingItem(items);
+
+    return AppSection(
+      title: 'Jadwal Hari Ini',
+      trailing: TextButton(
+        onPressed: () => _push(const JadwalPage()),
+        child: const Text('Lihat semua'),
+      ),
+      child: items.isEmpty
+          ? const AppSurface(
+              child: Row(
+                children: [
+                  Icon(
+                    CupertinoIcons.checkmark_circle,
+                    size: 18,
+                    color: AppColors.success,
+                  ),
+                  SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text('Tidak ada agenda kuliah atau ujian hari ini.'),
+                  ),
+                ],
+              ),
+            )
+          : Column(
               children: [
-                Row(
-                  children: [
-                    Icon(icon, size: 20, color: const Color(0xFF501F66)),
-                    const SizedBox(width: 8),
-                    Text(
-                      title,
-                      style: const TextStyle(color: Colors.black54, fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-                if (onTap != null)
-                  const Icon(CupertinoIcons.chevron_right, size: 14, color: Color(0xFF501F66)),
+                if (ongoing != null) ...[
+                  _buildOngoingCard(ongoing),
+                  const SizedBox(height: AppSpacing.md),
+                ],
+                AppListGroup.from([
+                  for (final item in items)
+                    _agendaRow(item, isOngoing: identical(item, ongoing)),
+                ]),
               ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF501F66),
-              ),
-            ),
-            if (subtitle != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(fontSize: 10, color: Color(0xFF1565C0), fontWeight: FontWeight.bold),
-              ),
-            ],
-          ],
+    );
+  }
+
+  AgendaItem? _ongoingItem(List<AgendaItem> items) {
+    final now = DateTime.now();
+    final nowMins = now.hour * 60 + now.minute;
+    for (final item in items) {
+      final parts = item.jam.split('-');
+      if (parts.length >= 2) {
+        final start = _timeToMinutes(parts[0]);
+        final end = _timeToMinutes(parts[1]);
+        if (nowMins >= start && nowMins <= end) return item;
+      }
+    }
+    return null;
+  }
+
+  Widget _agendaRow(AgendaItem item, {required bool isOngoing}) {
+    final tempat = [
+      if (item.ruang.isNotEmpty) item.ruang,
+      if (item.detail.isNotEmpty) item.detail,
+    ].join(' • ');
+
+    return AppListRow(
+      leading: Container(
+        width: 58,
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        alignment: Alignment.center,
+        decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+        child: Text(
+          item.jam.split('-').first.trim(),
+          style: AppText.h3.copyWith(
+            fontSize: 12.5,
+            color: AppColors.primary,
+          ),
         ),
       ),
+      title: item.matakuliah,
+      subtitle: tempat.isEmpty ? null : tempat,
+      trailing: isOngoing
+          ? const AppPill('Berlangsung', tone: AppPillTone.danger)
+          : null,
     );
+  }
+
+  Widget _buildOngoingCard(AgendaItem item) {
+    return AppSurface(
+      variant: AppSurfaceVariant.hero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const AppPill('Sedang berlangsung', tone: AppPillTone.danger),
+              const Spacer(),
+              Text(item.jam, style: AppText.label),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(item.matakuliah, style: AppText.h2),
+          if (item.ruang.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              children: [
+                const Icon(
+                  CupertinoIcons.location_solid,
+                  size: 13,
+                  color: AppColors.textMuted,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Text(item.ruang, style: AppText.bodySm),
+              ],
+            ),
+          ],
+          const SizedBox(height: AppSpacing.lg),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () =>
+                  _push(AbsensiPage(onBack: () => Navigator.pop(context))),
+              icon: const Icon(CupertinoIcons.qrcode_viewfinder, size: 18),
+              label: const Text('Presensi Sekarang'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Ringkasan statistik ───────────────────────────────────────────────────
+
+  Widget _buildRingkasan(Dashboard d) {
+    return AppSection(
+      title: 'Ringkasan Studi',
+      child: Row(
+        children: [
+          Expanded(
+            child: AppStatTile(
+              value: d.statistik.ipk.toStringAsFixed(2),
+              label: 'IPK Kumulatif',
+              icon: CupertinoIcons.rosette,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: AppStatTile(
+              value: '${d.statistik.totalSks}',
+              label: 'SKS Lulus',
+              icon: CupertinoIcons.book_fill,
+              accent: AppColors.info,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: AppSurface(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.md,
+              ),
+              onTap: () => showHistoriIpkBottomSheet(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    CupertinoIcons.chart_bar_square,
+                    size: 16,
+                    color: AppColors.primarySoft,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text('Tren', style: AppText.metric.copyWith(fontSize: 20)),
+                  const SizedBox(height: 2),
+                  Text('Grafik IPK', style: AppText.label, maxLines: 1),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Kartu data mahasiswa ──────────────────────────────────────────────────
+
+  Widget _buildProfileCard(Profile p) {
+    return AppSurface(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          Padding(
+            padding: AppSpacing.card,
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  child: Image.network(
+                    p.fotoUrl,
+                    width: 48,
+                    height: 64,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      width: 48,
+                      height: 64,
+                      alignment: Alignment.center,
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      child: const Icon(
+                        CupertinoIcons.person_alt,
+                        size: 28,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.lg),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(p.nama, style: AppText.h3),
+                      const SizedBox(height: 2),
+                      Text('${p.npm} • ${p.prodi}', style: AppText.bodySm),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: AppSpacing.card,
+            child: Column(
+              children: [
+                AppKeyValue(label: 'Angkatan', value: p.angkatan.toString()),
+                AppKeyValue(label: 'Fakultas', value: p.fakultas),
+                AppKeyValue(label: 'Email', value: p.email),
+                AppKeyValue(
+                  label: 'No. HP',
+                  value: p.noHp.isNotEmpty ? p.noHp : '—',
+                ),
+                AppKeyValue(
+                  label: 'Dosen PA',
+                  value: p.pembimbingAkademik.isEmpty
+                      ? '—'
+                      : p.pembimbingAkademik,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Banner rekomendasi Semester Pendek ────────────────────────────────────
+
+  Widget _buildSpRekomendasiBanner(SpRekomendasiData rekomendasi) {
+    return AppSurface(
+      variant: AppSurfaceVariant.warning,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                CupertinoIcons.exclamationmark_triangle_fill,
+                size: 18,
+                color: AppColors.warning,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Rekomendasi Semester Pendek',
+                  style: AppText.h3.copyWith(color: AppColors.warning),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            '${rekomendasi.totalRekomendasi} mata kuliah • '
+            '${rekomendasi.totalSks} SKS disarankan',
+            style: AppText.label.copyWith(color: AppColors.warning),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(rekomendasi.warningMessage, style: AppText.bodySm),
+          const SizedBox(height: AppSpacing.lg),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () =>
+                  _push(SpPage(onBack: () => Navigator.pop(context))),
+              icon: const Icon(CupertinoIcons.arrow_right_circle_fill, size: 18),
+              label: const Text('Lihat Rekomendasi'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Utilitas ──────────────────────────────────────────────────────────────
+
+  void _push(Widget page) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
   String _getHariIndo(int weekday) {
@@ -370,342 +541,5 @@ class _DashboardPageState extends State<DashboardPage> {
       return h * 60 + m;
     }
     return 0;
-  }
-
-  Widget _buildNextAgendaCard() {
-    if (_agendaData == null || _agendaData!.agenda.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final now = DateTime.now();
-    final todayName = _getHariIndo(now.weekday);
-    final todayItems = _agendaData!.agenda[todayName] ?? [];
-    final nowMins = now.hour * 60 + now.minute;
-
-    AgendaItem? activeItem;
-    AgendaItem? nextItem;
-
-    for (var item in todayItems) {
-      final parts = item.jam.split('-');
-      if (parts.length >= 2) {
-        final startMins = _timeToMinutes(parts[0]);
-        final endMins = _timeToMinutes(parts[1]);
-
-        if (nowMins >= startMins && nowMins <= endMins) {
-          activeItem = item;
-          break;
-        } else if (startMins > nowMins) {
-          nextItem ??= item;
-        }
-      }
-    }
-
-    final displayItem = activeItem ?? nextItem;
-    final isOngoing = activeItem != null;
-
-    Color statusBg = isOngoing ? const Color(0xFFFFEBEE) : const Color(0xFFE3F2FD);
-    Color statusColor = isOngoing ? const Color(0xFFC62828) : const Color(0xFF1565C0);
-    String statusTitle = isOngoing
-        ? '🔴 Sedang Berlangsung'
-        : (nextItem != null
-            ? '⏰ Agenda Selanjutnya Hari Ini'
-            : (todayItems.isNotEmpty
-                ? '🎉 Semua Agenda Hari Ini Selesai'
-                : '📅 Tidak Ada Agenda Hari Ini'));
-
-    return GlassCard(
-      borderRadius: 16,
-      padding: const EdgeInsets.all(16),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const JadwalPage()),
-          );
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusBg,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    statusTitle,
-                    style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 11),
-                  ),
-                ),
-                Row(
-                  children: const [
-                    Text('Lihat Semua', style: TextStyle(fontSize: 11, color: Color(0xFF501F66), fontWeight: FontWeight.bold)),
-                    SizedBox(width: 2),
-                    Icon(CupertinoIcons.chevron_right, size: 12, color: Color(0xFF501F66)),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            if (displayItem != null) ...[
-              Text(
-                displayItem.matakuliah,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF501F66)),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  const Icon(CupertinoIcons.time, size: 14, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(displayItem.jam, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87)),
-                  const SizedBox(width: 12),
-                  const Icon(CupertinoIcons.location_solid, size: 14, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(displayItem.ruang, style: const TextStyle(fontSize: 12, color: Colors.black87)),
-                ],
-              ),
-              if (displayItem.detail.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  displayItem.detail,
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                ),
-              ],
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const AbsensiPage()),
-                    );
-                  },
-                  icon: const Icon(CupertinoIcons.qrcode_viewfinder, size: 18),
-                  label: const Text('Presensi Sekarang', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF501F66),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ),
-            ] else ...[
-              const Text(
-                'Tidak ada jadwal perkuliahan atau ujian aktif untuk saat ini.',
-                style: TextStyle(fontSize: 12, color: Colors.black54),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileCard(Profile p) {
-    return GlassCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ListTile(
-            contentPadding: const EdgeInsets.all(16),
-            leading: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                p.fotoUrl,
-                width: 48,
-                height: 64, // 3:4 ratio
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 48,
-                  height: 64,
-                  color: const Color(0xFF501F66).withValues(alpha: 0.1),
-                  child: const Icon(CupertinoIcons.person_alt, size: 32, color: Color(0xFF501F66)),
-                ),
-              ),
-            ),
-            title: Text(p.nama, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            subtitle: Text('${p.npm} • ${p.prodi}', style: const TextStyle(color: Colors.black54, fontSize: 12)),
-          ),
-          const Divider(height: 1, color: Colors.black12),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _profileInfo(CupertinoIcons.calendar, 'Angkatan', p.angkatan.toString()),
-                    _profileInfo(CupertinoIcons.building_2_fill, 'Fakultas', p.fakultas),
-                    _profileInfo(CupertinoIcons.phone_fill, 'No HP', p.noHp.isNotEmpty ? p.noHp : '-'),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(CupertinoIcons.mail_solid, size: 16, color: Color(0xFF501F66)),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(p.email, style: const TextStyle(fontSize: 13, color: Colors.black87))),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(CupertinoIcons.person_2_fill, size: 16, color: Color(0xFF501F66)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'DPA: ${p.pembimbingAkademik}', 
-                              style: const TextStyle(fontSize: 13, color: Colors.black87),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _profileInfo(IconData icon, String title, String text) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.black45, size: 20),
-        const SizedBox(height: 4),
-        Text(title, style: const TextStyle(fontSize: 10, color: Colors.black54)),
-        Text(
-          text, 
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSpRekomendasiBanner(SpRekomendasiData rekomendasi) {
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      borderRadius: 20,
-      opacity: 0.8,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            colors: [
-              const Color(0xFFFFF3E0),
-              const Color(0xFFFFE0B2).withValues(alpha: 0.9),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          border: Border.all(color: Colors.orange.shade400, width: 1.5),
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade100,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    CupertinoIcons.exclamationmark_triangle_fill,
-                    color: Colors.deepOrange,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Rekomendasi Semester Pendek (SP)',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Color(0xFFE65100),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${rekomendasi.totalRekomendasi} Matakuliah • ${rekomendasi.totalSks} SKS Disarankan',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.deepOrange.shade800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              rekomendasi.warningMessage,
-              style: const TextStyle(
-                fontSize: 12.5,
-                color: Colors.black87,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              height: 42,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => SpPage(onBack: () => Navigator.pop(context)),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE65100),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 2,
-                ),
-                icon: const Icon(CupertinoIcons.arrow_right_circle_fill, size: 18),
-                label: const Text(
-                  'Lihat Rekomendasi & Daftar SP',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

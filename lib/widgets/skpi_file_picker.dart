@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:file_picker/file_picker.dart';
+import '../theme/app_theme.dart';
 
 /// ponytail: reusable file picker component for SKPI activity form sheets
 class SkpiFilePicker extends StatelessWidget {
@@ -32,7 +33,7 @@ class SkpiFilePicker extends StatelessWidget {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Ukuran file maksimal ${(maxSizeBytes! / (1024 * 1024)).toStringAsFixed(0)}MB'),
-                backgroundColor: Colors.red,
+                backgroundColor: AppColors.danger,
               ),
             );
           }
@@ -43,7 +44,7 @@ class SkpiFilePicker extends StatelessWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memilih file: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Gagal memilih file: $e'), backgroundColor: AppColors.danger),
         );
       }
     }
@@ -51,48 +52,57 @@ class SkpiFilePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasFile = selectedFile != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF501F66)),
+          style: AppText.h3.copyWith(fontSize: 13, color: AppColors.primary),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         InkWell(
           onTap: () => _pickFile(context),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.md),
               border: Border.all(
-                color: selectedFile != null ? const Color(0xFF501F66) : Colors.grey.shade300,
+                color: hasFile ? AppColors.primary : AppColors.border,
                 width: 1.5,
               ),
             ),
             child: Row(
               children: [
                 Icon(
-                  selectedFile != null ? CupertinoIcons.doc_fill : CupertinoIcons.cloud_upload_fill,
-                  color: const Color(0xFF501F66),
+                  hasFile ? CupertinoIcons.doc_fill : CupertinoIcons.cloud_upload_fill,
+                  color: AppColors.primary,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Text(
-                    selectedFile != null ? selectedFile!.name : 'Pilih file bukti...',
-                    style: TextStyle(
-                      color: selectedFile != null ? const Color(0xFF501F66) : Colors.grey.shade600,
-                      fontWeight: selectedFile != null ? FontWeight.w600 : FontWeight.normal,
+                    hasFile ? selectedFile!.name : 'Pilih file bukti...',
+                    style: AppText.body.copyWith(
+                      color: hasFile ? AppColors.primary : AppColors.textMuted,
+                      fontWeight: hasFile ? FontWeight.w600 : FontWeight.w400,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (selectedFile != null)
+                if (hasFile)
                   IconButton(
-                    icon: const Icon(CupertinoIcons.xmark_circle_fill, size: 20, color: Colors.grey),
+                    icon: const Icon(
+                      CupertinoIcons.xmark_circle_fill,
+                      size: 20,
+                      color: AppColors.textMuted,
+                    ),
                     onPressed: () => onFileSelected(null),
                   ),
               ],

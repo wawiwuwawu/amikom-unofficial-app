@@ -1,8 +1,7 @@
-import 'dart:ui';
-import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../widgets/info_section_card.dart';
+
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
 class VisiMisiInstitusiPage extends StatelessWidget {
   final VoidCallback? onBack;
@@ -10,95 +9,132 @@ class VisiMisiInstitusiPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFAFCFF), // Pearl White
-            Color(0xFFE3F2FD), // Ice Blue
-          ],
-        ),
-      ),
-      child: Scaffold(
-        extendBodyBehindAppBar: true,
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: onBack != null
-              ? IconButton(
-                  icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-                  onPressed: onBack,
-                )
-              : null,
-          title: const Text(
-            'Visi & Misi Institusi',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: Colors.white.withValues(alpha: 0.5),
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          flexibleSpace: ClipRRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(color: Colors.transparent),
+    return AppScaffold(
+      title: 'Visi & Misi Institusi',
+      subtitle: 'Universitas AMIKOM Purwokerto',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      body: ListView(
+        padding: AppSpacing.page,
+        physics: const BouncingScrollPhysics(),
+        children: [
+          _buildHeader(),
+          _contentSection(
+            title: 'Visi',
+            icon: CupertinoIcons.eye_fill,
+            toneBg: AppColors.infoBg,
+            toneFg: AppColors.info,
+            child: Text(
+              'Visi Universitas AMIKOM Purwokerto adalah "Unggul Dalam Pengembangan Ilmu Pengetahuan dan Teknologi Berbasis Technopreneur".',
+              style: AppText.body.copyWith(height: 1.7),
+              textAlign: TextAlign.justify,
             ),
           ),
-        ),
-      body: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: MediaQuery.of(context).padding.bottom + 100,
+          _contentSection(
+            title: 'Misi',
+            icon: CupertinoIcons.rocket_fill,
+            toneBg: AppColors.warningBg,
+            toneFg: AppColors.warning,
+            child: _numberedList([
+              'Menyelenggarakan pendidikan dan pelatihan terbaik di bidang teknologi komputer dan informatika berbasis Technopreneur, sesuai dengan perkembangan ilmu pengetahuan dan teknologi.',
+              'Menyebarluaskan hasil penelitian dan pengabdian kepada masyarakat melalui berbagai media agar dapat diakses oleh masyarakat.',
+              'Menyelenggarakan penelitian dan pengabdian masyarakat dalam bidang teknologi komputer dan informatika untuk kesejahteraan masyarakat.',
+            ]),
           ),
-          physics: const BouncingScrollPhysics(),
-          children: [
-            _buildHeader().animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0),
-            const SizedBox(height: 24),
-            const InfoSectionCard(
-              title: 'Visi',
-              icon: CupertinoIcons.eye_fill,
-              color: Colors.blue,
-              content: [
-                'Visi Universitas AMIKOM Purwokerto adalah "Unggul Dalam Pengembangan Ilmu Pengetahuan dan Teknologi Berbasis Technopreneur".'
-              ],
-            ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1, end: 0),
-            const SizedBox(height: 16),
-            const InfoSectionCard(
-              title: 'Misi',
-              icon: CupertinoIcons.rocket_fill,
-              color: Colors.orange,
-              content: [
-                'Menyelenggarakan pendidikan dan pelatihan terbaik di bidang teknologi komputer dan informatika berbasis Technopreneur, sesuai dengan perkembangan ilmu pengetahuan dan teknologi.',
-                'Menyebarluaskan hasil penelitian dan pengabdian kepada masyarakat melalui berbagai media agar dapat diakses oleh masyarakat.',
-                'Menyelenggarakan penelitian dan pengabdian masyarakat dalam bidang teknologi komputer dan informatika untuk kesejahteraan masyarakat.'
-              ],
-            ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
-          ],
-        ),
+        ],
       ),
-    ),
-  );
-}
-
-  Widget _buildHeader() {
-    return Column(
-      children: [
-        const Icon(CupertinoIcons.building_2_fill, size: 64, color: Color(0xFF501F66)),
-        const SizedBox(height: 12),
-        const Text(
-          'Universitas',
-          style: TextStyle(fontSize: 16, color: Colors.black54, fontWeight: FontWeight.w500),
-        ),
-        const Text(
-          'AMIKOM Purwokerto',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF501F66), letterSpacing: -0.5),
-          textAlign: TextAlign.center,
-        ),
-      ],
     );
   }
 
+  /// Kartu identitas universitas.
+  Widget _buildHeader() {
+    return AppSurface(
+      variant: AppSurfaceVariant.hero,
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            alignment: Alignment.center,
+            decoration: AppDeco.softPrimary(),
+            child: const Icon(
+              CupertinoIcons.building_2_fill,
+              size: 26,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text('Universitas', style: AppText.label),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'AMIKOM Purwokerto',
+            style: AppText.h1,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Seksi teks: judul hierarkis (overline + ikon) dan kartu isi yang lapang.
+  Widget _contentSection({
+    required String title,
+    required IconData icon,
+    required Color toneBg,
+    required Color toneFg,
+    required Widget child,
+  }) {
+    return AppSection(
+      title: title,
+      trailing: Container(
+        width: 30,
+        height: 30,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: toneBg,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
+        child: Icon(icon, size: 16, color: toneFg),
+      ),
+      child: AppSurface(child: child),
+    );
+  }
+
+  /// Daftar bernomor untuk butir misi.
+  Widget _numberedList(List<String> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final (index, text) in items.indexed) ...[
+          if (index > 0) const SizedBox(height: AppSpacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                alignment: Alignment.center,
+                decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+                child: Text(
+                  '${index + 1}',
+                  style: AppText.label.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  text,
+                  style: AppText.body.copyWith(height: 1.7),
+                  textAlign: TextAlign.justify,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
 }

@@ -1,16 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/transkrip.dart';
 import '../services/transkrip_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 import '../widgets/histori_ipk_sheet.dart';
 import '../widgets/cumlaude_sheet.dart';
 import '../widgets/progress_kelulusan_card.dart';
 import '../widgets/ringkasan_skpi_widget.dart';
 import '../widgets/target_ipk_simulator_sheet.dart';
 
+/// Urutan kualitas huruf mutu — dipakai hanya untuk mengurutkan tampilan
+/// distribusi nilai.
+const List<String> _gradeOrder = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'D', 'E'];
+
+/// Halaman Transkrip Nilai — rekap nilai seluruh semester.
+///
+/// Hasil redesign: halaman ini tidak lagi berupa tumpukan kartu per mata
+/// kuliah (39+ kartu yang harus di-scroll satu per satu). Kini hanya ada SATU
+/// bagian yang berbobot kartu — ringkasan total — dan selebihnya baris-baris
+/// ringkas yang bisa dipindai sekali lihat:
+///
+///   1. ringkasan: IPK kumulatif & total SKS (AppSurface + AppStatTile);
+///   2. status predikat kelulusan (bila data cumlaude tersedia);
+///   3. progress kelulusan & ringkasan SKPI (widget bersama);
+///   4. daftar mata kuliah — satu AppListGroup, trailing [AppGradeBadge];
+///   5. distribusi nilai — hitungan per huruf mutu dari data yang sama.
+///
+/// Tombol kembali disediakan otomatis oleh [AppScaffold] mengikuti route,
+/// sehingga `onBack` hanya dipertahankan untuk kompatibilitas pemanggil lama.
 class TranskripPage extends StatefulWidget {
   final VoidCallback? onBack;
   const TranskripPage({super.key, this.onBack});
@@ -81,9 +100,9 @@ class _TranskripPageState extends State<TranskripPage> {
           SnackBar(
             content: Text(
               'Tersimpan di $path',
-              style: const TextStyle(color: Colors.white),
+              style: AppText.body.copyWith(color: Colors.white),
             ),
-            backgroundColor: const Color(0xFF501F66),
+            backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -94,9 +113,9 @@ class _TranskripPageState extends State<TranskripPage> {
           SnackBar(
             content: Text(
               e.toString().replaceFirst('Exception: ', ''),
-              style: const TextStyle(color: Colors.white),
+              style: AppText.body.copyWith(color: Colors.white),
             ),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -121,223 +140,196 @@ class _TranskripPageState extends State<TranskripPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        leading: widget.onBack != null
-            ? IconButton(
-                icon: const Icon(CupertinoIcons.back, color: Color(0xFF501F66)),
-                onPressed: widget.onBack,
-              )
-            : null,
-        title: const Text(
-          'Transkrip Nilai',
-          style: TextStyle(fontWeight: FontWeight.bold),
+    return AppScaffold(
+      title: 'Transkrip Nilai',
+      subtitle: 'Rekap nilai seluruh semester',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      actions: _buildActions(),
+      body: Padding(
+        // Jarak sisi halaman ditahan di sini supaya kartu galat/kosong dari
+        // AppAsyncView juga tidak menempel ke tepi layar.
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+        child: AppAsyncView<List<TranskripItem>>(
+          loading: _loading,
+          error: _error,
+          data: _list,
+          isEmpty: (list) => list.isEmpty,
+          onRetry: _load,
+          loadingMessage: 'Memuat transkrip…',
+          emptyTitle: 'Belum ada data transkrip',
+          emptyMessage:
+              'Nilai akan tampil di sini setelah dosen memasukkan nilai mata kuliah.',
+          emptyIcon: CupertinoIcons.doc_text,
+          builder: _buildTranskrip,
         ),
-        backgroundColor: Colors.white.withValues(alpha: 0.5),
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        actions: [
-          if (_list != null && !_loading) ...[
-            IconButton(
-              icon: const Icon(CupertinoIcons.scope, color: Color(0xFF501F66)),
-              tooltip: 'Simulasi Target IPK',
-              onPressed: () => showTargetIpkSimulatorBottomSheet(context),
-            ),
-            if (_cumlaudeData != null)
-              IconButton(
-                icon: const Icon(
-                  CupertinoIcons.rosette,
-                  color: Color(0xFFD89E00),
-                ),
-                tooltip: 'Evaluasi Cumlaude',
-                onPressed: () =>
-                    showCumlaudeBottomSheet(context, _cumlaudeData!),
-              ),
-            IconButton(
-              icon: const Icon(
-                CupertinoIcons.chart_bar_alt_fill,
-                color: Color(0xFF501F66),
-              ),
-              tooltip: 'Analitik Tren IPK',
-              onPressed: () => showHistoriIpkBottomSheet(context),
-            ),
-            IconButton(
-              icon: _downloading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFF501F66),
-                      ),
-                    )
-                  : const Icon(
-                      CupertinoIcons.cloud_download,
-                      color: Color(0xFF501F66),
-                    ),
-              tooltip: 'Download Transkrip',
-              onPressed: _downloading ? null : _download,
-            ),
-            IconButton(
-              icon: const Icon(CupertinoIcons.share, color: Color(0xFF501F66)),
-              tooltip: 'Bagikan Transkrip',
-              onPressed: _downloading ? null : _share,
-            ),
-          ],
-        ],
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFAFCFF),
-              Color(0xFFE3F2FD),
-            ], // Pearl White to Ice Blue
-          ),
-        ),
-        child: SafeArea(child: _buildBody()),
       ),
     );
   }
 
-  Widget _buildBody() {
-    if (_loading) {
-      return Center(
-        child:
-            const CircularProgressIndicator(
-                  color: Color(0xFFBBDEFB),
-                ) // Ice Blue
-                .animate()
-                .scale(duration: 400.ms, curve: Curves.easeOutBack),
-      );
-    }
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              CupertinoIcons.exclamationmark_circle,
-              size: 64,
-              color: Colors.redAccent,
-            ).animate().shake(),
-            const SizedBox(height: 16),
-            Text(
-              _error!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black87),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _load,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFBBDEFB),
-                foregroundColor: const Color(0xFF501F66),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: const Text(
-                'Coba Lagi',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    if (_list == null || _list!.isEmpty) {
-      return const Center(
-        child: Text(
-          'Tidak ada data transkrip',
-          style: TextStyle(color: Colors.black54),
-        ),
-      );
-    }
+  // ── Aksi di app bar ───────────────────────────────────────────────────────
 
-    final List<Widget> headerWidgets = [];
-    if (_cumlaudeData != null) {
-      headerWidgets.add(_buildCumlaudeHeaderCard(_cumlaudeData!));
-    }
-    if (_progressKelulusanData != null) {
-      headerWidgets.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: ProgressKelulusanCard(data: _progressKelulusanData!),
-        ),
-      );
-    }
-    if (_skpiData != null) {
-      headerWidgets.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: RingkasanSkpiWidget(data: _skpiData!),
-        ),
-      );
-    }
+  List<Widget> _buildActions() {
+    if (_list == null || _loading) return const [];
 
-    final totalCount = _list!.length + headerWidgets.length;
+    return [
+      IconButton(
+        icon: const Icon(CupertinoIcons.scope),
+        tooltip: 'Simulasi Target IPK',
+        onPressed: () => showTargetIpkSimulatorBottomSheet(context),
+      ),
+      if (_cumlaudeData != null)
+        IconButton(
+          icon: const Icon(CupertinoIcons.rosette, color: AppColors.warning),
+          tooltip: 'Evaluasi Cumlaude',
+          onPressed: () => showCumlaudeBottomSheet(context, _cumlaudeData!),
+        ),
+      IconButton(
+        icon: const Icon(CupertinoIcons.chart_bar_alt_fill),
+        tooltip: 'Analitik Tren IPK',
+        onPressed: () => showHistoriIpkBottomSheet(context),
+      ),
+      IconButton(
+        icon: _downloading
+            ? const CupertinoActivityIndicator(
+                radius: 9,
+                color: AppColors.primary,
+              )
+            : const Icon(CupertinoIcons.cloud_download),
+        tooltip: 'Download Transkrip',
+        onPressed: _downloading ? null : _download,
+      ),
+      IconButton(
+        icon: const Icon(CupertinoIcons.share),
+        tooltip: 'Bagikan Transkrip',
+        onPressed: _downloading ? null : _share,
+      ),
+    ];
+  }
+
+  // ── Isi halaman ───────────────────────────────────────────────────────────
+
+  Widget _buildTranskrip(List<TranskripItem> list) {
+    final totalSks = list.fold<int>(0, (sum, item) => sum + item.sks);
 
     return RefreshIndicator(
       onRefresh: _load,
-      color: const Color(0xFF501F66),
-      child: ListView.builder(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          8,
-          16,
-          MediaQuery.of(context).padding.bottom + 130,
+      color: AppColors.primary,
+      child: ListView(
+        padding: const EdgeInsets.only(
+          top: AppSpacing.sm,
+          bottom: AppSpacing.xl,
         ),
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
         ),
-        itemCount: totalCount,
-        itemBuilder: (_, i) {
-          if (i < headerWidgets.length) {
-            return headerWidgets[i];
-          }
-          final itemIndex = i - headerWidgets.length;
-          return _card(_list![itemIndex], itemIndex);
-        },
+        children: [
+          _buildRingkasan(list, totalSks),
+          if (_cumlaudeData != null)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xl),
+              child: _buildCumlaudeCard(_cumlaudeData!),
+            ),
+          if (_progressKelulusanData != null)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xl),
+              child: ProgressKelulusanCard(data: _progressKelulusanData!),
+            ),
+          if (_skpiData != null)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xl),
+              child: RingkasanSkpiWidget(data: _skpiData!),
+            ),
+          _buildDaftarMatkul(list),
+          _buildDistribusiNilai(list),
+        ],
       ),
     );
   }
 
-  Widget _buildCumlaudeHeaderCard(CumlaudeData cumlaude) {
-    final isCumlaude = cumlaude.isCumlaudeEligible;
-    final primaryColor = isCumlaude
-        ? const Color(0xFFD89E00)
-        : const Color(0xFF1565C0);
-    final cardBgGradient = isCumlaude
-        ? const LinearGradient(
-            colors: [Color(0xFFFFFDE7), Color(0xFFFFF9C4)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          )
-        : const LinearGradient(
-            colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          );
+  /// Ringkasan total: IPK kumulatif + total SKS, satu-satunya bagian halaman
+  /// yang berbobot kartu.
+  Widget _buildRingkasan(List<TranskripItem> list, int totalSks) {
+    final cumlaude = _cumlaudeData;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16, top: 4),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: cardBgGradient,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: primaryColor.withValues(alpha: 0.4), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: primaryColor.withValues(alpha: 0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+    return AppSection(
+      title: 'Ringkasan',
+      topGap: AppSpacing.lg,
+      trailing: cumlaude == null
+          ? null
+          : AppPill(
+              cumlaude.predikatSaatIni,
+              tone: cumlaude.isCumlaudeEligible
+                  ? AppPillTone.success
+                  : AppPillTone.info,
+            ),
+      child: AppSurface(
+        variant: AppSurfaceVariant.hero,
+        child: Row(
+          children: [
+            Expanded(
+              child: AppStatTile(
+                value: _ipkKumulatif(list).toStringAsFixed(2),
+                label: 'IPK Kumulatif',
+                icon: CupertinoIcons.rosette,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: AppStatTile(
+                value: '$totalSks',
+                label: 'Total SKS',
+                icon: CupertinoIcons.book_fill,
+                accent: AppColors.info,
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  /// IPK kumulatif: pakai angka resmi dari API bila tersedia; jika tidak,
+  /// dihitung dari total bobot dibagi total SKS transkrip yang ditampilkan.
+  double _ipkKumulatif(List<TranskripItem> list) {
+    final cumlaudeIpk = _cumlaudeData?.ipkTerakhir;
+    if (cumlaudeIpk != null && cumlaudeIpk > 0) return cumlaudeIpk;
+
+    final progressIpk =
+        _progressKelulusanData?.kelayakanAkademikWisuda.ipkTerakhir;
+    if (progressIpk != null && progressIpk > 0) return progressIpk;
+
+    final totalSks = list.fold<int>(0, (sum, item) => sum + item.sks);
+    if (totalSks == 0) return 0;
+    final totalBobot = list.fold<double>(
+      0,
+      (sum, item) => sum + item.totalBobot,
+    );
+    return totalBobot / totalSks;
+  }
+
+  /// Status predikat kelulusan — baris ringkas, bukan kartu besar.
+  Widget _buildCumlaudeCard(CumlaudeData cumlaude) {
+    final isCumlaude = cumlaude.isCumlaudeEligible;
+    final accent = isCumlaude ? AppColors.success : AppColors.warning;
+    final violatingCount =
+        cumlaude.analisisSyarat.syaratNilaiMinimum.violatingMatkulCount;
+
+    final String keterangan;
+    if (isCumlaude) {
+      keterangan = 'Seluruh syarat Cumlaude terpenuhi. Pertahankan IPK Anda!';
+    } else if (violatingCount > 0) {
+      keterangan =
+          'Terdapat $violatingCount matakuliah bernilai < B- yang perlu diperbaiki.';
+    } else {
+      keterangan =
+          'Status predikat kelulusan berdasarkan analisis 4 syarat akademis.';
+    }
+
+    return AppSurface(
+      variant: isCumlaude
+          ? AppSurfaceVariant.success
+          : AppSurfaceVariant.warning,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -347,202 +339,100 @@ class _TranskripPageState extends State<TranskripPage> {
                 isCumlaude
                     ? CupertinoIcons.rosette
                     : CupertinoIcons.chart_bar_alt_fill,
-                color: primaryColor,
-                size: 22,
+                size: 20,
+                color: accent,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   isCumlaude
                       ? '🎓 Proyeksi: Cumlaude'
                       : 'Proyeksi: ${cumlaude.predikatSaatIni}',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    color: primaryColor,
-                  ),
+                  style: AppText.h3.copyWith(color: accent),
                 ),
               ),
-              InkWell(
-                onTap: () => showCumlaudeBottomSheet(context, cumlaude),
-                child: Container(
+              TextButton.icon(
+                onPressed: () => showCumlaudeBottomSheet(context, cumlaude),
+                style: TextButton.styleFrom(
+                  foregroundColor: accent,
+                  textStyle: AppText.label.copyWith(fontWeight: FontWeight.w700),
+                  minimumSize: Size.zero,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xs,
                   ),
-                  decoration: BoxDecoration(
-                    color: primaryColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Rincian Syarat',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(width: 2),
-                      Icon(
-                        CupertinoIcons.chevron_right,
-                        color: Colors.white,
-                        size: 10,
-                      ),
-                    ],
-                  ),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
+                icon: Icon(
+                  CupertinoIcons.chevron_right,
+                  size: 12,
+                  color: accent,
+                ),
+                label: const Text('Rincian Syarat'),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            isCumlaude
-                ? 'Seluruh syarat Cumlaude terpenuhi. Pertahankan IPK Anda!'
-                : (cumlaude
-                              .analisisSyarat
-                              .syaratNilaiMinimum
-                              .violatingMatkulCount >
-                          0
-                      ? 'Terdapat ${cumlaude.analisisSyarat.syaratNilaiMinimum.violatingMatkulCount} matakuliah bernilai < B- yang perlu diperbaiki.'
-                      : 'Status predikat kelulusan berdasarkan analisis 4 syarat akademis.'),
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.black87,
-              height: 1.3,
-            ),
-          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(keterangan, style: AppText.bodySm),
         ],
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.05, end: 0);
+    );
   }
 
-  Widget _card(TranskripItem item, int index) {
-    Color? nilaiColor;
-    switch (item.nilai.toUpperCase()) {
-      case 'A':
-      case 'A-':
-        nilaiColor = Colors.green;
-        break;
-      case 'B+':
-      case 'B':
-      case 'B-':
-        nilaiColor = Colors.blue;
-        break;
-      case 'C+':
-      case 'C':
-        nilaiColor = Colors.orange;
-        break;
-      case 'D':
-      case 'E':
-        nilaiColor = Colors.red;
-        break;
+  /// Daftar seluruh mata kuliah — satu baris per mata kuliah, bukan satu kartu.
+  Widget _buildDaftarMatkul(List<TranskripItem> list) {
+    return AppSection(
+      title: 'Mata kuliah',
+      trailing: Text(
+        '${list.length} mata kuliah',
+        style: AppText.label.copyWith(fontWeight: FontWeight.w400),
+      ),
+      child: AppListGroup.from([
+        for (final item in list) _matkulRow(item),
+      ]),
+    );
+  }
+
+  Widget _matkulRow(TranskripItem item) {
+    return AppListRow(
+      title: item.mkl,
+      subtitle:
+          '${item.kode.trim()} · ${item.sks} SKS · bobot ${item.bobot.toStringAsFixed(2)}',
+      trailing: AppGradeBadge(grade: item.nilai),
+    );
+  }
+
+  /// Distribusi huruf mutu — dihitung dari data transkrip yang sama.
+  Widget _buildDistribusiNilai(List<TranskripItem> list) {
+    final counts = <String, int>{};
+    for (final item in list) {
+      final grade = item.nilai.trim().toUpperCase();
+      if (grade.isEmpty) continue;
+      counts[grade] = (counts[grade] ?? 0) + 1;
     }
+    if (counts.isEmpty) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: GlassCard(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFBBDEFB).withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    item.kode,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF501F66),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    item.mkl,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _infoChip('SKS', item.sks.toString()),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: (nilaiColor ?? Colors.grey).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: (nilaiColor ?? Colors.grey).withValues(alpha: 0.5),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Text(
-                    item.nilai,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 14,
-                      color: nilaiColor,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _infoChip('Bobot', item.bobot.toStringAsFixed(2)),
-              ],
-            ),
-          ],
-        ),
-      ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.1),
+    final grades = counts.keys.toList()..sort(_compareGrade);
+
+    return AppSection(
+      title: 'Distribusi nilai',
+      child: AppListGroup.from([
+        for (final grade in grades)
+          AppListRow(
+            leading: AppGradeBadge(grade: grade, size: 30),
+            title: 'Nilai $grade',
+            subtitle: '${counts[grade]} mata kuliah',
+          ),
+      ]),
     );
   }
 
-  Widget _infoChip(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$label ',
-            style: const TextStyle(fontSize: 11, color: Colors.black54),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              color: Colors.black87,
-            ),
-          ),
-        ],
-      ),
-    );
+  int _compareGrade(String a, String b) {
+    final indexA = _gradeOrder.indexOf(a);
+    final indexB = _gradeOrder.indexOf(b);
+    if (indexA == -1 && indexB == -1) return a.compareTo(b);
+    if (indexA == -1) return 1;
+    if (indexB == -1) return -1;
+    return indexA.compareTo(indexB);
   }
 }

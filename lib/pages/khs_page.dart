@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/khs.dart';
 import '../services/khs_service.dart';
-import '../widgets/glass_card.dart';
+import '../theme/app_theme.dart';
+import '../widgets/app_kit.dart';
 
 class KhsPage extends StatefulWidget {
   const KhsPage({super.key});
@@ -82,6 +81,13 @@ class _KhsPageState extends State<KhsPage> {
     }
   }
 
+  Future<void> _refresh() async {
+    await _loadOptions();
+    if (_selectedThn != null && _selectedSmt != null) {
+      await _loadDetail();
+    }
+  }
+
   Future<void> _download() async {
     if (_selectedThn == null || _selectedSmt == null) return;
     setState(() => _downloading = true);
@@ -91,8 +97,7 @@ class _KhsPageState extends State<KhsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Tersimpan di $path', style: const TextStyle(color: Colors.white)),
-            backgroundColor: const Color(0xFF501F66),
+            content: Text('Tersimpan di $path'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -101,8 +106,8 @@ class _KhsPageState extends State<KhsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', ''), style: const TextStyle(color: Colors.white)),
-            backgroundColor: Colors.redAccent,
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -126,115 +131,153 @@ class _KhsPageState extends State<KhsPage> {
     );
   }
 
+  // ── Turunan tampilan (read-only, tidak menyentuh service/model) ────────────
+
+  int get _totalSks =>
+      (_detail?.data ?? const <KhsItem>[]).fold(0, (sum, e) => sum + e.sks);
+
+  double get _ipk {
+    final items = _detail?.data ?? const <KhsItem>[];
+    final sks = items.fold<int>(0, (sum, e) => sum + e.sks);
+    if (sks == 0) return 0;
+    final bobot = items.fold<double>(0, (sum, e) => sum + (e.bobot * e.sks));
+    return bobot / sks;
+  }
+
+  bool get _canSearch => _selectedThn != null && _selectedSmt != null;
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text('KHS (Kartu Hasil Studi)', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white.withValues(alpha: 0.5),
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFFAFCFF), Color(0xFFE3F2FD)], // Pearl White to Ice Blue
+    return AppScaffold(
+      title: 'KHS',
+      subtitle: 'Kartu Hasil Studi',
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.xxl,
           ),
+          children: _buildSections(),
         ),
-        child: SafeArea(child: _buildBody()),
       ),
     );
   }
 
-  Widget _buildBody() {
+  List<Widget> _buildSections() {
+    final sections = <Widget>[_buildFilter()];
+
     if (_loadingOptions) {
-      return Center(
-        child: const CircularProgressIndicator(color: Color(0xFFBBDEFB)) // Ice Blue
-            .animate()
-            .scale(duration: 400.ms, curve: Curves.easeOutBack),
-      );
+      sections.add(const Padding(
+        padding: EdgeInsets.only(top: AppSpacing.xxl),
+        child: AppLoading(message: 'Memuat tahun akademik…'),
+      ));
+      return sections;
     }
-    if (_error != null && _detail == null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(CupertinoIcons.exclamationmark_circle, size: 64, color: Colors.redAccent)
-                .animate()
-                .shake(),
-            const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black87)),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _loadOptions,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFBBDEFB),
-                foregroundColor: const Color(0xFF501F66),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              child: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
+
+    if (_loadingDetail) {
+      sections.add(const Padding(
+        padding: EdgeInsets.only(top: AppSpacing.xxl),
+        child: AppLoading(message: 'Memuat nilai…'),
+      ));
+      return sections;
+    }
+
+    final detail = _detail;
+
+    if (detail == null) {
+      if (_error != null) {
+        sections.add(Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.lg),
+          child: AppErrorState(message: _error!, onRetry: _loadOptions),
+        ));
+      } else {
+        sections.add(const Padding(
+          padding: EdgeInsets.only(top: AppSpacing.xl),
+          child: AppEmptyState(
+            title: 'Belum ada periode dipilih',
+            message: 'Pilih tahun akademik dan semester, lalu tekan tombol cari.',
+            icon: Icons.school_outlined,
+          ),
+        ));
+      }
+      return sections;
+    }
+
+    sections.add(_buildSummary(detail));
+    sections.add(_buildActions());
+
+    if (detail.data.isEmpty) {
+      sections.add(const Padding(
+        padding: EdgeInsets.only(top: AppSpacing.xs),
+        child: AppEmptyState(
+          title: 'Tidak ada data nilai',
+          message: 'Nilai untuk periode ini belum dipublikasikan.',
+          icon: Icons.grading_outlined,
         ),
-      );
+      ));
+    } else {
+      sections.add(_buildGrades(detail.data));
     }
-    return Column(
-      children: [
-        _buildFilter().animate().slideY(begin: -0.1),
-        if (_loadingDetail) 
-          Expanded(child: Center(child: const CircularProgressIndicator(color: Color(0xFFBBDEFB)).animate().scale())),
-        if (_detail != null && !_loadingDetail) ...[
-          _buildStatus().animate().fadeIn(delay: 100.ms),
-          Expanded(child: _buildTable()),
-        ],
-      ],
-    );
+
+    if (_error != null) {
+      sections.add(Padding(
+        padding: const EdgeInsets.only(top: AppSpacing.lg),
+        child: AppErrorState(message: _error!, onRetry: _loadDetail),
+      ));
+    }
+
+    return sections;
   }
+
+  // ── Filter periode ─────────────────────────────────────────────────────────
 
   Widget _buildFilter() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: GlassCard(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Expanded(
-              child: _buildDropdown(
-                value: _selectedThn,
-                items: _tahunList,
-                hint: 'Tahun',
-                onChanged: (v) => setState(() => _selectedThn = v),
+    return AppSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Periode Akademik', style: AppText.overline),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: _buildDropdown(
+                  value: _selectedThn,
+                  items: _tahunList,
+                  hint: 'Tahun',
+                  onChanged: (v) => setState(() => _selectedThn = v),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildDropdown(
-                value: _selectedSmt,
-                items: _semesterList,
-                hint: 'Semester',
-                onChanged: (v) => setState(() => _selectedSmt = v),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: _buildDropdown(
+                  value: _selectedSmt,
+                  items: _semesterList,
+                  hint: 'Semester',
+                  onChanged: (v) => setState(() => _selectedSmt = v),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)]),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(color: const Color(0xFFBBDEFB).withValues(alpha: 0.5), blurRadius: 8, offset: const Offset(0, 4)),
-                ],
-              ),
-              child: IconButton(
-                onPressed: (_selectedThn != null && _selectedSmt != null) ? _loadDetail : null,
-                icon: const Icon(CupertinoIcons.search, color: Color(0xFF501F66)),
+              const SizedBox(width: AppSpacing.md),
+              IconButton.filled(
+                onPressed: _canSearch ? _loadDetail : null,
+                icon: const Icon(Icons.search, size: 20),
                 tooltip: 'Cari KHS',
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.border,
+                  minimumSize: const Size(48, 48),
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -246,211 +289,184 @@ class _KhsPageState extends State<KhsPage> {
     required ValueChanged<String?> onChanged,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      decoration: AppDeco.card(
+        color: AppColors.surfaceMuted,
+        radius: AppRadius.sm,
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
-          hint: Text(hint, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+          hint: Text(hint, style: AppText.bodySm),
           isExpanded: true,
-          icon: const Icon(CupertinoIcons.chevron_down, color: Color(0xFF501F66), size: 16),
-          items: items.map((e) => DropdownMenuItem(
-            value: e.value,
-            child: Text(e.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87)),
-          )).toList(),
+          icon: const Icon(
+            Icons.keyboard_arrow_down,
+            color: AppColors.primarySoft,
+            size: 18,
+          ),
+          style: AppText.body.copyWith(fontWeight: FontWeight.w600),
+          dropdownColor: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          items: items
+              .map((e) => DropdownMenuItem(
+                    value: e.value,
+                    child: Text(
+                      e.label,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.body.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ))
+              .toList(),
           onChanged: onChanged,
         ),
       ),
     );
   }
 
-  Widget _buildStatus() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+  // ── Ringkasan ──────────────────────────────────────────────────────────────
+
+  Widget _buildSummary(KhsDetailResponse detail) {
+    final items = detail.data;
+    return AppSection(
+      title: 'Ringkasan',
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_detail!.finishEvaluasi)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: const [
-                  Icon(CupertinoIcons.checkmark_seal_fill, size: 16, color: Colors.green),
-                  SizedBox(width: 4),
-                  Text('Evaluasi Selesai', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green)),
+          Expanded(
+            child: AppStatTile(
+              value: _ipk.toStringAsFixed(2),
+              label: 'IPK Semester',
+              icon: Icons.trending_up,
+              accent: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: AppStatTile(
+              value: '$_totalSks',
+              label: 'Total SKS',
+              icon: Icons.menu_book_outlined,
+              accent: AppColors.info,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: AppStatTile(
+              value: '${items.length}',
+              label: 'Mata Kuliah',
+              icon: Icons.list_alt_outlined,
+              accent: AppColors.success,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Status + aksi ──────────────────────────────────────────────────────────
+
+  Widget _buildActions() {
+    final detail = _detail!;
+    return AppSection(
+      title: 'Status & Dokumen',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (detail.finishEvaluasi || detail.canViewSkripsi)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  if (detail.finishEvaluasi)
+                    const AppPill(
+                      'Evaluasi Selesai',
+                      tone: AppPillTone.success,
+                    ),
+                  if (detail.canViewSkripsi)
+                    const AppPill('Lihat Skripsi', tone: AppPillTone.info),
                 ],
               ),
             ),
-          if (_detail!.canViewSkripsi)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: const [
-                    Icon(CupertinoIcons.eye_fill, size: 16, color: Colors.blue),
-                    SizedBox(width: 4),
-                    Text('Lihat Skripsi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue)),
-                  ],
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _downloading ? null : _download,
+                  icon: _downloading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.download_outlined, size: 18),
+                  label: const Text('Unduh'),
                 ),
               ),
-            ),
-          const Spacer(),
-          if (_detail != null) ...[
-            IconButton(
-              icon: _downloading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF501F66)),
-                    )
-                  : const Icon(CupertinoIcons.cloud_download, color: Color(0xFF501F66)),
-              tooltip: 'Download KHS',
-              onPressed: _downloading ? null : _download,
-            ),
-            IconButton(
-              icon: const Icon(CupertinoIcons.share, color: Color(0xFF501F66)),
-              tooltip: 'Bagikan KHS',
-              onPressed: _downloading ? null : _share,
-            ),
-          ],
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _downloading ? null : _share,
+                  icon: const Icon(Icons.share_outlined, size: 18),
+                  label: const Text('Bagikan'),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTable() {
-    final items = _detail!.data;
-    if (items.isEmpty) {
-      return const Center(child: Text('Tidak ada data nilai', style: TextStyle(color: Colors.black54)));
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      physics: const BouncingScrollPhysics(),
-      itemCount: items.length,
-      itemBuilder: (_, i) => _khsCard(items[i], i),
+  // ── Daftar nilai (LIST, bukan tumpukan kartu) ──────────────────────────────
+
+  Widget _buildGrades(List<KhsItem> items) {
+    return AppSection(
+      title: 'Daftar Mata Kuliah',
+      trailing: AppPill('${items.length} MK'),
+      child: AppListGroup.from([
+        for (final item in items)
+          AppListRow(
+            leading: _kodeChip(item.kode),
+            title: item.mkl,
+            subtitle: _subtitleFor(item),
+            trailing: AppGradeBadge(
+              grade: item.nilai.trim().isEmpty ? '–' : item.nilai,
+            ),
+          ),
+      ]),
     );
   }
 
-  Widget _khsCard(KhsItem item, int index) {
-    Color? nilaiColor;
-    switch (item.nilai.toUpperCase()) {
-      case 'A':
-      case 'A-':
-        nilaiColor = Colors.green;
-        break;
-      case 'B+':
-      case 'B':
-      case 'B-':
-        nilaiColor = Colors.blue;
-        break;
-      case 'C+':
-      case 'C':
-        nilaiColor = Colors.orange;
-        break;
-      case 'D':
-      case 'E':
-        nilaiColor = Colors.red;
-        break;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: GlassCard(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFBBDEFB).withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    item.kode,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF501F66),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    item.mkl,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.black87),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _infoChip('SKS', item.sks.toString()),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: (nilaiColor ?? Colors.grey).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: (nilaiColor ?? Colors.grey).withValues(alpha: 0.5), width: 1.5),
-                  ),
-                  child: Text(
-                    item.nilai,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 14,
-                      color: nilaiColor,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _infoChip('Bobot', item.bobot.toStringAsFixed(2)),
-              ],
-            ),
-          ],
-        ),
-      ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.1),
-    );
-  }
-
-  Widget _infoChip(String label, String value) {
+  Widget _kodeChip(String kode) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$label ',
-            style: const TextStyle(fontSize: 11, color: Colors.black54),
-          ),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Colors.black87),
-          ),
-        ],
+      decoration: AppDeco.softPrimary(radius: AppRadius.sm),
+      child: Text(
+        kode,
+        style: AppText.label.copyWith(
+          color: AppColors.primary,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
+  }
+
+  String _subtitleFor(KhsItem item) {
+    final parts = <String>['${item.sks} SKS'];
+    if (item.nilai.trim().isNotEmpty) {
+      parts.add('Bobot ${item.bobot.toStringAsFixed(2)}');
+    }
+    if (item.ambilKe.trim().isNotEmpty) {
+      parts.add('Ambil ke-${item.ambilKe}');
+    }
+    return parts.join(' • ');
   }
 }

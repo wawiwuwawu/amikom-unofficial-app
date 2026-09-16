@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../models/transkrip.dart';
 import '../services/transkrip_service.dart';
-import 'glass_card.dart';
+import '../theme/app_theme.dart';
+import 'app_kit.dart';
 
 void showTargetIpkSimulatorBottomSheet(BuildContext context, {double? initialTarget}) {
   showModalBottomSheet(
@@ -14,6 +14,15 @@ void showTargetIpkSimulatorBottomSheet(BuildContext context, {double? initialTar
   );
 }
 
+/// Sheet simulasi target IPK.
+///
+/// Redesign memakai design system:
+///   * header memakai token warna/teks, target ditampilkan sebagai
+///     `AppText.metric` di dalam [AppSurface];
+///   * slider & field memakai tema global (tanpa `SliderTheme` lokal);
+///   * presets memakai `AppPill`-style pilihan yang mengikuti token;
+///   * hasil simulasi memakai [AppSurface] success/danger + [AppKeyValue].
+/// Seluruh perhitungan simulasi, pemanggilan service, dan state tidak berubah.
 class TargetIpkSimulatorSheet extends StatefulWidget {
   final double initialTarget;
 
@@ -70,57 +79,57 @@ class _TargetIpkSimulatorSheetState extends State<TargetIpkSimulatorSheet> {
       builder: (context, scrollController) {
         return Container(
           decoration: const BoxDecoration(
-            color: Color(0xFFFAFCFF),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            color: AppColors.scaffold,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
           ),
           child: Column(
             children: [
               // Handlebar
               Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                margin: const EdgeInsets.only(top: AppSpacing.md, bottom: AppSpacing.sm),
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
+                  color: AppColors.borderStrong,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
               ),
 
               // Title Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xl,
+                  vertical: AppSpacing.sm,
+                ),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF501F66).withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      decoration: AppDeco.softPrimary(),
+                      child: const Icon(
+                        CupertinoIcons.scope,
+                        color: AppColors.primary,
+                        size: 22,
                       ),
-                      child: const Icon(CupertinoIcons.scope, color: Color(0xFF501F66), size: 22),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           Text(
                             'Simulasi Target IPK Kelulusan',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF501F66),
-                            ),
+                            style: AppText.h2,
                           ),
-                          Text(
-                            'Kalkulator Bebas IPS Sisa SKS',
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
-                          ),
+                          Text('Kalkulator Bebas IPS Sisa SKS', style: AppText.label),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(CupertinoIcons.xmark_circle_fill, color: Colors.grey),
+                      icon: const Icon(
+                        CupertinoIcons.xmark_circle_fill,
+                        color: AppColors.textMuted,
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
@@ -132,59 +141,35 @@ class _TargetIpkSimulatorSheetState extends State<TargetIpkSimulatorSheet> {
               Expanded(
                 child: ListView(
                   controller: scrollController,
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(AppSpacing.xl),
                   children: [
                     // Target Display Card
-                    GlassCard(
-                      borderRadius: 20,
-                      padding: const EdgeInsets.all(20),
+                    AppSurface(
+                      radius: AppRadius.lg,
+                      padding: const EdgeInsets.all(AppSpacing.xl),
                       child: Column(
                         children: [
-                          const Text(
-                            'TARGET IPK IMPIAN',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
+                          Text('TARGET IPK IMPIAN', style: AppText.overline),
+                          const SizedBox(height: AppSpacing.sm),
                           Text(
                             _targetIpk.toStringAsFixed(2),
-                            style: const TextStyle(
-                              fontSize: 44,
-                              fontWeight: FontWeight.w900,
-                              color: Color(0xFF501F66),
-                              letterSpacing: -1,
-                            ),
+                            style: AppText.metric.copyWith(fontSize: 44),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: AppSpacing.md),
 
-                          // Slider
-                          SliderTheme(
-                            data: SliderTheme.of(context).copyWith(
-                              activeTrackColor: const Color(0xFF501F66),
-                              inactiveTrackColor: Colors.grey.shade200,
-                              thumbColor: const Color(0xFF501F66),
-                              overlayColor: const Color(0xFF501F66).withValues(alpha: 0.1),
-                              valueIndicatorShape: const PaddleSliderValueIndicatorShape(),
-                              valueIndicatorColor: const Color(0xFF501F66),
-                              valueIndicatorTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
-                            child: Slider(
-                              value: _targetIpk,
-                              min: 2.50,
-                              max: 4.00,
-                              divisions: 30,
-                              label: _targetIpk.toStringAsFixed(2),
-                              onChanged: (val) {
-                                setState(() => _targetIpk = double.parse(val.toStringAsFixed(2)));
-                              },
-                              onChangeEnd: (val) {
-                                _runSimulasi(double.parse(val.toStringAsFixed(2)));
-                              },
-                            ),
+                          // Slider — memakai tema global
+                          Slider(
+                            value: _targetIpk,
+                            min: 2.50,
+                            max: 4.00,
+                            divisions: 30,
+                            label: _targetIpk.toStringAsFixed(2),
+                            onChanged: (val) {
+                              setState(() => _targetIpk = double.parse(val.toStringAsFixed(2)));
+                            },
+                            onChangeEnd: (val) {
+                              _runSimulasi(double.parse(val.toStringAsFixed(2)));
+                            },
                           ),
 
                           // Presets Buttons Row
@@ -193,25 +178,32 @@ class _TargetIpkSimulatorSheetState extends State<TargetIpkSimulatorSheet> {
                             children: [3.50, 3.75, 3.85, 4.00].map((preset) {
                               final selected = _targetIpk == preset;
                               return InkWell(
+                                borderRadius: BorderRadius.circular(AppRadius.pill),
                                 onTap: () {
                                   setState(() => _targetIpk = preset);
                                   _runSimulasi(preset);
                                 },
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.md,
+                                    vertical: AppSpacing.sm,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: selected ? const Color(0xFF501F66) : Colors.grey.shade100,
-                                    borderRadius: BorderRadius.circular(12),
+                                    color: selected
+                                        ? AppColors.primary
+                                        : AppColors.surfaceMuted,
+                                    borderRadius: BorderRadius.circular(AppRadius.pill),
                                     border: Border.all(
-                                      color: selected ? const Color(0xFF501F66) : Colors.grey.shade300,
+                                      color: selected
+                                          ? AppColors.primary
+                                          : AppColors.border,
                                     ),
                                   ),
                                   child: Text(
                                     preset.toStringAsFixed(2),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: selected ? Colors.white : Colors.black87,
+                                    style: AppText.label.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: selected ? Colors.white : AppColors.textPrimary,
                                     ),
                                   ),
                                 ),
@@ -220,33 +212,16 @@ class _TargetIpkSimulatorSheetState extends State<TargetIpkSimulatorSheet> {
                           ),
                         ],
                       ),
-                    ).animate().fadeIn().scale(duration: 300.ms),
-                    const SizedBox(height: 24),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
 
-                    // Results Card
+                    // Hasil simulasi
                     if (_loading)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40),
-                        child: Center(
-                          child: CircularProgressIndicator(color: Color(0xFF501F66)),
-                        ),
-                      )
+                      const AppLoading()
                     else if (_error != null)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          _error!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.redAccent),
-                        ),
-                      )
-                    else if (_data != null) ...[
+                      AppErrorState(message: _error!, onRetry: () => _runSimulasi(_targetIpk))
+                    else if (_data != null)
                       _buildSimulasiResultCard(_data!),
-                    ],
                   ],
                 ),
               ),
@@ -259,97 +234,78 @@ class _TargetIpkSimulatorSheetState extends State<TargetIpkSimulatorSheet> {
 
   Widget _buildSimulasiResultCard(SimulasiIpkData d) {
     final isPossible = d.isAchievable;
-    final cardColor = isPossible ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE);
-    final borderColor = isPossible ? Colors.green.shade300 : Colors.red.shade300;
-    final textColor = isPossible ? Colors.green.shade900 : Colors.red.shade900;
-    final primaryBadgeColor = isPossible ? Colors.green.shade700 : Colors.red.shade700;
+    final accent = isPossible ? AppColors.success : AppColors.danger;
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor, width: 1.5),
-      ),
+    return AppSurface(
+      variant: isPossible ? AppSurfaceVariant.success : AppSurfaceVariant.danger,
+      radius: AppRadius.lg,
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Icon(
-                isPossible ? CupertinoIcons.checkmark_alt_circle_fill : CupertinoIcons.xmark_circle_fill,
-                color: primaryBadgeColor,
+                isPossible
+                    ? CupertinoIcons.checkmark_alt_circle_fill
+                    : CupertinoIcons.xmark_circle_fill,
+                color: accent,
                 size: 24,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       isPossible ? 'DAPAT DICAPAI (ACHIEVABLE)' : 'TIDAK MEMUNGKINKAN (> 4.00)',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                        color: primaryBadgeColor,
-                      ),
+                      style: AppText.h3.copyWith(color: accent),
                     ),
                     Text(
                       'IPK Saat Ini: ${d.ipkSaatIni.toStringAsFixed(2)} • Sisa SKS: ${d.sisaSks}',
-                      style: const TextStyle(fontSize: 11, color: Colors.black54, fontWeight: FontWeight.w600),
+                      style: AppText.bodySm,
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
 
-          // Wajib IPS Rata-Rata Card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: borderColor.withValues(alpha: 0.5)),
-            ),
+          // Wajib IPS Rata-Rata
+          AppSurface(
+            radius: AppRadius.md,
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               children: [
-                const Text(
-                  'WAJIB IPS RATA-RATA DIBUTUHKAN',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.8),
-                ),
-                const SizedBox(height: 4),
+                Text('WAJIB IPS RATA-RATA DIBUTUHKAN', style: AppText.overline),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   d.wajibIpsRataRata.toStringAsFixed(2),
-                  style: TextStyle(
+                  style: AppText.metric.copyWith(
                     fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    color: isPossible ? const Color(0xFF501F66) : Colors.red.shade700,
+                    color: isPossible ? AppColors.primary : AppColors.danger,
                   ),
                 ),
-                const Text(
+                Text(
                   'pada seluruh sisa SKS yang akan diambil',
-                  style: TextStyle(fontSize: 10.5, color: Colors.grey),
+                  style: AppText.label.copyWith(color: AppColors.textMuted),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.md),
 
           // Analisis Kalimat
           Text(
             d.analisisKalimat,
-            style: TextStyle(
-              fontSize: 12.5,
-              color: textColor,
-              height: 1.4,
+            style: AppText.bodySm.copyWith(
+              color: accent,
               fontWeight: FontWeight.w600,
             ),
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.05, end: 0);
+    );
   }
 }

@@ -5,7 +5,15 @@ import 'package:file_picker/file_picker.dart';
 import 'skpi_file_picker.dart';
 import '../models/rekognisi.dart';
 import '../services/rekognisi_service.dart';
+import '../theme/app_theme.dart';
+import 'app_kit.dart';
 
+/// Form tambah/edit rekognisi mahasiswa.
+///
+/// Redesign memakai design system: handlebar & judul memakai token, state
+/// memuat/galat memakai [AppLoading] dan [AppErrorState], seluruh field
+/// memakai `inputDecorationTheme` global (tanpa border lokal), dan tombol
+/// submit memakai [FilledButton]. Field, validator, dan alur submit sama.
 class RekognisiFormSheet extends StatefulWidget {
   final VoidCallback onSuccess;
   final RekognisiItem? itemToEdit;
@@ -140,7 +148,7 @@ class _RekognisiFormSheetState extends State<RekognisiFormSheet> {
           content: Text(_isEditing
               ? 'Rekognisi berhasil diubah'
               : 'Rekognisi berhasil ditambahkan'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.success,
         ),
       );
     } catch (e) {
@@ -148,7 +156,7 @@ class _RekognisiFormSheetState extends State<RekognisiFormSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.danger,
         ),
       );
     } finally {
@@ -164,10 +172,10 @@ class _RekognisiFormSheetState extends State<RekognisiFormSheet> {
       ),
       child: Container(
         decoration: const BoxDecoration(
-          color: Color(0xFFFAFCFF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          color: AppColors.scaffold,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
         ),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -178,46 +186,36 @@ class _RekognisiFormSheetState extends State<RekognisiFormSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
+                    color: AppColors.borderStrong,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    _isEditing ? 'Edit Rekognisi Mahasiswa' : 'Tambah Rekognisi Mahasiswa',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF501F66),
+                  Expanded(
+                    child: Text(
+                      _isEditing
+                          ? 'Edit Rekognisi Mahasiswa'
+                          : 'Tambah Rekognisi Mahasiswa',
+                      style: AppText.h2,
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(CupertinoIcons.xmark_circle_fill, color: Colors.grey),
+                    icon: const Icon(
+                      CupertinoIcons.xmark_circle_fill,
+                      color: AppColors.textMuted,
+                    ),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               _isLoadingOptions
-                  ? const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
+                  ? const AppLoading()
                   : _error != null
-                      ? Column(
-                          children: [
-                            Text(_error!, style: const TextStyle(color: Colors.red)),
-                            const SizedBox(height: 8),
-                            ElevatedButton(
-                              onPressed: _loadOptions,
-                              child: const Text('Coba Lagi'),
-                            ),
-                          ],
-                        )
+                      ? AppErrorState(message: _error!, onRetry: _loadOptions)
                       : Form(
                           key: _formKey,
                           child: Column(
@@ -226,10 +224,9 @@ class _RekognisiFormSheetState extends State<RekognisiFormSheet> {
                               // Dropdown Jenis Rekognisi (Judul)
                               DropdownButtonFormField<String>(
                                 initialValue: _selectedJudul,
-                                decoration: InputDecoration(
+                                decoration: const InputDecoration(
                                   labelText: 'Jenis Rekognisi *',
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  prefixIcon: const Icon(CupertinoIcons.rosette),
+                                  prefixIcon: Icon(CupertinoIcons.rosette),
                                 ),
                                 isExpanded: true,
                                 items: _optionsData?.jenisRekognisi.map((opt) {
@@ -241,15 +238,14 @@ class _RekognisiFormSheetState extends State<RekognisiFormSheet> {
                                 onChanged: (val) => setState(() => _selectedJudul = val),
                                 validator: (val) => val == null ? 'Pilih jenis rekognisi' : null,
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpacing.lg),
 
                               // Dropdown Tingkat
                               DropdownButtonFormField<String>(
                                 initialValue: _selectedTingkat,
-                                decoration: InputDecoration(
+                                decoration: const InputDecoration(
                                   labelText: 'Tingkat *',
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  prefixIcon: const Icon(CupertinoIcons.globe),
+                                  prefixIcon: Icon(CupertinoIcons.globe),
                                 ),
                                 isExpanded: true,
                                 items: _optionsData?.tingkat.map((opt) {
@@ -261,15 +257,14 @@ class _RekognisiFormSheetState extends State<RekognisiFormSheet> {
                                 onChanged: (val) => setState(() => _selectedTingkat = val),
                                 validator: (val) => val == null ? 'Pilih tingkat rekognisi' : null,
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpacing.lg),
 
                               // Dropdown Kontribusi (Opsional)
                               DropdownButtonFormField<String>(
                                 initialValue: _selectedKontribusi,
-                                decoration: InputDecoration(
+                                decoration: const InputDecoration(
                                   labelText: 'Kontribusi (Opsional)',
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  prefixIcon: const Icon(CupertinoIcons.person_badge_plus),
+                                  prefixIcon: Icon(CupertinoIcons.person_badge_plus),
                                 ),
                                 isExpanded: true,
                                 items: _optionsData?.kontribusi.map((opt) {
@@ -280,34 +275,32 @@ class _RekognisiFormSheetState extends State<RekognisiFormSheet> {
                                 }).toList(),
                                 onChanged: (val) => setState(() => _selectedKontribusi = val),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpacing.lg),
 
                               // Input Link URL
                               TextFormField(
                                 controller: _linkController,
                                 keyboardType: TextInputType.url,
-                                decoration: InputDecoration(
+                                decoration: const InputDecoration(
                                   labelText: 'Tautan / Link Berita (Opsional)',
                                   hintText: 'https://...',
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  prefixIcon: const Icon(CupertinoIcons.link),
+                                  prefixIcon: Icon(CupertinoIcons.link),
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpacing.lg),
 
                               // Input Tahun (Wajib)
                               TextFormField(
                                 controller: _tahunController,
                                 keyboardType: TextInputType.number,
-                                decoration: InputDecoration(
+                                decoration: const InputDecoration(
                                   labelText: 'Tahun *',
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  prefixIcon: const Icon(CupertinoIcons.calendar),
+                                  prefixIcon: Icon(CupertinoIcons.calendar),
                                 ),
                                 validator: (val) =>
                                     (val == null || val.trim().isEmpty) ? 'Masukkan tahun' : null,
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: AppSpacing.lg),
 
                               SkpiFilePicker(
                                 selectedFile: _selectedFile,
@@ -318,37 +311,32 @@ class _RekognisiFormSheetState extends State<RekognisiFormSheet> {
                                 onFileSelected: (file) => setState(() => _selectedFile = file),
                               ),
                               if (_isEditing && _selectedFile == null && widget.itemToEdit!.file.isNotEmpty) ...[
-                                const SizedBox(height: 6),
+                                const SizedBox(height: AppSpacing.sm),
                                 Text(
                                   'File saat ini: ${widget.itemToEdit!.file}',
-                                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                                  style: AppText.label,
                                 ),
                               ],
-                              const SizedBox(height: 24),
+                              const SizedBox(height: AppSpacing.xl),
 
                               // Tombol Submit
                               SizedBox(
                                 width: double.infinity,
-                                child: ElevatedButton(
+                                child: FilledButton(
                                   onPressed: _isSubmitting ? null : _submitForm,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF501F66),
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
                                   child: _isSubmitting
                                       ? const SizedBox(
                                           height: 20,
                                           width: 20,
                                           child: CircularProgressIndicator(
-                                              strokeWidth: 2, color: Colors.white),
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
                                         )
                                       : Text(
-                                          _isEditing ? 'Simpan Perubahan' : 'Upload Rekognisi',
-                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                          _isEditing
+                                              ? 'Simpan Perubahan'
+                                              : 'Upload Rekognisi',
                                         ),
                                 ),
                               ),
