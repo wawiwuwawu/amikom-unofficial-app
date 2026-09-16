@@ -5,8 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
 
 class PanduanPembayaranPage extends StatefulWidget {
-  final VoidCallback? onBack;
-  const PanduanPembayaranPage({super.key, this.onBack});
+  const PanduanPembayaranPage({super.key});
 
   @override
   State<PanduanPembayaranPage> createState() => _PanduanPembayaranPageState();

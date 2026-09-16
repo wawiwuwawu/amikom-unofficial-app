@@ -22,12 +22,9 @@ import '../widgets/app_kit.dart';
 ///      penyerahan, dan aksi (lihat anggota / edit / hapus);
 ///   4. petunjuk BAA ditampilkan sebagai [AppSurface] sorotan.
 ///
-/// Tombol kembali disediakan otomatis oleh [AppScaffold] mengikuti route,
-/// sehingga `onBack` hanya dipertahankan untuk kompatibilitas pemanggil lama.
 class SuratTugasPage extends StatefulWidget {
-  final VoidCallback? onBack;
 
-  const SuratTugasPage({super.key, this.onBack});
+  const SuratTugasPage({super.key});
 
   @override
   State<SuratTugasPage> createState() => _SuratTugasPageState();

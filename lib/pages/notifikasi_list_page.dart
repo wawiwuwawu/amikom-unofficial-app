@@ -9,9 +9,8 @@ import '../widgets/app_kit.dart';
 import 'notifikasi_detail_page.dart';
 
 class NotifikasiListPage extends StatefulWidget {
-  final VoidCallback? onBack;
 
-  const NotifikasiListPage({super.key, this.onBack});
+  const NotifikasiListPage({super.key});
 
   @override
   State<NotifikasiListPage> createState() => _NotifikasiListPageState();

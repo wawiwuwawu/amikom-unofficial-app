@@ -6,9 +6,8 @@ import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
 
 class UjianSusulanPage extends StatefulWidget {
-  final VoidCallback? onBack;
 
-  const UjianSusulanPage({super.key, this.onBack});
+  const UjianSusulanPage({super.key});
 
   @override
   State<UjianSusulanPage> createState() => _UjianSusulanPageState();

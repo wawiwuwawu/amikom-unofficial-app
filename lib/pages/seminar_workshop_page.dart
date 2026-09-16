@@ -14,7 +14,7 @@ import '../widgets/seminar_workshop_form_sheet.dart';
 ///
 /// Redesign memakai design system:
 ///   * kerangka halaman memakai [AppScaffold] — tombol kembali otomatis dari
-///     route, `onBack` dipertahankan untuk pemanggil lama;
+///     route;
 ///   * daftar kegiatan jadi baris [AppListRow] dalam satu [AppListGroup]
 ///     (bukan satu kartu per kegiatan), status verifikasi jadi [AppPill],
 ///     detail peran/tahun/keterangan lewat [AppKeyValue], aksi Edit/Hapus/Unduh
@@ -23,9 +23,8 @@ import '../widgets/seminar_workshop_form_sheet.dart';
 ///     [AppEmptyState].
 /// Semua panggilan service, state, dan navigasi tidak berubah.
 class SeminarWorkshopPage extends StatefulWidget {
-  final VoidCallback onBack;
 
-  const SeminarWorkshopPage({super.key, required this.onBack});
+  const SeminarWorkshopPage({super.key});
 
   @override
   State<SeminarWorkshopPage> createState() => _SeminarWorkshopPageState();

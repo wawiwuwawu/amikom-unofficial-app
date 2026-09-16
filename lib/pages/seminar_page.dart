@@ -20,8 +20,7 @@ import '../widgets/app_kit.dart';
 ///     [AppEmptyState].
 /// Semua panggilan service, state, filter, dan navigasi tidak berubah.
 class SeminarPage extends StatefulWidget {
-  final VoidCallback? onBack;
-  const SeminarPage({super.key, this.onBack});
+  const SeminarPage({super.key});
 
   @override
   State<SeminarPage> createState() => _SeminarPageState();

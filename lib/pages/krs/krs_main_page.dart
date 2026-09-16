@@ -7,8 +7,7 @@ import '../../widgets/app_kit.dart';
 import '../jadwal_page.dart';
 
 class KrsMainPage extends StatefulWidget {
-  final VoidCallback? onBack;
-  const KrsMainPage({super.key, this.onBack});
+  const KrsMainPage({super.key});
 
   @override
   State<KrsMainPage> createState() => _KrsMainPageState();

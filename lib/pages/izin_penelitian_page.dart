@@ -9,12 +9,10 @@ import '../widgets/app_kit.dart';
 ///
 /// Riwayat disajikan sebagai satu daftar ([AppListGroup] + [AppListRow])
 /// dengan pil status, bukan satu kartu per pengajuan, supaya cepat dipindai.
-/// Tombol kembali disediakan otomatis oleh [AppScaffold], sehingga `onBack`
-/// dipertahankan hanya untuk kompatibilitas pemanggil lama.
+/// Tombol kembali disediakan otomatis oleh [AppScaffold].
 class IzinPenelitianPage extends StatefulWidget {
-  final VoidCallback? onBack;
 
-  const IzinPenelitianPage({super.key, this.onBack});
+  const IzinPenelitianPage({super.key});
 
   @override
   State<IzinPenelitianPage> createState() => _IzinPenelitianPageState();

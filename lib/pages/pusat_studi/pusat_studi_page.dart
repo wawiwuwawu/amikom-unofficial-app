@@ -8,8 +8,7 @@ import 'pusat_studi_detail_page.dart';
 import 'pusat_studi_joined_page.dart';
 
 class PusatStudiPage extends StatefulWidget {
-  final VoidCallback? onBack;
-  const PusatStudiPage({super.key, this.onBack});
+  const PusatStudiPage({super.key});
 
   @override
   State<PusatStudiPage> createState() => _PusatStudiPageState();

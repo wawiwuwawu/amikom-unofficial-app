@@ -15,9 +15,8 @@ import '../transkrip_page.dart';
 ///   Rincian      → rincian komponen penilaian tiap mata kuliah
 ///   Transkrip    → rekap seluruh semester + IPK
 class NilaiPage extends StatelessWidget {
-  const NilaiPage({super.key, this.onBack});
+  const NilaiPage({super.key});
 
-  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +54,7 @@ class NilaiPage extends StatelessWidget {
               ),
               onTap: () => _push(
                 context,
-                NilaiRincianPage(onBack: () => Navigator.pop(context)),
+                NilaiRincianPage(),
               ),
             ),
             AppListRow(
@@ -69,7 +68,7 @@ class NilaiPage extends StatelessWidget {
               ),
               onTap: () => _push(
                 context,
-                TranskripPage(onBack: () => Navigator.pop(context)),
+                TranskripPage(),
               ),
             ),
           ]),

@@ -10,9 +10,8 @@ import '../widgets/app_kit.dart';
 import '../widgets/sertifikasi_form_sheet.dart';
 
 class SertifikasiPage extends StatefulWidget {
-  final VoidCallback onBack;
 
-  const SertifikasiPage({super.key, required this.onBack});
+  const SertifikasiPage({super.key});
 
   @override
   State<SertifikasiPage> createState() => _SertifikasiPageState();

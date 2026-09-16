@@ -14,11 +14,9 @@ import '../widgets/app_kit.dart';
 ///
 /// Memilih tanggal di kalender menyaring daftar ke hari itu (sama seperti
 /// sebelumnya); tombol "Lihat Semua" mengembalikan ke seluruh agenda.
-/// Tombol kembali disediakan otomatis oleh [AppScaffold], sehingga `onBack`
-/// dipertahankan hanya untuk kompatibilitas pemanggil lama.
+/// Tombol kembali disediakan otomatis oleh [AppScaffold].
 class AgendaAkademikPage extends StatefulWidget {
-  final VoidCallback? onBack;
-  const AgendaAkademikPage({super.key, this.onBack});
+  const AgendaAkademikPage({super.key});
 
   @override
   State<AgendaAkademikPage> createState() => _AgendaAkademikPageState();

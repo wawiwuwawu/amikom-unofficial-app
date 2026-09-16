@@ -6,8 +6,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
 
 class VisiMisiPage extends StatefulWidget {
-  final VoidCallback? onBack;
-  const VisiMisiPage({super.key, this.onBack});
+  const VisiMisiPage({super.key});
 
   @override
   State<VisiMisiPage> createState() => _VisiMisiPageState();

@@ -21,12 +21,9 @@ import '../widgets/app_kit.dart';
 /// peringatan. Bagian yang belum relevan disembunyikan lewat kondisi yang sudah
 /// ada (mis. `canDownload`, `tglUjian`, `isDitolak`).
 ///
-/// Tombol kembali disediakan otomatis oleh [AppScaffold] mengikuti route,
-/// sehingga `onBack` dipertahankan hanya untuk kompatibilitas pemanggil lama.
 class SkripsiPage extends StatefulWidget {
-  final VoidCallback? onBack;
 
-  const SkripsiPage({super.key, this.onBack});
+  const SkripsiPage({super.key});
 
   @override
   State<SkripsiPage> createState() => _SkripsiPageState();

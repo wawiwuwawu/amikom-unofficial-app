@@ -6,8 +6,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
 
 class TataKramaPage extends StatelessWidget {
-  final VoidCallback? onBack;
-  const TataKramaPage({super.key, this.onBack});
+  const TataKramaPage({super.key});
 
   Future<void> _downloadPedoman(BuildContext context) async {
     final url = Uri.parse(

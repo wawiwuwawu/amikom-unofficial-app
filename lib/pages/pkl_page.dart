@@ -19,12 +19,9 @@ import '../widgets/app_kit.dart';
 ///     unduh/hapus tetap berfungsi di baris yang sama.
 /// Semua panggilan service, state, dan navigasi tidak berubah.
 ///
-/// Tombol kembali disediakan otomatis oleh [AppScaffold] mengikuti route,
-/// sehingga `onBack` hanya dipertahankan untuk kompatibilitas pemanggil lama.
 class PklPage extends StatefulWidget {
-  final VoidCallback? onBack;
 
-  const PklPage({super.key, this.onBack});
+  const PklPage({super.key});
 
   @override
   State<PklPage> createState() => _PklPageState();

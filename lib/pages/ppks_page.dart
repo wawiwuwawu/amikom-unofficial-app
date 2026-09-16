@@ -20,12 +20,9 @@ import '../widgets/app_kit.dart';
 ///     panjang tetap nyaman dibaca, dan lebar baca dibatasi 640 pada layar lebar.
 /// Semua field, panggilan service, state, dan navigasi tidak berubah.
 ///
-/// Tombol kembali disediakan otomatis oleh [AppScaffold] mengikuti route,
-/// sehingga `onBack` hanya dipertahankan untuk kompatibilitas pemanggil lama.
 class PpksPage extends StatefulWidget {
-  final VoidCallback? onBack;
 
-  const PpksPage({super.key, this.onBack});
+  const PpksPage({super.key});
 
   @override
   State<PpksPage> createState() => _PpksPageState();

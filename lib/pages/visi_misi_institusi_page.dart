@@ -4,8 +4,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
 
 class VisiMisiInstitusiPage extends StatelessWidget {
-  final VoidCallback? onBack;
-  const VisiMisiInstitusiPage({super.key, this.onBack});
+  const VisiMisiInstitusiPage({super.key});
 
   @override
   Widget build(BuildContext context) {
