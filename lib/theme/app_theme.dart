@@ -175,7 +175,7 @@ abstract final class GradeStyle {
 
 /// Dekorasi siap pakai — menggantikan 253 `BoxDecoration` berulang.
 abstract final class AppDeco {
-  /// Permukaan kartu standar (pengganti GlassCard untuk konten data).
+  /// Permukaan kartu standar untuk konten data.
   static BoxDecoration card({Color? color, double radius = AppRadius.md}) =>
       BoxDecoration(
         color: color ?? AppColors.surface,
