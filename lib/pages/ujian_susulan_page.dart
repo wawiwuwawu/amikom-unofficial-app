@@ -53,7 +53,7 @@ class _UjianSusulanPageState extends State<UjianSusulanPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorUts = e.toString().replaceFirst('Exception: ', '');
+          _errorUts = userErrorMessage(e);
           _isLoadingUts = false;
         });
       }
@@ -76,7 +76,7 @@ class _UjianSusulanPageState extends State<UjianSusulanPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorUas = e.toString().replaceFirst('Exception: ', '');
+          _errorUas = userErrorMessage(e);
           _isLoadingUas = false;
         });
       }

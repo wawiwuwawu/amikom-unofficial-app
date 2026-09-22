@@ -67,7 +67,7 @@ class _PanduanListPageState extends State<PanduanListPage> {
       _onSearchChanged(); // Re-apply filter if search text exists
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = userErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -111,7 +111,7 @@ class _PanduanListPageState extends State<PanduanListPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Gagal mengunduh: ${e.toString().replaceFirst('Exception: ', '')}',
+            'Gagal mengunduh: ${userErrorMessage(e)}',
           ),
           backgroundColor: AppColors.danger,
           behavior: SnackBarBehavior.floating,

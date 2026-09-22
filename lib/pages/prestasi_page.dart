@@ -43,7 +43,7 @@ class _PrestasiPageState extends State<PrestasiPage> {
       });
     } catch (e) {
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = userErrorMessage(e);
         _loading = false;
       });
     }
@@ -97,7 +97,7 @@ class _PrestasiPageState extends State<PrestasiPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          content: Text(userErrorMessage(e)),
           backgroundColor: AppColors.danger,
         ),
       );
@@ -145,7 +145,7 @@ class _PrestasiPageState extends State<PrestasiPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          content: Text(userErrorMessage(e)),
           backgroundColor: AppColors.danger,
         ),
       );
@@ -232,32 +232,24 @@ class _PrestasiPageState extends State<PrestasiPage> {
         .where((e) => e.status.toLowerCase() == 'menunggu')
         .length;
 
-    return Row(
+    return AppStatRow(
       children: [
-        Expanded(
-          child: AppStatTile(
-            value: '${items.length}',
-            label: 'Total',
-            icon: CupertinoIcons.star_fill,
-          ),
+        AppStatTile(
+          value: '${items.length}',
+          label: 'Total',
+          icon: CupertinoIcons.star_fill,
         ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: AppStatTile(
-            value: '$valid',
-            label: 'Valid',
-            icon: CupertinoIcons.checkmark_seal_fill,
-            accent: AppColors.success,
-          ),
+        AppStatTile(
+          value: '$valid',
+          label: 'Valid',
+          icon: CupertinoIcons.checkmark_seal_fill,
+          accent: AppColors.success,
         ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: AppStatTile(
-            value: '$menunggu',
-            label: 'Menunggu',
-            icon: CupertinoIcons.clock_fill,
-            accent: AppColors.warning,
-          ),
+        AppStatTile(
+          value: '$menunggu',
+          label: 'Menunggu',
+          icon: CupertinoIcons.clock_fill,
+          accent: AppColors.warning,
         ),
       ],
     );

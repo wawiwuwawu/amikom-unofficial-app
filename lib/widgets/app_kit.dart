@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../models/app_failure.dart';
 
 /// ─────────────────────────────────────────────────────────────────────────────
 /// UI KIT — AmiApp
@@ -10,6 +11,19 @@ import '../theme/app_theme.dart';
 ///
 /// Import tunggal:  import '../widgets/app_kit.dart';
 /// ─────────────────────────────────────────────────────────────────────────────
+
+/// Pesan galat yang aman ditampilkan ke pengguna.
+///
+/// WAJIB dipakai di halaman alih-alih `e.toString()` /
+/// `e.toString().replaceFirst('Exception: ', '')` — supaya error non-API
+/// (parsing, penyimpanan, plugin, jaringan mentah) tidak membocorkan detail
+/// teknis seperti "FormatException", "type 'Null' is not a subtype…", atau
+/// pesan Dio berbahasa Inggris.
+///
+/// Pesan asli dari `ApiClient.handleError` tetap dipakai (sudah ramah);
+/// selain itu dikembalikan [fallback] yang harus juga ramah & Bahasa Indonesia.
+String userErrorMessage(Object? error, [String fallback = 'Terjadi kesalahan']) =>
+    AppFailure.messageOf(error, fallback);
 
 /// Kerangka halaman standar — menggantikan pola `Scaffold + AppBar + SafeArea`
 /// yang sebelumnya ditulis ulang di 41 halaman.
@@ -394,6 +408,40 @@ class AppStatTile extends StatelessWidget {
           Text(label, style: AppText.label, maxLines: 1),
         ],
       ),
+    );
+  }
+}
+
+/// Baris beberapa [AppStatTile] — tiap tile melebar sama rata dengan jarak
+/// tetap, menggantikan `Row` + `Expanded` + `SizedBox` yang ditulis ulang
+/// di banyak halaman.
+///
+/// Memakai [CrossAxisAlignment.start], BUKAN `stretch`: baris ini berada di
+/// dalam scrollable yang tingginya tak terbatas, dan `stretch` akan memaksa
+/// tinggi infinity ke tiap anak (`BoxConstraints forces an infinite height`).
+/// Tinggi kartu sudah seragam karena isinya sama. Baris yang butuh pembagian
+/// tidak sama rata + tinggi seragam (pola flex 3/2 di `keuangan_page`) tetap
+/// memakai `IntrinsicHeight` sendiri — bukan urusan komponen ini.
+class AppStatRow extends StatelessWidget {
+  final List<Widget> children;
+  final double gap;
+
+  const AppStatRow({
+    super.key,
+    required this.children,
+    this.gap = AppSpacing.md,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0) SizedBox(width: gap),
+          Expanded(child: children[i]),
+        ],
+      ],
     );
   }
 }

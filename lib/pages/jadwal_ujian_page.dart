@@ -6,6 +6,7 @@ import '../services/akademik_service.dart';
 import '../models/jadwal_ujian.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
+import '../models/app_failure.dart';
 
 /// Jadwal ujian (UTS/UAS) — disajikan sebagai daftar ringkas bergaya tabel:
 /// tanggal (info depan) · mata kuliah · jam · ruang · nomor kursi,
@@ -47,7 +48,7 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
       });
     } catch (e) {
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = userErrorMessage(e);
         _isLoading = false;
       });
     }
@@ -76,7 +77,7 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            content: Text(userErrorMessage(e)),
             backgroundColor: AppColors.danger,
           ),
         );
@@ -117,13 +118,13 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
 
     try {
       if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-        throw Exception('Tidak dapat membuka kalender');
+        throw const AppFailure('Tidak dapat membuka kalender.');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(userErrorMessage(e, 'Gagal memuat jadwal ujian. Silakan coba lagi.')),
             backgroundColor: AppColors.danger,
           ),
         );

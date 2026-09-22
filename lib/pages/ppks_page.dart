@@ -98,7 +98,10 @@ class _PpksPageState extends State<PpksPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = userErrorMessage(
+            e,
+            'Formulir pengaduan PPKS gagal dimuat. Periksa koneksi lalu coba lagi.',
+          );
           _isLoading = false;
         });
       }
@@ -275,7 +278,12 @@ class _PpksPageState extends State<PpksPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            content: Text(
+              userErrorMessage(
+                e,
+                'Pengaduan gagal dikirim. Periksa koneksi lalu coba kirim ulang.',
+              ),
+            ),
             backgroundColor: AppColors.danger,
           ),
         );
@@ -311,7 +319,26 @@ class _PpksPageState extends State<PpksPage> {
     }
 
     final data = _data;
-    if (data == null) return const SizedBox.shrink();
+    if (data == null) {
+      // Muat selesai tanpa data dan tanpa pesan galat: jangan biarkan body
+      // kosong melompong — jelaskan keadaannya dan sediakan aksi muat ulang.
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: AppEmptyState(
+              title: 'Data layanan PPKS belum tersedia',
+              message: 'Data layanan PPKS belum bisa ditampilkan. '
+                  'Silakan muat ulang beberapa saat lagi.',
+              icon: CupertinoIcons.doc_plaintext,
+              actionLabel: 'Muat ulang',
+              onAction: _fetchData,
+            ),
+          ),
+        ),
+      );
+    }
 
     return RefreshIndicator(
       onRefresh: _fetchData,
@@ -384,6 +411,8 @@ class _PpksPageState extends State<PpksPage> {
 
   /// Jaminan kerahasiaan — informasi penting, jadi ditaruh paling atas.
   Widget _buildPrivacySection(PpksData data) {
+    // Bagian ini sengaja disembunyikan (bukan kartu kosong) bila server tidak
+    // mengirim teks jaminan kerahasiaan apa pun.
     if (data.infoPrivacy.isEmpty) return const SizedBox.shrink();
 
     return AppSection(

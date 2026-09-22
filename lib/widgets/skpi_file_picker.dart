@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:file_picker/file_picker.dart';
 import '../theme/app_theme.dart';
+import 'app_kit.dart';
 
 /// ponytail: reusable file picker component for SKPI activity form sheets
 class SkpiFilePicker extends StatelessWidget {
@@ -44,7 +45,7 @@ class SkpiFilePicker extends StatelessWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memilih file: $e'), backgroundColor: AppColors.danger),
+          SnackBar(content: Text(userErrorMessage(e, 'Gagal memilih berkas.')), backgroundColor: AppColors.danger),
         );
       }
     }

@@ -1,5 +1,6 @@
 import 'api_client.dart';
 import '../models/absensi.dart';
+import '../models/app_failure.dart';
 
 class AbsensiService {
   final _dio = ApiClient.instance.dio;
@@ -88,10 +89,10 @@ class AbsensiService {
         if (innerData is Map<String, dynamic>) {
           final nested = innerData['data'];
           if (nested is Map<String, dynamic> && nested['success'] == false) {
-            throw Exception(nested['message']?.toString() ?? 'Validasi presensi ditolak');
+            throw AppFailure.fromServer(nested['message'], fallback: 'Validasi presensi ditolak');
           }
           if (innerData['success'] == false) {
-            throw Exception(innerData['message']?.toString() ?? 'Validasi presensi ditolak');
+            throw AppFailure.fromServer(innerData['message'], fallback: 'Validasi presensi ditolak');
           }
         }
       }

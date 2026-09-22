@@ -140,12 +140,11 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
       } else {
-        final String serverMsg = (e.response?.data is Map && e.response?.data['message'] != null)
-            ? (e.response?.data['message']?.toString() ?? 'Terjadi kesalahan saat login')
-            : (e.message ?? 'Terjadi kesalahan saat login');
+        // Jangan pernah tampilkan e.message / payload server mentah — pesan
+        // sudah dipetakan ApiClient menjadi AppFailure yang ramah.
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(serverMsg),
+            content: Text(userErrorMessage(e, 'Terjadi kesalahan saat login')),
             backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
@@ -153,8 +152,9 @@ class _LoginPageState extends State<LoginPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      final errStr = e.toString().replaceFirst('Exception: ', '');
-      if (errStr.contains('429') || errStr.toLowerCase().contains('terlalu banyak')) {
+      // Deteksi rate-limit hanya untuk alur kontrol (tidak ditampilkan).
+      final raw = e.toString().toLowerCase();
+      if (raw.contains('429') || raw.contains('terlalu banyak')) {
         _startRetryCountdown(60);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -168,7 +168,9 @@ class _LoginPageState extends State<LoginPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errStr),
+            content: Text(
+              userErrorMessage(e, 'Terjadi kesalahan saat login'),
+            ),
             backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),

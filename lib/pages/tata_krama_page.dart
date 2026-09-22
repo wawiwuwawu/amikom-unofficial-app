@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
+import '../models/app_failure.dart';
 
 class TataKramaPage extends StatelessWidget {
   const TataKramaPage({super.key});
@@ -14,13 +15,13 @@ class TataKramaPage extends StatelessWidget {
     );
     try {
       if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-        throw Exception('Tidak dapat membuka tautan');
+        throw const AppFailure('Tidak dapat membuka tautan.');
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal membuka tautan: $e'),
+            content: Text(userErrorMessage(e, 'Gagal membuka tautan.')),
             backgroundColor: AppColors.danger,
           ),
         );

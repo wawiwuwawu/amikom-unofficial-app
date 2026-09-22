@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../models/pusat_studi.dart';
 import 'api_client.dart';
+import '../models/app_failure.dart';
 
 class PusatStudiService {
   final Dio _dio;
@@ -56,7 +57,7 @@ class PusatStudiService {
       } else if (data is Map) {
         return PusatStudiDetail.fromJson(Map<String, dynamic>.from(data));
       }
-      throw Exception('Gagal memuat detail pusat studi');
+      throw const AppFailure('Gagal memuat detail pusat studi');
     } catch (e) {
       throw ApiClient.handleError(e, 'Gagal memuat detail pusat studi');
     }

@@ -60,7 +60,7 @@ class _BeritaListPageState extends State<BeritaListPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = userErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

@@ -67,7 +67,10 @@ class _PklPageState extends State<PklPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = userErrorMessage(
+            e,
+            'Gagal memuat data pendaftaran PKL. Silakan coba lagi.',
+          );
           _isLoading = false;
         });
       }
@@ -118,7 +121,10 @@ class _PklPageState extends State<PklPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            content: Text(userErrorMessage(
+              e,
+              'Gagal mengirim pendaftaran PKL. Silakan coba lagi.',
+            )),
             backgroundColor: AppColors.danger,
           ),
         );
@@ -145,7 +151,10 @@ class _PklPageState extends State<PklPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            content: Text(userErrorMessage(
+              e,
+              'Gagal mengunduh formulir PDF. Silakan coba lagi.',
+            )),
             backgroundColor: AppColors.danger,
           ),
         );
@@ -199,7 +208,10 @@ class _PklPageState extends State<PklPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(e.toString().replaceFirst('Exception: ', '')),
+              content: Text(userErrorMessage(
+                e,
+                'Gagal menghapus pendaftaran PKL. Silakan coba lagi.',
+              )),
               backgroundColor: AppColors.danger,
             ),
           );
@@ -252,8 +264,25 @@ class _PklPageState extends State<PklPage> {
       );
     }
 
+    // Seharusnya tidak tercapai: pemuatan sukses selalu mengisi `_data` dan
+    // setiap kegagalan mengisi `_error`. Kalau toh tercapai, tetap tampilkan
+    // galat + tombol coba lagi, bukan layar kosong tanpa penjelasan.
     final data = _data;
-    if (data == null) return const SizedBox.shrink();
+    if (data == null) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: AppErrorState(
+              message: 'Data pendaftaran PKL belum tersedia. '
+                  'Silakan muat ulang.',
+              onRetry: _fetchData,
+            ),
+          ),
+        ),
+      );
+    }
 
     return TabBarView(
       children: [_buildFormTab(data), _buildRiwayatTab(data)],

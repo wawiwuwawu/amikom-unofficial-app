@@ -81,7 +81,7 @@ class _TranskripPageState extends State<TranskripPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = userErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -109,7 +109,7 @@ class _TranskripPageState extends State<TranskripPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              e.toString().replaceFirst('Exception: ', ''),
+              userErrorMessage(e),
               style: AppText.body.copyWith(color: Colors.white),
             ),
             backgroundColor: AppColors.danger,
@@ -262,23 +262,18 @@ class _TranskripPageState extends State<TranskripPage> {
             ),
       child: AppSurface(
         variant: AppSurfaceVariant.hero,
-        child: Row(
+        child: AppStatRow(
           children: [
-            Expanded(
-              child: AppStatTile(
-                value: _ipkKumulatif(list).toStringAsFixed(2),
-                label: 'IPK Kumulatif',
-                icon: CupertinoIcons.rosette,
-              ),
+            AppStatTile(
+              value: _ipkKumulatif(list).toStringAsFixed(2),
+              label: 'IPK Kumulatif',
+              icon: CupertinoIcons.rosette,
             ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: AppStatTile(
-                value: '$totalSks',
-                label: 'Total SKS',
-                icon: CupertinoIcons.book_fill,
-                accent: AppColors.info,
-              ),
+            AppStatTile(
+              value: '$totalSks',
+              label: 'Total SKS',
+              icon: CupertinoIcons.book_fill,
+              accent: AppColors.info,
             ),
           ],
         ),

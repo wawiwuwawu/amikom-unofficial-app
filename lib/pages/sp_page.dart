@@ -28,6 +28,7 @@ class _SpPageState extends State<SpPage> {
   String _errorAvailable = '';
   SpAvailableData? _availableData;
   SpRekomendasiData? _rekomendasiData;
+  String _errorRekomendasi = '';
   final Set<String> _selectedKodes = {};
 
   bool _isLoadingTaken = true;
@@ -51,12 +52,24 @@ class _SpPageState extends State<SpPage> {
   }
 
   Future<void> _fetchRekomendasi() async {
+    setState(() => _errorRekomendasi = '');
     try {
       final data = await _service.getRekomendasi();
       if (mounted) {
         setState(() => _rekomendasiData = data);
       }
-    } catch (_) {}
+    } catch (e) {
+      // Kegagalan rekomendasi tidak boleh menggagalkan seluruh halaman, tapi
+      // juga tidak boleh hilang tanpa jejak (dulu: `catch (_) {}`).
+      if (mounted) {
+        setState(
+          () => _errorRekomendasi = userErrorMessage(
+            e,
+            'Rekomendasi SP gagal dimuat. Silakan coba lagi.',
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _fetchAvailable() async {
@@ -75,7 +88,10 @@ class _SpPageState extends State<SpPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorAvailable = e.toString().replaceFirst('Exception: ', '');
+          _errorAvailable = userErrorMessage(
+            e,
+            'Daftar matakuliah SP gagal dimuat. Periksa koneksi lalu coba lagi.',
+          );
           _isLoadingAvailable = false;
         });
       }
@@ -98,7 +114,10 @@ class _SpPageState extends State<SpPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorTaken = e.toString().replaceFirst('Exception: ', '');
+          _errorTaken = userErrorMessage(
+            e,
+            'Matakuliah SP yang sudah diambil gagal dimuat. Silakan coba lagi.',
+          );
           _isLoadingTaken = false;
         });
       }
@@ -221,7 +240,12 @@ class _SpPageState extends State<SpPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(e.toString().replaceFirst('Exception: ', '')),
+              content: Text(
+                userErrorMessage(
+                  e,
+                  'Pengajuan matakuliah SP gagal dikirim. Periksa pilihan lalu coba lagi.',
+                ),
+              ),
               backgroundColor: AppColors.danger,
             ),
           );
@@ -268,7 +292,12 @@ class _SpPageState extends State<SpPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(e.toString().replaceFirst('Exception: ', '')),
+              content: Text(
+                userErrorMessage(
+                  e,
+                  'Matakuliah SP gagal dihapus. Silakan coba lagi.',
+                ),
+              ),
               backgroundColor: AppColors.danger,
             ),
           );
@@ -368,7 +397,17 @@ class _SpPageState extends State<SpPage> {
             children: [
               _buildPeriodeBanner(data),
               _buildKuotaRingkasan(data),
-              if (rekomendasi != null && rekomendasi.hasRekomendasi)
+              // Kegagalan rekomendasi ditampilkan di bloknya sendiri supaya
+              // tidak menyamar sebagai "tidak ada rekomendasi".
+              if (_errorRekomendasi.isNotEmpty)
+                AppSection(
+                  title: 'Rekomendasi SP',
+                  child: AppErrorState(
+                    message: _errorRekomendasi,
+                    onRetry: _fetchRekomendasi,
+                  ),
+                )
+              else if (rekomendasi != null && rekomendasi.hasRekomendasi)
                 _buildRekomendasiSection(rekomendasi),
               if (!data.isOpen)
                 _buildPendaftaranTutup()
@@ -442,34 +481,25 @@ class _SpPageState extends State<SpPage> {
   Widget _buildKuotaRingkasan(SpAvailableData data) {
     return AppSection(
       title: 'Ringkasan Kuota',
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: AppStatRow(
         children: [
-          Expanded(
-            child: AppStatTile(
-              value: '${data.sisaSks} SKS',
-              label: 'Sisa Kuota',
-              icon: Icons.speed,
-              accent: AppColors.success,
-            ),
+          AppStatTile(
+            value: '${data.sisaSks} SKS',
+            label: 'Sisa Kuota',
+            icon: Icons.speed,
+            accent: AppColors.success,
           ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: AppStatTile(
-              value: '${data.maxSks} SKS',
-              label: 'Batas Max',
-              icon: Icons.rule,
-              accent: AppColors.primary,
-            ),
+          AppStatTile(
+            value: '${data.maxSks} SKS',
+            label: 'Batas Max',
+            icon: Icons.rule,
+            accent: AppColors.primary,
           ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: AppStatTile(
-              value: '${data.totalSksTahunIni} SKS',
-              label: 'Tahun Ini',
-              icon: Icons.menu_book_outlined,
-              accent: AppColors.info,
-            ),
+          AppStatTile(
+            value: '${data.totalSksTahunIni} SKS',
+            label: 'Tahun Ini',
+            icon: Icons.menu_book_outlined,
+            accent: AppColors.info,
           ),
         ],
       ),
@@ -605,25 +635,19 @@ class _SpPageState extends State<SpPage> {
           AppSection(
             title: 'Ringkasan',
             topGap: 0,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: AppStatRow(
               children: [
-                Expanded(
-                  child: AppStatTile(
-                    value: '${data.totalSks} SKS',
-                    label: 'Total SKS SP Diambil',
-                    icon: Icons.menu_book_outlined,
-                    accent: AppColors.primary,
-                  ),
+                AppStatTile(
+                  value: '${data.totalSks} SKS',
+                  label: 'Total SKS SP Diambil',
+                  icon: Icons.menu_book_outlined,
+                  accent: AppColors.primary,
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: AppStatTile(
-                    value: '${data.items.length}',
-                    label: 'Mata Kuliah',
-                    icon: Icons.list_alt_outlined,
-                    accent: AppColors.info,
-                  ),
+                AppStatTile(
+                  value: '${data.items.length}',
+                  label: 'Mata Kuliah',
+                  icon: Icons.list_alt_outlined,
+                  accent: AppColors.info,
                 ),
               ],
             ),

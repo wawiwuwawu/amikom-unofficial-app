@@ -51,7 +51,7 @@ class _PusatStudiJoinedPageState extends State<PusatStudiJoinedPage> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = userErrorMessage(e);
         });
       }
     }
@@ -155,7 +155,7 @@ class _PusatStudiJoinedPageState extends State<PusatStudiJoinedPage> {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(e.toString().replaceFirst('Exception: ', '')),
+                                content: Text(userErrorMessage(e)),
                                 backgroundColor: AppColors.danger,
                               ),
                             );
@@ -244,7 +244,7 @@ class _PusatStudiJoinedPageState extends State<PusatStudiJoinedPage> {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(e.toString().replaceFirst('Exception: ', '')),
+                                content: Text(userErrorMessage(e)),
                                 backgroundColor: AppColors.danger,
                               ),
                             );
@@ -303,7 +303,7 @@ class _PusatStudiJoinedPageState extends State<PusatStudiJoinedPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(e.toString().replaceFirst('Exception: ', '')),
+              content: Text(userErrorMessage(e)),
               backgroundColor: AppColors.danger,
             ),
           );

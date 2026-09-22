@@ -98,7 +98,10 @@ class _SkripsiPageState extends State<SkripsiPage>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMain = e.toString().replaceFirst('Exception: ', '');
+          _errorMain = userErrorMessage(
+            e,
+            'Informasi utama skripsi gagal dimuat. Periksa koneksi lalu coba lagi.',
+          );
           _isLoadingMain = false;
         });
       }
@@ -121,7 +124,10 @@ class _SkripsiPageState extends State<SkripsiPage>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorProposal = e.toString().replaceFirst('Exception: ', '');
+          _errorProposal = userErrorMessage(
+            e,
+            'Daftar proposal skripsi gagal dimuat. Silakan coba lagi.',
+          );
           _isLoadingProposal = false;
         });
       }
@@ -144,7 +150,10 @@ class _SkripsiPageState extends State<SkripsiPage>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorBimbingan = e.toString().replaceFirst('Exception: ', '');
+          _errorBimbingan = userErrorMessage(
+            e,
+            'Catatan bimbingan gagal dimuat. Silakan coba lagi.',
+          );
           _isLoadingBimbingan = false;
         });
       }
@@ -167,7 +176,10 @@ class _SkripsiPageState extends State<SkripsiPage>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorPendaftaran = e.toString().replaceFirst('Exception: ', '');
+          _errorPendaftaran = userErrorMessage(
+            e,
+            'Data pendaftaran ujian gagal dimuat. Silakan coba lagi.',
+          );
           _isLoadingPendaftaran = false;
         });
       }
@@ -190,7 +202,10 @@ class _SkripsiPageState extends State<SkripsiPage>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorPlagiarisme = e.toString().replaceFirst('Exception: ', '');
+          _errorPlagiarisme = userErrorMessage(
+            e,
+            'Data plagiarisme gagal dimuat. Silakan coba lagi.',
+          );
           _isLoadingPlagiarisme = false;
         });
       }
@@ -296,7 +311,49 @@ class _SkripsiPageState extends State<SkripsiPage>
     }
 
     final main = _mainData;
-    if (main == null) return const SizedBox.shrink();
+    if (main == null) {
+      // Header tidak boleh hilang tanpa jejak: jelaskan keadaannya dan beri
+      // tombol muat ulang, bukan `SizedBox.shrink()`.
+      return AppSurface(
+        variant: AppSurfaceVariant.warning,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.info_outline,
+                  size: 18,
+                  color: AppColors.warning,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    'Informasi skripsi belum bisa ditampilkan',
+                    style: AppText.h3,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Status pembimbing, kartu identitas, dan pengumuman belum termuat. '
+              'Silakan muat ulang untuk mencoba lagi.',
+              style: AppText.bodySm,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: _fetchMainInfo,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Muat ulang'),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -877,7 +934,10 @@ class _SkripsiPageState extends State<SkripsiPage>
               }
             } catch (e) {
               setBsState(() {
-                fileError = 'Gagal memilih berkas: $e';
+                fileError = userErrorMessage(
+                  e,
+                  'Berkas gagal dipilih. Silakan pilih ulang berkas PDF Anda.',
+                );
               });
             }
           }
@@ -1183,7 +1243,11 @@ class _SkripsiPageState extends State<SkripsiPage>
                                   });
                                 }
                                 _showSnackBar(
-                                  e.toString().replaceFirst('Exception: ', ''),
+                                  userErrorMessage(
+                                    e,
+                                    'Proposal gagal diajukan. Pastikan berkas PDF '
+                                    'maksimal 3 MB lalu coba lagi.',
+                                  ),
                                   isError: true,
                                 );
                               }
@@ -1251,7 +1315,10 @@ class _SkripsiPageState extends State<SkripsiPage>
                 _fetchProposals();
               } catch (e) {
                 _showSnackBar(
-                  e.toString().replaceFirst('Exception: ', ''),
+                  userErrorMessage(
+                    e,
+                    'Pengajuan proposal ulang gagal dikirim. Silakan coba lagi.',
+                  ),
                   isError: true,
                 );
               }
@@ -1292,7 +1359,10 @@ class _SkripsiPageState extends State<SkripsiPage>
         _fetchProposals();
       } catch (e) {
         _showSnackBar(
-          e.toString().replaceFirst('Exception: ', ''),
+          userErrorMessage(
+            e,
+            'Pengajuan tema ulang gagal dikirim. Silakan coba lagi.',
+          ),
           isError: true,
         );
       }
@@ -1385,7 +1455,10 @@ class _SkripsiPageState extends State<SkripsiPage>
                     _fetchBimbingans();
                   } catch (e) {
                     _showSnackBar(
-                      e.toString().replaceFirst('Exception: ', ''),
+                      userErrorMessage(
+                        e,
+                        'Catatan bimbingan gagal disimpan. Silakan coba lagi.',
+                      ),
                       isError: true,
                     );
                   }
@@ -1406,7 +1479,13 @@ class _SkripsiPageState extends State<SkripsiPage>
       _showSnackBar('Kartu bimbingan tersimpan di Download');
       await OpenFilex.open(path);
     } catch (e) {
-      _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
+      _showSnackBar(
+        userErrorMessage(
+          e,
+          'Kartu bimbingan gagal diunduh. Periksa koneksi lalu coba lagi.',
+        ),
+        isError: true,
+      );
     }
   }
 
@@ -1478,7 +1557,10 @@ class _SkripsiPageState extends State<SkripsiPage>
                       _fetchPendaftarans();
                     } catch (e) {
                       _showSnackBar(
-                        e.toString().replaceFirst('Exception: ', ''),
+                        userErrorMessage(
+                          e,
+                          'Pendaftaran ujian skripsi gagal diajukan. Silakan coba lagi.',
+                        ),
                         isError: true,
                       );
                     }
@@ -1522,7 +1604,10 @@ class _SkripsiPageState extends State<SkripsiPage>
         _fetchPendaftarans();
       } catch (e) {
         _showSnackBar(
-          e.toString().replaceFirst('Exception: ', ''),
+          userErrorMessage(
+            e,
+            'Pembatalan pengajuan ujian gagal diproses. Silakan coba lagi.',
+          ),
           isError: true,
         );
       }
@@ -1536,7 +1621,13 @@ class _SkripsiPageState extends State<SkripsiPage>
       _showSnackBar('Formulir tersimpan di Download');
       await OpenFilex.open(path);
     } catch (e) {
-      _showSnackBar(e.toString().replaceFirst('Exception: ', ''), isError: true);
+      _showSnackBar(
+        userErrorMessage(
+          e,
+          'Formulir pendaftaran gagal diunduh. Periksa koneksi lalu coba lagi.',
+        ),
+        isError: true,
+      );
     }
   }
 
@@ -1561,7 +1652,11 @@ class _SkripsiPageState extends State<SkripsiPage>
         _fetchPlagiarsmes();
       } catch (e) {
         _showSnackBar(
-          e.toString().replaceFirst('Exception: ', ''),
+          userErrorMessage(
+            e,
+            'Dokumen plagiarisme gagal diunggah. Pastikan berkas maksimal 3 MB '
+            'lalu coba lagi.',
+          ),
           isError: true,
         );
       }
@@ -1597,7 +1692,10 @@ class _SkripsiPageState extends State<SkripsiPage>
         _fetchPlagiarsmes();
       } catch (e) {
         _showSnackBar(
-          e.toString().replaceFirst('Exception: ', ''),
+          userErrorMessage(
+            e,
+            'Dokumen plagiarisme gagal dihapus. Silakan coba lagi.',
+          ),
           isError: true,
         );
       }
@@ -1720,7 +1818,10 @@ class _SkripsiPageState extends State<SkripsiPage>
                     );
                   } catch (e) {
                     _showSnackBar(
-                      e.toString().replaceFirst('Exception: ', ''),
+                      userErrorMessage(
+                        e,
+                        'Judul skripsi gagal diperbarui. Silakan coba lagi.',
+                      ),
                       isError: true,
                     );
                   }
@@ -1792,7 +1893,10 @@ class _SkripsiPageState extends State<SkripsiPage>
                     );
                   } catch (e) {
                     _showSnackBar(
-                      e.toString().replaceFirst('Exception: ', ''),
+                      userErrorMessage(
+                        e,
+                        'Link berkas gagal disimpan. Periksa tautannya lalu coba lagi.',
+                      ),
                       isError: true,
                     );
                   }
@@ -1807,11 +1911,25 @@ class _SkripsiPageState extends State<SkripsiPage>
   }
 
   void _openUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      _showSnackBar('Gagal membuka link: $url', isError: true);
+    // Jangan tampilkan URL mentah ke pengguna; cukup jelaskan tindakannya.
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        _showSnackBar(
+          'Tautan tidak dapat dibuka. Silakan buka manual lewat browser.',
+          isError: true,
+        );
+      }
+    } catch (e) {
+      _showSnackBar(
+        userErrorMessage(
+          e,
+          'Tautan tidak dapat dibuka. Silakan buka manual lewat browser.',
+        ),
+        isError: true,
+      );
     }
   }
 

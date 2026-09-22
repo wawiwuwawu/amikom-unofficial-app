@@ -31,7 +31,13 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
   RincianNilaiResponse? _rincian;
   bool _loadingOptions = true;
   bool _loadingRincian = false;
+
+  /// Pesan ramah sudah dibentuk lewat `userErrorMessage` di titik catch —
+  /// bukan disimpan mentah — supaya detail teknis tidak pernah ikut tampil dan
+  /// render tak perlu mengolah error lagi. [_error] untuk rincian nilai,
+  /// [_errorOpsi] untuk pilihan tahun/semester.
   String? _error;
+  String? _errorOpsi;
   bool _isRentangExpanded = false;
 
   @override
@@ -45,71 +51,80 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
     setState(() {
       _loadingOptions = true;
       _error = null;
+      _errorOpsi = null;
     });
 
+    // 1. Ambil opsi tahun akademik dan semester. Kegagalan TIDAK ditelan jadi
+    //    daftar kosong: dropdown kosong tanpa penjelasan membuat pengguna
+    //    menyimpulkan datanya memang tidak ada, padahal endpoint-nya gagal.
+    List<NilaiOpsiItem> tahunResult = const [];
+    List<NilaiOpsiItem> semesterResult = const [];
     try {
-      // 1. Ambil opsi tahun akademik dan semester
-      final tahunFuture = _service.getTahunAkademikList().catchError((_) => <NilaiOpsiItem>[]);
-      final semesterFuture = _service.getSemesterList().catchError((_) => <NilaiOpsiItem>[]);
-      final rincianFuture = _service.getRincianNilai().catchError((_) => const RincianNilaiResponse(
-            thnAkademik: '',
-            semesterId: '',
-            semesterLabel: '',
-            thnAktif: '',
-            kelompok: [],
-            rentangNilai: [],
-          ));
-
-      final results = await Future.wait([tahunFuture, semesterFuture, rincianFuture]);
+      final opsi = await Future.wait([
+        _service.getTahunAkademikList(),
+        _service.getSemesterList(),
+      ]);
       if (!mounted) return;
-
-      final tahunResult = results[0] as List<NilaiOpsiItem>;
-      final semesterResult = results[1] as List<NilaiOpsiItem>;
-      final rincianResult = results[2] as RincianNilaiResponse;
-
-      String? activeThn;
-      String? activeSmt;
-
-      if (rincianResult.thnAkademik.isNotEmpty) {
-        activeThn = rincianResult.thnAkademik;
-      } else if (tahunResult.isNotEmpty) {
-        activeThn = tahunResult.first.value;
-      }
-
-      if (rincianResult.semesterId.isNotEmpty) {
-        activeSmt = rincianResult.semesterId;
-      } else if (semesterResult.isNotEmpty) {
-        activeSmt = semesterResult.first.value;
-      }
-      if (tahunResult.isEmpty && semesterResult.isEmpty && rincianResult.thnAkademik.isEmpty) {
-        setState(() {
-          _error = 'Tidak dapat memuat data. Periksa koneksi internet Anda.';
-          _loadingOptions = false;
-        });
-        return;
-      }
-
-      setState(() {
-        _tahunList = tahunResult;
-        _semesterList = semesterResult;
-        _selectedThn = activeThn;
-        _selectedSmt = activeSmt;
-        _rincian = (rincianResult.kelompok.isNotEmpty || rincianResult.thnAkademik.isNotEmpty)
-            ? rincianResult
-            : null;
-        _loadingOptions = false;
-      });
-
-      // Jika rincian awal belum termuat dan opsi ada, muat data rincian spesifik
-      if (_rincian == null && _selectedThn != null && _selectedSmt != null) {
-        await _fetchRincian();
-      }
+      tahunResult = opsi[0];
+      semesterResult = opsi[1];
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _errorOpsi = userErrorMessage(
+          e,
+          'Gagal memuat pilihan tahun akademik/semester.',
+        );
         _loadingOptions = false;
       });
+      return;
+    }
+
+    // 2. Ambil rincian awal — opsional: kalau gagal, kegagalannya ditampilkan
+    //    apa adanya, bukan disamarkan jadi data kosong.
+    RincianNilaiResponse? rincianResult;
+    String? rincianError;
+    try {
+      rincianResult = await _service.getRincianNilai();
+    } catch (e) {
+      rincianError = userErrorMessage(
+        e,
+        'Gagal memuat rincian nilai. Silakan coba lagi.',
+      );
+    }
+    if (!mounted) return;
+
+    String? activeThn;
+    String? activeSmt;
+
+    if (rincianResult != null && rincianResult.thnAkademik.isNotEmpty) {
+      activeThn = rincianResult.thnAkademik;
+    } else if (tahunResult.isNotEmpty) {
+      activeThn = tahunResult.first.value;
+    }
+
+    if (rincianResult != null && rincianResult.semesterId.isNotEmpty) {
+      activeSmt = rincianResult.semesterId;
+    } else if (semesterResult.isNotEmpty) {
+      activeSmt = semesterResult.first.value;
+    }
+
+    setState(() {
+      _tahunList = tahunResult;
+      _semesterList = semesterResult;
+      _selectedThn = activeThn;
+      _selectedSmt = activeSmt;
+      _rincian = (rincianResult != null &&
+              (rincianResult.kelompok.isNotEmpty ||
+                  rincianResult.thnAkademik.isNotEmpty))
+          ? rincianResult
+          : null;
+      _error = rincianError;
+      _loadingOptions = false;
+    });
+
+    // Jika rincian awal belum termuat dan opsi ada, muat data rincian spesifik
+    if (_rincian == null && _selectedThn != null && _selectedSmt != null) {
+      await _fetchRincian();
     }
   }
 
@@ -133,7 +148,11 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        // Pesan ramah dibentuk di sini, bukan saat render.
+        _error = userErrorMessage(
+          e,
+          'Gagal memuat rincian nilai. Silakan coba lagi.',
+        );
       });
     } finally {
       if (mounted) {
@@ -295,7 +314,13 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
     final bottomNavPadding = MediaQuery.of(context).padding.bottom + 130;
 
     return RefreshIndicator(
-      onRefresh: _fetchRincian,
+      // Tarik-untuk-muat-ulang memuat ulang OPSI saat opsi gagal/kosong —
+      // selain itu cukup memuat ulang rincian yang sedang tampil.
+      onRefresh: (_errorOpsi != null ||
+              _tahunList.isEmpty ||
+              _semesterList.isEmpty)
+          ? _loadInitialData
+          : _fetchRincian,
       color: AppColors.primary,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
@@ -306,9 +331,18 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
           bottomNavPadding,
         ),
         children: [
-          _buildFilterSection().animate().fadeIn(duration: 220.ms),
-          if (_rincian != null) ..._buildRingkasanSections(),
-          _buildRincianBody(),
+          // Opsi filter gagal dimuat: tampilkan penyebabnya + aksi yang memuat
+          // ulang opsi, bukan dropdown kosong tanpa penjelasan.
+          if (_errorOpsi != null)
+            AppErrorState(
+              message: _errorOpsi!,
+              onRetry: _loadInitialData,
+            )
+          else ...[
+            _buildFilterSection().animate().fadeIn(duration: 220.ms),
+            if (_rincian != null) ..._buildRingkasanSections(),
+            _buildRincianBody(),
+          ],
         ],
       ),
     );
@@ -351,6 +385,15 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
                 ),
               ],
             ),
+            // Dropdown tanpa isi tidak boleh tampil tanpa penjelasan.
+            if (_tahunList.isEmpty || _semesterList.isEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Sebagian pilihan filter belum tersedia. '
+                'Tarik layar ke bawah untuk memuat ulang.',
+                style: AppText.bodySm,
+              ),
+            ],
             const SizedBox(height: AppSpacing.md),
             SizedBox(
               width: double.infinity,
@@ -421,32 +464,25 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
     return [
       AppSection(
         title: 'Ringkasan Semester',
-        child: Row(
+        child: AppStatRow(
+          gap: AppSpacing.sm,
           children: [
-            Expanded(
-              child: AppStatTile(
-                value: '$_totalMatkul',
-                label: 'Mata kuliah',
-                icon: CupertinoIcons.book_fill,
-              ),
+            AppStatTile(
+              value: '$_totalMatkul',
+              label: 'Mata kuliah',
+              icon: CupertinoIcons.book_fill,
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: AppStatTile(
-                value: '$_totalKomponen',
-                label: 'Komponen',
-                icon: CupertinoIcons.chart_bar_alt_fill,
-                accent: AppColors.info,
-              ),
+            AppStatTile(
+              value: '$_totalKomponen',
+              label: 'Komponen',
+              icon: CupertinoIcons.chart_bar_alt_fill,
+              accent: AppColors.info,
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: AppStatTile(
-                value: _rerataNilaiAkhir,
-                label: 'Rerata NA',
-                icon: CupertinoIcons.chart_bar_square_fill,
-                accent: AppColors.success,
-              ),
+            AppStatTile(
+              value: _rerataNilaiAkhir,
+              label: 'Rerata NA',
+              icon: CupertinoIcons.chart_bar_square_fill,
+              accent: AppColors.success,
             ),
           ],
         ),
@@ -495,6 +531,18 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
     }
     final rincian = _rincian;
     if (rincian == null) {
+      // Opsi berhasil dimuat tapi memang kosong/tidak lengkap: jangan menyuruh
+      // memilih dropdown yang tidak punya isi.
+      if (_tahunList.isEmpty || _semesterList.isEmpty) {
+        return AppEmptyState(
+          title: 'Filter semester belum tersedia',
+          message: 'Pilihan tahun akademik dan semester belum bisa dimuat lengkap. '
+              'Muat ulang untuk mencoba lagi; bila tetap kosong, hubungi bagian akademik.',
+          icon: Icons.filter_alt_off,
+          actionLabel: 'Muat ulang',
+          onAction: _loadInitialData,
+        );
+      }
       return _buildEmptyState(
         'Pilih tahun akademik dan semester untuk melihat rincian nilai.',
       );

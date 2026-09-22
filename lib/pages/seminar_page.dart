@@ -71,7 +71,7 @@ class _SeminarPageState extends State<SeminarPage> with SingleTickerProviderStat
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+        setState(() => _error = userErrorMessage(e));
       }
     } finally {
       if (mounted) setState(() => _loading = false);

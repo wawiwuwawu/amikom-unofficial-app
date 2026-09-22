@@ -48,7 +48,7 @@ class _NotifikasiListPageState extends State<NotifikasiListPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = userErrorMessage(e);
           _loading = false;
         });
       }

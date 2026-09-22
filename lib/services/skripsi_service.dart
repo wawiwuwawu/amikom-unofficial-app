@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import '../models/api_response.dart';
+import '../models/app_failure.dart';
 import '../models/skripsi.dart';
 import 'api_client.dart';
 
@@ -17,7 +18,7 @@ class SkripsiService {
       } else if (data is Map) {
         return SkripsiMainData.fromJson(Map<String, dynamic>.from(data));
       }
-      throw Exception('Gagal memuat informasi utama skripsi');
+      throw const AppFailure('Gagal memuat informasi utama skripsi');
     } catch (e) {
       throw ApiClient.handleError(e, 'Gagal memuat informasi utama skripsi');
     }
@@ -54,12 +55,12 @@ class SkripsiService {
         filename = filePdf.path.split(Platform.isWindows ? r'\' : '/').last;
       }
       if (RegExp(r'''[&"'<>]''').hasMatch(filename)) {
-        throw Exception('Nama file tidak boleh memuat karakter khusus (&, ", \', <, >)');
+        throw const AppFailure('Nama file tidak boleh memuat karakter khusus (&, ", \', <, >)');
       }
 
       final fileSize = await filePdf.length();
       if (fileSize > 3 * 1024 * 1024) {
-        throw Exception('Ukuran file maksimal 3 MB');
+        throw const AppFailure('Ukuran file maksimal 3 MB');
       }
 
       final formData = FormData.fromMap({
@@ -77,10 +78,8 @@ class SkripsiService {
       );
       return ApiClient.unwrapMutation(response.data);
     } catch (e) {
-      if (e is DioException) {
-        throw ApiClient.handleError(e, 'Gagal mengajukan proposal');
-      }
-      rethrow;
+      // Semua error (validasi lokal, parsing, Dio) dipetakan ke AppFailure ramah.
+      throw ApiClient.handleError(e, 'Gagal mengajukan proposal');
     }
   }
 

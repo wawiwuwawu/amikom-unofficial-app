@@ -60,7 +60,7 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = userErrorMessage(e);
       });
     } finally {
       if (mounted) {
@@ -91,7 +91,11 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal membuka lampiran: $e')),
+        SnackBar(
+          content: Text(
+            userErrorMessage(e, 'Gagal membuka lampiran. Silakan coba lagi.'),
+          ),
+        ),
       );
     }
   }

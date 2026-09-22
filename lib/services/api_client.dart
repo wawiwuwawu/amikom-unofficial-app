@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import '../models/login_response.dart';
 import '../models/dashboard.dart';
 import '../models/api_response.dart';
+import '../models/app_failure.dart';
 import 'navigation_service.dart';
 
 const _maxRetries = 2;
@@ -383,33 +384,45 @@ class ApiClient {
         rethrow;
       }
       if (e.response != null) {
-        throw Exception(e.response?.data?['message'] ?? 'Login gagal');
+        throw AppFailure.fromServer(
+          e.response?.data?['message'],
+          fallback: 'Login gagal. Periksa NIM dan kata sandi Anda.',
+        );
       }
-      throw Exception('Tidak dapat terhubung ke server');
+      throw AppFailure('Tidak dapat terhubung ke server');
     }
   }
 
   // ─── API Envelope Helpers ─────────────────────────────
   static T unwrapData<T>(dynamic responseData) {
-    if (responseData is Map<String, dynamic> &&
-        responseData['status'] == 'success' &&
-        responseData.containsKey('data')) {
-      return responseData['data'] as T;
+    try {
+      if (responseData is Map<String, dynamic> &&
+          responseData['status'] == 'success' &&
+          responseData.containsKey('data')) {
+        return responseData['data'] as T;
+      }
+      return responseData as T;
+    } on TypeError {
+      // Bentuk data server berbeda dari yang diharapkan — jangan bocorkan
+      // detail cast ke pengguna.
+      throw AppFailure(
+        'Data dari server tidak sesuai. Silakan muat ulang sebentar lagi.',
+      );
     }
-    return responseData as T;
   }
 
   static Map<String, dynamic> unwrapRoot(dynamic responseData) {
     if (responseData is Map<String, dynamic>) {
       final status = responseData['status'];
       if (status == 'error' || status == 'fail') {
-        final message = responseData['message']?.toString() ??
-            'Terjadi kesalahan pada respons server';
-        throw Exception(message);
+        throw AppFailure.fromServer(
+          responseData['message'],
+          fallback: 'Terjadi kesalahan pada respons server',
+        );
       }
       return responseData;
     }
-    throw Exception('Respons server tidak valid');
+    throw const AppFailure('Respons server tidak valid');
   }
 
   static MutationResult unwrapMutation(dynamic responseData) {
@@ -419,7 +432,14 @@ class ApiClient {
   }
 
   // ponytail: centralized error handler to prevent raw null/English network messages
-  static Exception handleError(dynamic e, [String fallback = 'Terjadi kesalahan']) {
+  //
+  // Mengembalikan [AppFailure] yang pesannya SELALU ramah-pengguna. Non-
+  // DioException tidak lagi memakai `e.toString()` (sumber kebocoran pesan
+  // teknis seperti "FormatException: ..." atau "type 'Null' is not a subtype ...").
+  static AppFailure handleError(dynamic e, [String fallback = 'Terjadi kesalahan']) {
+    // Sudah pernah dipetakan (mis. dari unwrapData/unwrapRoot) — pertahankan.
+    if (e is AppFailure) return e;
+
     if (e is DioException) {
       final statusCode = e.response?.statusCode;
       final serverData = e.response?.data;
@@ -431,54 +451,55 @@ class ApiClient {
       }
 
       if (statusCode == 400) {
-        if (serverMsg != null && serverMsg.isNotEmpty) {
-          return Exception(serverMsg);
-        }
-        return Exception('Permintaan tidak valid');
+        return AppFailure.fromServer(serverMsg, fallback: 'Permintaan tidak valid');
       }
 
       if (statusCode == 401) {
-        return Exception('Sesi berakhir. Silakan login ulang.');
+        return AppFailure('Sesi berakhir. Silakan login ulang.');
       }
 
       if (statusCode == 413) {
-        return Exception(serverMsg != null && serverMsg.isNotEmpty
-            ? serverMsg
-            : 'Ukuran berkas melebihi batas 5 MB');
+        return AppFailure.fromServer(
+          serverMsg,
+          fallback: 'Ukuran berkas melebihi batas 5 MB',
+        );
       }
 
       if (statusCode == 429) {
-        return Exception('Terlalu banyak permintaan. Silakan tunggu sebentar.');
+        return AppFailure('Terlalu banyak permintaan. Silakan tunggu sebentar.');
       }
 
       if (statusCode == 500) {
         if (serverMsg != null &&
             (serverMsg.toLowerCase().contains('sesi') ||
                 serverMsg.toLowerCase().contains('session'))) {
-          return Exception('Sesi berakhir. Silakan login ulang.');
+          return AppFailure('Sesi berakhir. Silakan login ulang.');
         }
-        return Exception('Terjadi kendala pada server portal');
+        return AppFailure('Terjadi kendala pada server portal');
       }
 
       if (statusCode == 502 || statusCode == 503 || statusCode == 504) {
-        return Exception('Layanan portal Amikom sedang tidak dapat diakses');
+        return AppFailure('Layanan portal Amikom sedang tidak dapat diakses');
       }
 
       if (serverMsg != null && serverMsg.isNotEmpty) {
-        return Exception(serverMsg);
+        return AppFailure.fromServer(serverMsg, fallback: fallback);
       }
 
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
-        return Exception('Koneksi ke server batas waktu habis');
+        return AppFailure('Koneksi ke server batas waktu habis');
       }
       if (e.type == DioExceptionType.connectionError) {
-        return Exception('Tidak dapat terhubung ke server');
+        return AppFailure('Tidak dapat terhubung ke server');
       }
-      return Exception(fallback);
+      return AppFailure(fallback);
     }
-    return Exception(e?.toString() ?? fallback);
+
+    // Exception lain (FormatException, TypeError, PlatformException, …) tidak
+    // pernah ditampilkan mentah — cukup dipetakan ke fallback ramah.
+    return AppFailure(fallback);
   }
 
   // ponytail: direct dashboard method on ApiClient instead of redundant DashboardService wrapper

@@ -47,7 +47,7 @@ class _NotifikasiDetailPageState extends State<NotifikasiDetailPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = userErrorMessage(e);
       });
     } finally {
       if (mounted) {
@@ -79,7 +79,7 @@ class _NotifikasiDetailPageState extends State<NotifikasiDetailPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Gagal membuka lampiran: $e')));
+      ).showSnackBar(SnackBar(content: Text(userErrorMessage(e, 'Gagal membuka lampiran. Silakan coba lagi.'))));
     }
   }
 

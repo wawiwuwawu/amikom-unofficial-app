@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'api_client.dart';
 import 'aktivitas_helper.dart';
 import '../models/prestasi.dart';
+import '../models/app_failure.dart';
 
 class PrestasiService {
   final _dio = ApiClient.instance.dio;
@@ -30,7 +31,7 @@ class PrestasiService {
       } else if (data is Map) {
         return PrestasiOptionsData.fromJson(Map<String, dynamic>.from(data));
       }
-      throw Exception('Data opsi prestasi kosong');
+      throw const AppFailure('Data opsi prestasi kosong');
     } catch (e) {
       throw ApiClient.handleError(e, 'Gagal memuat pilihan Prestasi');
     }

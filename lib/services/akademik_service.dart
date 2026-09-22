@@ -4,6 +4,7 @@ import 'api_client.dart';
 import '../models/agenda.dart';
 import '../models/jadwal_ujian.dart';
 import '../models/agenda_terpadu.dart';
+import '../models/app_failure.dart';
 
 class AkademikService {
   final _dio = ApiClient.instance.dio;
@@ -26,7 +27,7 @@ class AkademikService {
       if (response.statusCode == 200 && response.data['data'] != null) {
         return AgendaTerpaduData.fromJson(response.data['data']);
       }
-      throw Exception('Gagal memuat agenda terpadu');
+      throw const AppFailure('Gagal memuat agenda terpadu');
     } catch (e) {
       throw ApiClient.handleError(e, 'Gagal memuat agenda terpadu');
     }

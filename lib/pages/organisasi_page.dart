@@ -44,7 +44,7 @@ class _OrganisasiPageState extends State<OrganisasiPage> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+        setState(() => _error = userErrorMessage(e));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -101,7 +101,7 @@ class _OrganisasiPageState extends State<OrganisasiPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+          SnackBar(content: Text(userErrorMessage(e))),
         );
       }
     }
@@ -140,7 +140,7 @@ class _OrganisasiPageState extends State<OrganisasiPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+          SnackBar(content: Text(userErrorMessage(e))),
         );
       }
     }
@@ -211,23 +211,18 @@ class _OrganisasiPageState extends State<OrganisasiPage> {
   Widget _buildSummary(List<OrganisasiItem> items) {
     final valid = items.where(_isValid).length;
 
-    return Row(
+    return AppStatRow(
       children: [
-        Expanded(
-          child: AppStatTile(
-            value: '${items.length}',
-            label: 'Total',
-            icon: CupertinoIcons.person_3_fill,
-          ),
+        AppStatTile(
+          value: '${items.length}',
+          label: 'Total',
+          icon: CupertinoIcons.person_3_fill,
         ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: AppStatTile(
-            value: '$valid',
-            label: 'Valid',
-            icon: CupertinoIcons.checkmark_seal_fill,
-            accent: AppColors.success,
-          ),
+        AppStatTile(
+          value: '$valid',
+          label: 'Valid',
+          icon: CupertinoIcons.checkmark_seal_fill,
+          accent: AppColors.success,
         ),
       ],
     );

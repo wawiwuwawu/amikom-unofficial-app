@@ -9,14 +9,10 @@ class KhsService {
     try {
       final response = await _dio.get('/api/v1/khs');
       return ApiClient.unwrapData<Map<String, dynamic>>(response.data);
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat data KHS');
+    } catch (e) {
+      // Tangkap semua error (bukan hanya DioException) supaya pesan teknis
+      // dari Dio/parsing tidak pernah bocor ke UI.
+      throw ApiClient.handleError(e, 'Gagal memuat data KHS. Silakan coba lagi.');
     }
   }
 
@@ -29,14 +25,8 @@ class KhsService {
       return KhsDetailResponse.fromJson(
         ApiClient.unwrapData<Map<String, dynamic>>(response.data),
       );
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat detail KHS');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat detail KHS. Silakan coba lagi.');
     }
   }
 
@@ -56,14 +46,8 @@ class KhsService {
         options: Options(method: 'POST'),
       );
       return savePath;
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal mengunduh KHS');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal mengunduh KHS. Silakan coba lagi.');
     }
   }
 }

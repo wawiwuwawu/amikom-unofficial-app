@@ -40,7 +40,7 @@ class _MbkmPageState extends State<MbkmPage> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+        setState(() => _error = userErrorMessage(e));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -97,32 +97,24 @@ class _MbkmPageState extends State<MbkmPage> {
     final komitmen = items.where((e) => e.komitmen == '1').length;
     final luaran = items.where((e) => e.fileLolos.isNotEmpty).length;
 
-    return Row(
+    return AppStatRow(
       children: [
-        Expanded(
-          child: AppStatTile(
-            value: '${items.length}',
-            label: 'Program',
-            icon: Icons.school_outlined,
-          ),
+        AppStatTile(
+          value: '${items.length}',
+          label: 'Program',
+          icon: Icons.school_outlined,
         ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: AppStatTile(
-            value: '$komitmen',
-            label: 'Komitmen',
-            icon: Icons.task_alt,
-            accent: AppColors.success,
-          ),
+        AppStatTile(
+          value: '$komitmen',
+          label: 'Komitmen',
+          icon: Icons.task_alt,
+          accent: AppColors.success,
         ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: AppStatTile(
-            value: '$luaran',
-            label: 'Luaran',
-            icon: Icons.rocket_launch_outlined,
-            accent: AppColors.info,
-          ),
+        AppStatTile(
+          value: '$luaran',
+          label: 'Luaran',
+          icon: Icons.rocket_launch_outlined,
+          accent: AppColors.info,
         ),
       ],
     );
@@ -343,10 +335,7 @@ class _MbkmPageState extends State<MbkmPage> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        e.toString().replaceFirst(
-                                          'Exception: ',
-                                          '',
-                                        ),
+                                        userErrorMessage(e),
                                       ),
                                       backgroundColor: AppColors.danger,
                                     ),
@@ -488,10 +477,7 @@ class _MbkmPageState extends State<MbkmPage> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        e.toString().replaceFirst(
-                                          'Exception: ',
-                                          '',
-                                        ),
+                                        userErrorMessage(e),
                                       ),
                                       backgroundColor: AppColors.danger,
                                     ),

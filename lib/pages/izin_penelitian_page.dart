@@ -67,7 +67,10 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = userErrorMessage(
+            e,
+            'Gagal memuat data izin penelitian. Silakan coba lagi.',
+          );
           _isLoading = false;
         });
       }
@@ -205,7 +208,10 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            content: Text(userErrorMessage(
+              e,
+              'Gagal mengirim pengajuan izin penelitian. Silakan coba lagi.',
+            )),
             backgroundColor: AppColors.danger,
           ),
         );
@@ -254,7 +260,10 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(e.toString().replaceFirst('Exception: ', '')),
+              content: Text(userErrorMessage(
+                e,
+                'Gagal menghapus pengajuan izin penelitian. Silakan coba lagi.',
+              )),
               backgroundColor: AppColors.danger,
             ),
           );
@@ -335,8 +344,21 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
   }
 
   Widget _buildFormTab() {
+    // Form butuh daftar opsi dari server. Tanpa data, tampilkan galat yang bisa
+    // dicoba ulang — bukan layar kosong.
     final data = _data;
-    if (data == null) return const SizedBox.shrink();
+    if (data == null) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: AppSpacing.page,
+          child: AppErrorState(
+            message: 'Data formulir izin penelitian belum tersedia. '
+                'Silakan muat ulang halaman ini.',
+            onRetry: _fetchData,
+          ),
+        ),
+      );
+    }
 
     final jenisList = data.options.jenisPenelitian;
     final ditujukanList = data.options.ditujukanPenelitian;

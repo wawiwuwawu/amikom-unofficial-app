@@ -63,7 +63,7 @@ class _TargetIpkSimulatorSheetState extends State<TargetIpkSimulatorSheet> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = userErrorMessage(e);
           _loading = false;
         });
       }

@@ -9,16 +9,12 @@ class PanduanService {
   Future<List<PanduanItem>> getList() async {
     try {
       final response = await _dio.get('/api/v1/panduan');
-      final data = response.data['data'] as List;
+      // unwrapData melempar AppFailure ramah bila bentuk data server berbeda.
+      final data = ApiClient.unwrapData<List<dynamic>>(response.data);
       return data.map((e) => PanduanItem.fromJson(e)).toList();
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat daftar panduan');
+    } catch (e) {
+      // Tangkap semua error agar pesan teknis (cast/parsing/Dio) tidak bocor.
+      throw ApiClient.handleError(e, 'Gagal memuat daftar panduan. Silakan coba lagi.');
     }
   }
 
@@ -68,15 +64,9 @@ class PanduanService {
       await file.writeAsBytes(response.data);
       
       return savePath;
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal mengunduh panduan');
+    } catch (e) {
+      // Termasuk kegagalan menulis berkas — tetap tampilkan pesan ramah.
+      throw ApiClient.handleError(e, 'Gagal mengunduh panduan. Silakan coba lagi.');
     }
   }
 }
-

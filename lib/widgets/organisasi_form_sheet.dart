@@ -86,7 +86,7 @@ class _OrganisasiFormSheetState extends State<OrganisasiFormSheet> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = userErrorMessage(e);
           _loadingOptions = false;
         });
       }
@@ -145,7 +145,7 @@ class _OrganisasiFormSheetState extends State<OrganisasiFormSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+          SnackBar(content: Text(userErrorMessage(e))),
         );
       }
     } finally {

@@ -60,7 +60,10 @@ class _SkmkPageState extends State<SkmkPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = userErrorMessage(
+            e,
+            'Gagal memuat data pengajuan SKMK. Silakan coba lagi.',
+          );
           _isLoading = false;
         });
       }
@@ -101,7 +104,10 @@ class _SkmkPageState extends State<SkmkPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            content: Text(userErrorMessage(
+              e,
+              'Gagal mengirim pengajuan SKMK. Silakan coba lagi.',
+            )),
             backgroundColor: AppColors.danger,
           ),
         );
@@ -153,7 +159,10 @@ class _SkmkPageState extends State<SkmkPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(e.toString().replaceFirst('Exception: ', '')),
+              content: Text(userErrorMessage(
+                e,
+                'Gagal menghapus pengajuan SKMK. Silakan coba lagi.',
+              )),
               backgroundColor: AppColors.danger,
             ),
           );
@@ -206,8 +215,25 @@ class _SkmkPageState extends State<SkmkPage> {
       );
     }
 
+    // Seharusnya tidak tercapai: pemuatan sukses selalu mengisi `_data` dan
+    // setiap kegagalan mengisi `_error`. Kalau toh tercapai, tetap tampilkan
+    // galat + tombol coba lagi, bukan layar kosong tanpa penjelasan.
     final data = _data;
-    if (data == null) return const SizedBox.shrink();
+    if (data == null) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: AppErrorState(
+              message: 'Data pengajuan SKMK belum tersedia. '
+                  'Silakan muat ulang.',
+              onRetry: _fetchData,
+            ),
+          ),
+        ),
+      );
+    }
 
     return TabBarView(
       children: [_buildFormTab(data), _buildRiwayatTab(data)],

@@ -7,6 +7,7 @@ import '../services/akademik_service.dart';
 import '../models/agenda.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
+import '../models/app_failure.dart';
 
 /// Agenda akademik — kalender bulanan di atas, lalu daftar kegiatan yang
 /// disusun kronologis per bulan ([AppSection] = nama bulan, isinya
@@ -91,7 +92,7 @@ class _AgendaAkademikPageState extends State<AgendaAkademikPage> {
       });
     } catch (e) {
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = userErrorMessage(e);
         _isLoading = false;
       });
     }
@@ -158,12 +159,12 @@ class _AgendaAkademikPageState extends State<AgendaAkademikPage> {
 
     try {
       if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-        throw Exception('Tidak dapat membuka kalender');
+        throw const AppFailure('Tidak dapat membuka kalender.');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.danger),
+          SnackBar(content: Text(userErrorMessage(e, 'Gagal memuat agenda akademik. Silakan coba lagi.')), backgroundColor: AppColors.danger),
         );
       }
     }

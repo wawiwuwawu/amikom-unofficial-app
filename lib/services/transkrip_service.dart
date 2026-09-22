@@ -1,5 +1,5 @@
-import 'package:dio/dio.dart';
 import 'api_client.dart';
+import '../models/app_failure.dart';
 import '../models/transkrip.dart';
 import '../models/histori_ipk.dart';
 
@@ -13,14 +13,9 @@ class TranskripService {
           .map((e) => TranskripItem.fromJson(e))
           .toList();
       return list;
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat transkrip');
+    } catch (e) {
+      // Tangkap semua error agar pesan Dio/parsing tidak pernah tampil mentah.
+      throw ApiClient.handleError(e, 'Gagal memuat transkrip. Silakan coba lagi.');
     }
   }
 
@@ -30,15 +25,9 @@ class TranskripService {
       if (response.statusCode == 200 && response.data['data'] != null) {
         return HistoriIpkData.fromJson(response.data['data']);
       }
-      throw Exception('Gagal memuat histori IPK');
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat histori IPK');
+      throw const AppFailure('Gagal memuat histori IPK. Silakan coba lagi.');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat histori IPK. Silakan coba lagi.');
     }
   }
 
@@ -48,15 +37,9 @@ class TranskripService {
       if (response.statusCode == 200 && response.data['data'] != null) {
         return CumlaudeData.fromJson(response.data['data']);
       }
-      throw Exception('Gagal memuat evaluasi cumlaude');
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat evaluasi cumlaude');
+      throw const AppFailure('Gagal memuat evaluasi cumlaude. Silakan coba lagi.');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat evaluasi cumlaude. Silakan coba lagi.');
     }
   }
 
@@ -66,15 +49,9 @@ class TranskripService {
       if (response.statusCode == 200 && response.data['data'] != null) {
         return ProgressKelulusanData.fromJson(response.data['data']);
       }
-      throw Exception('Gagal memuat progress kelulusan');
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat progress kelulusan');
+      throw const AppFailure('Gagal memuat progress kelulusan. Silakan coba lagi.');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat progress kelulusan. Silakan coba lagi.');
     }
   }
 
@@ -84,15 +61,9 @@ class TranskripService {
       if (response.statusCode == 200 && response.data['data'] != null) {
         return SkpiData.fromJson(response.data['data']);
       }
-      throw Exception('Gagal memuat ringkasan SKPI');
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal memuat ringkasan SKPI');
+      throw const AppFailure('Gagal memuat ringkasan SKPI. Silakan coba lagi.');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat ringkasan SKPI. Silakan coba lagi.');
     }
   }
 
@@ -105,15 +76,9 @@ class TranskripService {
       if (response.statusCode == 200 && response.data['data'] != null) {
         return SimulasiIpkData.fromJson(response.data['data']);
       }
-      throw Exception('Gagal melakukan simulasi target IPK');
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal melakukan simulasi target IPK');
+      throw const AppFailure('Gagal melakukan simulasi target IPK. Silakan coba lagi.');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal melakukan simulasi target IPK. Silakan coba lagi.');
     }
   }
 
@@ -131,14 +96,9 @@ class TranskripService {
         savePath,
       );
       return savePath;
-    } on DioException catch (e) {
-      if (e.response != null) {
-        final msg = e.response?.data?['message'];
-        if (msg != null && msg.toString().isNotEmpty) {
-          throw Exception(msg);
-        }
-      }
-      throw Exception(e.message ?? 'Gagal mengunduh transkrip');
+    } catch (e) {
+      // Termasuk kegagalan menulis berkas — tetap tampilkan pesan ramah.
+      throw ApiClient.handleError(e, 'Gagal mengunduh transkrip. Silakan coba lagi.');
     }
   }
 }

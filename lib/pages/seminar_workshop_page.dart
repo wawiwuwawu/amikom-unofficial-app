@@ -56,7 +56,7 @@ class _SeminarWorkshopPageState extends State<SeminarWorkshopPage> {
       });
     } catch (e) {
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = userErrorMessage(e);
         _loading = false;
       });
     }
@@ -110,7 +110,7 @@ class _SeminarWorkshopPageState extends State<SeminarWorkshopPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          content: Text(userErrorMessage(e)),
           backgroundColor: AppColors.danger,
         ),
       );
@@ -158,7 +158,7 @@ class _SeminarWorkshopPageState extends State<SeminarWorkshopPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          content: Text(userErrorMessage(e)),
           backgroundColor: AppColors.danger,
         ),
       );

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../models/ppks.dart';
 import 'api_client.dart';
+import '../models/app_failure.dart';
 
 class PpksService {
   final Dio _dio;
@@ -16,7 +17,7 @@ class PpksService {
       } else if (data is Map) {
         return PpksData.fromJson(Map<String, dynamic>.from(data));
       }
-      throw Exception('Gagal memuat formulir pengaduan PPKS');
+      throw const AppFailure('Gagal memuat formulir pengaduan PPKS');
     } catch (e) {
       throw ApiClient.handleError(e, 'Gagal memuat formulir pengaduan PPKS');
     }

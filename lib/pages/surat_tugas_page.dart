@@ -92,7 +92,7 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = userErrorMessage(e);
           _isLoading = false;
         });
       }
@@ -277,7 +277,7 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            content: Text(userErrorMessage(e)),
             backgroundColor: AppColors.danger,
           ),
         );
@@ -323,7 +323,7 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(e.toString().replaceFirst('Exception: ', '')),
+              content: Text(userErrorMessage(e)),
               backgroundColor: AppColors.danger,
             ),
           );
@@ -572,7 +572,7 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text(e.toString().replaceFirst('Exception: ', '')),
+                                      content: Text(userErrorMessage(e)),
                                       backgroundColor: AppColors.danger,
                                     ),
                                   );

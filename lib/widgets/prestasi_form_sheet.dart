@@ -81,7 +81,7 @@ class _PrestasiFormSheetState extends State<PrestasiFormSheet> {
       });
     } catch (e) {
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = userErrorMessage(e);
         _isLoadingOptions = false;
       });
     }
@@ -160,7 +160,7 @@ class _PrestasiFormSheetState extends State<PrestasiFormSheet> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          content: Text(userErrorMessage(e)),
           backgroundColor: AppColors.danger,
         ),
       );

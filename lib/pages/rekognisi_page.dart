@@ -54,7 +54,7 @@ class _RekognisiPageState extends State<RekognisiPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = userErrorMessage(e);
         });
       }
     } finally {
@@ -113,7 +113,7 @@ class _RekognisiPageState extends State<RekognisiPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+          SnackBar(content: Text(userErrorMessage(e))),
         );
       }
     }
@@ -151,7 +151,7 @@ class _RekognisiPageState extends State<RekognisiPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+          SnackBar(content: Text(userErrorMessage(e))),
         );
       }
     }

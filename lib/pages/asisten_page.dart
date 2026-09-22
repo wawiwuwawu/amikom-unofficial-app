@@ -70,6 +70,8 @@ class _AsistenPageState extends State<AsistenPage> {
       final laporan = await _service.getLaporan();
       final thnResponse = await _service.getTahunAkademik();
 
+      // Foto profil bersifat pelengkap: bila gagal, avatar jatuh ke placeholder
+      // ([_fotoPlaceholder]) sehingga kegagalannya tidak perlu menakuti pengguna.
       String fetchedFoto = '';
       try {
         final dash = await ApiClient.instance.getDashboard();
@@ -91,7 +93,12 @@ class _AsistenPageState extends State<AsistenPage> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+        setState(
+          () => _error = userErrorMessage(
+            e,
+            'Data asisten praktikum gagal dimuat. Periksa koneksi lalu coba lagi.',
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -139,7 +146,10 @@ class _AsistenPageState extends State<AsistenPage> {
     } catch (e) {
       if (mounted) {
         setState(
-          () => _errorJadwal = e.toString().replaceFirst('Exception: ', ''),
+          () => _errorJadwal = userErrorMessage(
+            e,
+            'Jadwal mengajar gagal dimuat. Silakan pilih periode lain atau coba lagi.',
+          ),
         );
       }
     } finally {
@@ -164,7 +174,10 @@ class _AsistenPageState extends State<AsistenPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Gagal mengajukan: ${e.toString().replaceFirst('Exception: ', '')}',
+              userErrorMessage(
+                e,
+                'Gagal mengajukan Bebas KP. Silakan coba lagi sebentar lagi.',
+              ),
             ),
             backgroundColor: AppColors.danger,
           ),
@@ -205,7 +218,7 @@ class _AsistenPageState extends State<AsistenPage> {
           _buildProfileCard(),
           _buildStatsSection(),
           _buildBebasKpSection(),
-          if (_laporan != null && _laporan!.labels.isNotEmpty)
+          if (_laporan != null)
             AppSection(title: 'Grafik Kinerja', child: _buildModernChart()),
           AppSection(title: 'Jadwal Asisten', child: _buildJadwalSection()),
         ],
@@ -295,43 +308,32 @@ class _AsistenPageState extends State<AsistenPage> {
 
     return AppSection(
       title: 'Ringkasan Kehadiran',
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: AppStatRow(
+        gap: AppSpacing.sm,
         children: [
-          Expanded(
-            child: AppStatTile(
-              value: s.hadir.toString(),
-              label: 'Hadir',
-              icon: Icons.check_circle_outline,
-              accent: AppColors.success,
-            ),
+          AppStatTile(
+            value: s.hadir.toString(),
+            label: 'Hadir',
+            icon: Icons.check_circle_outline,
+            accent: AppColors.success,
           ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: AppStatTile(
-              value: s.izin.toString(),
-              label: 'Izin',
-              icon: Icons.event_busy_outlined,
-              accent: AppColors.warning,
-            ),
+          AppStatTile(
+            value: s.izin.toString(),
+            label: 'Izin',
+            icon: Icons.event_busy_outlined,
+            accent: AppColors.warning,
           ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: AppStatTile(
-              value: s.pengganti.toString(),
-              label: 'Ganti',
-              icon: Icons.swap_horiz,
-              accent: AppColors.info,
-            ),
+          AppStatTile(
+            value: s.pengganti.toString(),
+            label: 'Ganti',
+            icon: Icons.swap_horiz,
+            accent: AppColors.info,
           ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: AppStatTile(
-              value: s.alpa.toString(),
-              label: 'Alpa',
-              icon: Icons.cancel_outlined,
-              accent: AppColors.danger,
-            ),
+          AppStatTile(
+            value: s.alpa.toString(),
+            label: 'Alpa',
+            icon: Icons.cancel_outlined,
+            accent: AppColors.danger,
           ),
         ],
       ),
@@ -402,7 +404,42 @@ class _AsistenPageState extends State<AsistenPage> {
 
   // ── Grafik kinerja ─────────────────────────────────────────────────────────
 
+  /// Grafik layak digambar hanya bila ada label periode DAN minimal satu seri
+  /// garis berisi nilai. Tanpa ini, `LineChart` tampil sebagai kartu kosong.
+  bool get _hasChartData {
+    final laporan = _laporan;
+    if (laporan == null || laporan.labels.isEmpty) return false;
+    return laporan.datasets.any((d) => d.type == 'line' && d.data.isNotEmpty);
+  }
+
+  /// Penjelasan ramah pengganti kartu grafik yang kosong.
+  Widget _chartUnavailableNote() {
+    return AppSurface(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            CupertinoIcons.chart_bar_alt_fill,
+            size: 18,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'Belum ada data kinerja yang bisa digambarkan. Grafik akan muncul '
+              'setelah penilaian asisten tersedia.',
+              style: AppText.bodySm,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildModernChart() {
+    // Jaring pengaman: section grafik tidak pernah menyisakan kartu tanpa isi.
+    if (!_hasChartData) return _chartUnavailableNote();
+
     return Column(
       children: [
         _buildLineChart(),
@@ -413,9 +450,8 @@ class _AsistenPageState extends State<AsistenPage> {
   }
 
   Widget _buildLineChart() {
-    if (_laporan == null || _laporan!.datasets.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    // Jaring pengaman: jangan pernah menggambar kartu grafik tanpa garis/nilai.
+    if (!_hasChartData) return _chartUnavailableNote();
 
     List<LineChartBarData> lines = [];
     double maxY = 0;
@@ -574,9 +610,8 @@ class _AsistenPageState extends State<AsistenPage> {
   }
 
   Widget _buildChartLegend() {
-    if (_laporan == null || _laporan!.datasets.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    // Legenda hanya relevan bila grafiknya benar-benar tergambar.
+    if (!_hasChartData) return const SizedBox.shrink();
 
     int datasetIndex = 0;
 

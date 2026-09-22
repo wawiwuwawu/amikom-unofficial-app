@@ -88,7 +88,7 @@ class _RiwayatPembayaranTabState extends State<_RiwayatPembayaranTab> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      if (mounted) setState(() => _error = userErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -128,7 +128,7 @@ class _RiwayatPembayaranTabState extends State<_RiwayatPembayaranTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal mengunduh PDF: ${e.toString()}'),
+            content: Text(userErrorMessage(e, 'Gagal mengunduh PDF. Silakan coba lagi.')),
             backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
@@ -328,7 +328,7 @@ class _KeuanganDetailSheetState extends State<_KeuanganDetailSheet> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+        setState(() => _error = userErrorMessage(e));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -352,7 +352,7 @@ class _KeuanganDetailSheetState extends State<_KeuanganDetailSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal mengunduh kwitansi: ${e.toString()}'),
+            content: Text(userErrorMessage(e, 'Gagal mengunduh kwitansi. Silakan coba lagi.')),
             backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
@@ -550,7 +550,7 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      if (mounted) setState(() => _error = userErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -715,7 +715,7 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal membuat VA: ${e.toString()}'),
+            content: Text(userErrorMessage(e, 'Gagal membuat nomor VA. Silakan coba lagi.')),
             backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
@@ -779,7 +779,7 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal membatalkan: ${e.toString()}'),
+            content: Text(userErrorMessage(e, 'Gagal membatalkan transaksi. Silakan coba lagi.')),
             backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),

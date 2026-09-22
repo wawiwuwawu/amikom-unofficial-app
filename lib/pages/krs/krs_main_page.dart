@@ -93,7 +93,7 @@ class _InfoPengajuanTabState extends State<_InfoPengajuanTab> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+        setState(() => _error = userErrorMessage(e));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -120,7 +120,7 @@ class _InfoPengajuanTabState extends State<_InfoPengajuanTab> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal sinkronisasi: ${e.toString()}')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(userErrorMessage(e, 'Gagal menyinkronkan data KRS. Silakan coba lagi.'))));
         setState(() => _loading = false);
       }
     }
@@ -155,7 +155,7 @@ class _InfoPengajuanTabState extends State<_InfoPengajuanTab> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan: ${e.toString()}')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(userErrorMessage(e, 'Gagal menyimpan KRS. Silakan coba lagi.'))));
         setState(() => _loading = false);
       }
     }
@@ -350,25 +350,19 @@ class _InfoPengajuanTabState extends State<_InfoPengajuanTab> {
                   padding: const EdgeInsets.only(bottom: AppSpacing.lg),
                   child: _buildAnnouncementBanner(_info!.periodePengajuan!.teksMentah),
                 ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              AppStatRow(
                 children: [
-                  Expanded(
-                    child: AppStatTile(
-                      value: _maxSks.toString(),
-                      label: 'Batas SKS',
-                      icon: CupertinoIcons.arrow_up_right_square,
-                      accent: AppColors.info,
-                    ),
+                  AppStatTile(
+                    value: _maxSks.toString(),
+                    label: 'Batas SKS',
+                    icon: CupertinoIcons.arrow_up_right_square,
+                    accent: AppColors.info,
                   ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: AppStatTile(
-                      value: '${_selectedSks + _sksSaatIni} SKS',
-                      label: 'Terpilih',
-                      icon: CupertinoIcons.checkmark_alt_circle,
-                      accent: overSks ? AppColors.danger : AppColors.success,
-                    ),
+                  AppStatTile(
+                    value: '${_selectedSks + _sksSaatIni} SKS',
+                    label: 'Terpilih',
+                    icon: CupertinoIcons.checkmark_alt_circle,
+                    accent: overSks ? AppColors.danger : AppColors.success,
                   ),
                 ],
               ),
@@ -449,7 +443,7 @@ class _DaftarPengajuanTabState extends State<_DaftarPengajuanTab> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      if (mounted) setState(() => _error = userErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -493,7 +487,7 @@ class _DaftarPengajuanTabState extends State<_DaftarPengajuanTab> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menghapus: ${e.toString()}')),
+          SnackBar(content: Text(userErrorMessage(e, 'Gagal menghapus mata kuliah. Silakan coba lagi.'))),
         );
         setState(() => _loading = false);
       }
@@ -568,25 +562,19 @@ class _DaftarPengajuanTabState extends State<_DaftarPengajuanTab> {
           MediaQuery.of(context).padding.bottom + AppSpacing.xxl,
         ),
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          AppStatRow(
             children: [
-              Expanded(
-                child: AppStatTile(
-                  value: '$_totalSks SKS',
-                  label: 'Total SKS Diajukan',
-                  icon: CupertinoIcons.book_circle_fill,
-                  accent: AppColors.primary,
-                ),
+              AppStatTile(
+                value: '$_totalSks SKS',
+                label: 'Total SKS Diajukan',
+                icon: CupertinoIcons.book_circle_fill,
+                accent: AppColors.primary,
               ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: AppStatTile(
-                  value: _list.length.toString(),
-                  label: 'Matkul',
-                  icon: CupertinoIcons.list_bullet,
-                  accent: AppColors.info,
-                ),
+              AppStatTile(
+                value: _list.length.toString(),
+                label: 'Matkul',
+                icon: CupertinoIcons.list_bullet,
+                accent: AppColors.info,
               ),
             ],
           ),
@@ -645,7 +633,7 @@ class _PengisianKelasTabState extends State<_PengisianKelasTab> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      if (mounted) setState(() => _error = userErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -658,7 +646,7 @@ class _PengisianKelasTabState extends State<_PengisianKelasTab> {
       await _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal membatalkan: ${e.toString()}')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(userErrorMessage(e, 'Gagal membatalkan perubahan. Silakan coba lagi.'))));
         setState(() => _loading = false);
       }
     }

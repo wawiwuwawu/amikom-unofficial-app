@@ -84,7 +84,10 @@ class _DashboardPageState extends State<DashboardPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      // `userErrorMessage` hanya memakai pesan ramah; detail teknis tidak
+      // pernah sampai ke layar.
+      setState(() => _error =
+          userErrorMessage(e, 'Gagal memuat beranda. Silakan coba lagi.'));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -103,8 +106,19 @@ class _DashboardPageState extends State<DashboardPage> {
       );
     }
 
+    // Keadaan ini seharusnya tidak tercapai: beranda selalu punya isi saat
+    // pemuatan sukses, dan setiap kegagalan mengisi `_error`. Kalau toh
+    // tercapai, jangan tampilkan layar kosong — beri galat + tombol coba lagi.
     final d = _data;
-    if (d == null) return const SizedBox.shrink();
+    if (d == null) {
+      return SingleChildScrollView(
+        padding: AppSpacing.page,
+        child: AppErrorState(
+          message: 'Data beranda belum tersedia. Silakan muat ulang.',
+          onRetry: _load,
+        ),
+      );
+    }
 
     final perluBayar = d.status.status != 'Aktif' || d.status.status.isEmpty;
     final adaSp = _spRekomendasiData?.hasRekomendasi ?? false;

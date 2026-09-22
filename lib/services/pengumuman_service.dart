@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'api_client.dart';
+import '../models/app_failure.dart';
 import '../models/pengumuman.dart';
 
 class PengumumanService {
@@ -30,7 +31,8 @@ class PengumumanService {
       Map<String, dynamic> jsonMap = _extractJsonMap(raw);
 
       if (jsonMap.isEmpty) {
-        throw Exception('Format data detail pengumuman tidak valid: $raw');
+        // Tanpa payload mentah — cukup pesan ramah.
+        throw const AppFailure('Data pengumuman tidak dapat dibaca. Silakan coba lagi.');
       }
 
       final detail = PengumumanDetail.fromJson(jsonMap);
@@ -39,9 +41,10 @@ class PengumumanService {
       if (detail.judul.isEmpty && detail.konten.isEmpty) {
         final msg = jsonMap['message']?.toString();
         if (msg != null && msg.isNotEmpty) {
-          throw Exception(msg);
+          // Pesan server dipakai hanya bila tidak mengandung jejak teknis.
+          throw AppFailure.fromServer(msg, fallback: 'Data pengumuman tidak tersedia');
         }
-        throw Exception('Data pengumuman tidak tersedia');
+        throw const AppFailure('Data pengumuman tidak tersedia');
       }
 
       return detail;

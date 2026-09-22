@@ -23,6 +23,11 @@ class AbsensiPage extends StatefulWidget {
   State<AbsensiPage> createState() => _AbsensiPageState();
 }
 
+/// Asal muatan yang bisa gagal. Dipakai untuk mengarahkan tombol "Coba lagi"
+/// ke sumber yang benar-benar gagal (sebelumnya selalu memuat ulang daftar
+/// belum validasi, sehingga kegagalan lain tertutup tanpa diperbaiki).
+enum _SumberMuat { belumValidasi, semester, matkul, mahasiswa }
+
 class _AbsensiPageState extends State<AbsensiPage> {
   final _service = AbsensiService();
 
@@ -40,7 +45,12 @@ class _AbsensiPageState extends State<AbsensiPage> {
   AbsensiMahasiswa? _mahasiswa;
   bool _loadingMahasiswa = false;
 
+  /// Pesan galat yang sedang tampil (selalu ramah, tanpa detail teknis).
   String? _errorFilter;
+
+  /// Sumber galat di atas — menentukan loader mana yang dipanggil "Coba lagi".
+  _SumberMuat? _errorSource;
+
   bool _validatingAll = false;
 
   @override
@@ -62,6 +72,53 @@ class _AbsensiPageState extends State<AbsensiPage> {
     }
   }
 
+  /// Simpan galat [sumber] dengan pesan ramah; error apa pun (termasuk error
+  /// parsing/non-Dio) tidak pernah ditampilkan mentah ke pengguna.
+  void _setLoadError(_SumberMuat sumber, Object error, String fallback) {
+    if (!mounted) return;
+    setState(() {
+      _errorFilter = userErrorMessage(error, fallback);
+      _errorSource = sumber;
+    });
+  }
+
+  /// Bersihkan galat HANYA bila memang milik [sumber]. Kegagalan sumber lain
+  /// dibiarkan agar pesannya tidak hilang tanpa ikut dimuat ulang.
+  void _clearLoadError(_SumberMuat sumber) {
+    if (_errorSource != sumber) return;
+    _errorFilter = null;
+    _errorSource = null;
+  }
+
+  /// Muat ulang sumber yang gagal — dipanggil tombol "Coba lagi".
+  ///
+  /// Pilihan semester/matakuliah bisa terhapus saat daftar dimuat ulang; bila
+  /// prasyarat sang sumber sudah kosong, prasyarat itulah yang dimuat lebih
+  /// dulu supaya tombol ini selalu benar-benar memuat ulang sesuatu.
+  Future<void> _retryFailedLoad() async {
+    switch (_errorSource) {
+      case _SumberMuat.mahasiswa:
+        if (_selectedMakul != null) {
+          await _loadMahasiswa();
+        } else if (_selectedSmt != null) {
+          await _loadMatkulList();
+        } else {
+          await _loadSemesterList();
+        }
+      case _SumberMuat.matkul:
+        if (_selectedSmt != null) {
+          await _loadMatkulList();
+        } else {
+          await _loadSemesterList();
+        }
+      case _SumberMuat.semester:
+        await _loadSemesterList();
+      case _SumberMuat.belumValidasi:
+      case null:
+        await _loadBelumValidasi();
+    }
+  }
+
   Future<void> _loadBelumValidasi() async {
     if (!mounted) return;
     setState(() => _loadingBelumValidasi = true);
@@ -70,11 +127,15 @@ class _AbsensiPageState extends State<AbsensiPage> {
       if (!mounted) return;
       setState(() {
         _belumValidasi = data;
-        _errorFilter = null;
+        _clearLoadError(_SumberMuat.belumValidasi);
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _errorFilter = e.toString().replaceFirst('Exception: ', ''));
+      _setLoadError(
+        _SumberMuat.belumValidasi,
+        e,
+        'Gagal memuat daftar presensi yang perlu divalidasi. Periksa koneksi lalu coba lagi.',
+      );
     } finally {
       if (mounted) setState(() => _loadingBelumValidasi = false);
     }
@@ -94,11 +155,15 @@ class _AbsensiPageState extends State<AbsensiPage> {
       if (!mounted) return;
       setState(() {
         _semesterList = data;
-        _errorFilter = null;
+        _clearLoadError(_SumberMuat.semester);
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _errorFilter = e.toString().replaceFirst('Exception: ', ''));
+      _setLoadError(
+        _SumberMuat.semester,
+        e,
+        'Gagal memuat daftar semester. Periksa koneksi lalu coba lagi.',
+      );
     } finally {
       if (mounted) setState(() => _loadingSemester = false);
     }
@@ -116,11 +181,15 @@ class _AbsensiPageState extends State<AbsensiPage> {
       if (!mounted) return;
       setState(() {
         _matkulList = data;
-        _errorFilter = null;
+        _clearLoadError(_SumberMuat.matkul);
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _errorFilter = e.toString().replaceFirst('Exception: ', ''));
+      _setLoadError(
+        _SumberMuat.matkul,
+        e,
+        'Gagal memuat daftar matakuliah. Periksa koneksi lalu coba lagi.',
+      );
     } finally {
       if (mounted) setState(() => _loadingMatkul = false);
     }
@@ -135,11 +204,15 @@ class _AbsensiPageState extends State<AbsensiPage> {
       if (!mounted) return;
       setState(() {
         _mahasiswa = data;
-        _errorFilter = null;
+        _clearLoadError(_SumberMuat.mahasiswa);
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _errorFilter = e.toString().replaceFirst('Exception: ', ''));
+      _setLoadError(
+        _SumberMuat.mahasiswa,
+        e,
+        'Gagal memuat data kehadiran. Periksa koneksi lalu coba lagi.',
+      );
     } finally {
       if (mounted) setState(() => _loadingMahasiswa = false);
     }
@@ -306,7 +379,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
                   padding: const EdgeInsets.only(top: AppSpacing.xl),
                   child: AppErrorState(
                     message: _errorFilter!,
-                    onRetry: _loadBelumValidasi,
+                    onRetry: _retryFailedLoad,
                   ),
                 ),
               if (_loadingMahasiswa)

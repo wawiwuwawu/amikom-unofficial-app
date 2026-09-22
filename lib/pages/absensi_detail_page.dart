@@ -66,7 +66,7 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = userErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -99,7 +99,7 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
       }
     } catch (e) {
       if (mounted) {
-        final message = e.toString().replaceFirst('Exception: ', '').trim();
+        final message = userErrorMessage(e).trim();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(

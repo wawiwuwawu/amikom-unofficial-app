@@ -52,7 +52,7 @@ class _KhsPageState extends State<KhsPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = userErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loadingOptions = false);
     }
@@ -75,7 +75,7 @@ class _KhsPageState extends State<KhsPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = userErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loadingDetail = false);
     }
@@ -106,7 +106,7 @@ class _KhsPageState extends State<KhsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            content: Text(userErrorMessage(e)),
             backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
@@ -329,34 +329,25 @@ class _KhsPageState extends State<KhsPage> {
     final items = detail.data;
     return AppSection(
       title: 'Ringkasan',
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: AppStatRow(
         children: [
-          Expanded(
-            child: AppStatTile(
-              value: _ipk.toStringAsFixed(2),
-              label: 'IPK Semester',
-              icon: Icons.trending_up,
-              accent: AppColors.primary,
-            ),
+          AppStatTile(
+            value: _ipk.toStringAsFixed(2),
+            label: 'IPK Semester',
+            icon: Icons.trending_up,
+            accent: AppColors.primary,
           ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: AppStatTile(
-              value: '$_totalSks',
-              label: 'Total SKS',
-              icon: Icons.menu_book_outlined,
-              accent: AppColors.info,
-            ),
+          AppStatTile(
+            value: '$_totalSks',
+            label: 'Total SKS',
+            icon: Icons.menu_book_outlined,
+            accent: AppColors.info,
           ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: AppStatTile(
-              value: '${items.length}',
-              label: 'Mata Kuliah',
-              icon: Icons.list_alt_outlined,
-              accent: AppColors.success,
-            ),
+          AppStatTile(
+            value: '${items.length}',
+            label: 'Mata Kuliah',
+            icon: Icons.list_alt_outlined,
+            accent: AppColors.success,
           ),
         ],
       ),

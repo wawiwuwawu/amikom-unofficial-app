@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import '../models/notifikasi.dart';
+import '../models/app_failure.dart';
 
 class NotifikasiService {
   final _dio = ApiClient.instance.dio;
@@ -47,7 +48,7 @@ class NotifikasiService {
       }
 
       if (jsonMap.isEmpty) {
-        throw Exception('Format data detail notifikasi tidak valid');
+        throw const AppFailure('Format data detail notifikasi tidak valid');
       }
 
       final detail = NotifikasiDetail.fromJson(jsonMap);
@@ -55,9 +56,9 @@ class NotifikasiService {
       if (detail.judul.isEmpty && detail.konten.isEmpty) {
         final msg = jsonMap['message']?.toString();
         if (msg != null && msg.isNotEmpty) {
-          throw Exception(msg);
+          throw AppFailure.fromServer(msg, fallback: 'Data notifikasi tidak tersedia');
         }
-        throw Exception('Data notifikasi tidak tersedia');
+        throw const AppFailure('Data notifikasi tidak tersedia');
       }
 
       return detail;

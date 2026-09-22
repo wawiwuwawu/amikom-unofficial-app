@@ -1,3 +1,5 @@
+import 'app_failure.dart';
+
 class MutationResult {
   final bool success;
   final String message;
@@ -42,7 +44,9 @@ class MutationResult {
 
   void ensureSuccess() {
     if (!success) {
-      throw Exception(message);
+      // Pesan server dipakai hanya bila terlihat ramah; selain itu diganti
+      // pesan generik agar detail teknis tidak pernah tampil di UI.
+      throw AppFailure.fromServer(message, fallback: 'Operasi gagal diproses');
     }
   }
 

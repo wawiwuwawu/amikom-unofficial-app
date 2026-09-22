@@ -52,7 +52,7 @@ class _JadwalPageState extends State<JadwalPage> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+        setState(() => _error = userErrorMessage(e));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -78,7 +78,7 @@ class _JadwalPageState extends State<JadwalPage> {
       if (mounted && !silent) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            content: Text(userErrorMessage(e)),
             backgroundColor: AppColors.danger,
           ),
         );

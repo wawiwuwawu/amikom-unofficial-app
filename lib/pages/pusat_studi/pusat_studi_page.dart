@@ -55,7 +55,7 @@ class _PusatStudiPageState extends State<PusatStudiPage> {
         _listSemua = combinedMap.values.toList();
       }
     } catch (e) {
-      _error = e.toString().replaceFirst('Exception: ', '');
+      _error = userErrorMessage(e);
     } finally {
       if (mounted) {
         setState(() {

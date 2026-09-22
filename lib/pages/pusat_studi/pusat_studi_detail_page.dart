@@ -39,7 +39,7 @@ class _PusatStudiDetailPageState extends State<PusatStudiDetailPage> {
     try {
       _detail = await _service.getDetailPusatStudi(widget.pusatStudi.detailId);
     } catch (e) {
-      _error = e.toString().replaceFirst('Exception: ', '');
+      _error = userErrorMessage(e);
     } finally {
       if (mounted) {
         setState(() {
@@ -64,7 +64,7 @@ class _PusatStudiDetailPageState extends State<PusatStudiDetailPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: AppColors.danger),
+          SnackBar(content: Text(userErrorMessage(e)), backgroundColor: AppColors.danger),
         );
       }
     } finally {

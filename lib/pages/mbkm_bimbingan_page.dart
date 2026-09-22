@@ -49,7 +49,7 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+        setState(() => _error = userErrorMessage(e));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -101,7 +101,7 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            content: Text(userErrorMessage(e)),
             backgroundColor: AppColors.danger,
           ),
         );
@@ -143,7 +143,7 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            content: Text(userErrorMessage(e)),
             backgroundColor: AppColors.danger,
           ),
         );
@@ -403,23 +403,18 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
         .where((e) => e.status.toLowerCase() == 'valid')
         .length;
 
-    return Row(
+    return AppStatRow(
       children: [
-        Expanded(
-          child: AppStatTile(
-            value: '${items.length}',
-            label: 'Log Bimbingan',
-            icon: Icons.list_alt,
-          ),
+        AppStatTile(
+          value: '${items.length}',
+          label: 'Log Bimbingan',
+          icon: Icons.list_alt,
         ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: AppStatTile(
-            value: '$valid',
-            label: 'Sudah Valid',
-            icon: Icons.verified_outlined,
-            accent: AppColors.success,
-          ),
+        AppStatTile(
+          value: '$valid',
+          label: 'Sudah Valid',
+          icon: Icons.verified_outlined,
+          accent: AppColors.success,
         ),
       ],
     );

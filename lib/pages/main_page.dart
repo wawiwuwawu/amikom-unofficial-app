@@ -498,7 +498,11 @@ class _MainPageState extends State<MainPage> {
   /// diletakkan di tengah bar navigasi agar paling mudah dijangkau jempol.
   Widget _absensiButton() {
     return Expanded(
+      // heightFactor: 1 — WAJIB. Tanpa ini `Center` mengisi seluruh tinggi
+      // slot bottomNavigationBar (Scaffold memberi tinggi loose), sehingga bar
+      // navigasi setinggi layar, body Scaffold jadi 0 px, dan AppBar tertutup.
       child: Center(
+        heightFactor: 1,
         child: Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,

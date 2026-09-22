@@ -132,30 +132,23 @@ class CumlaudeSheet extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: AppSpacing.md),
-                          Row(
+                          AppStatRow(
+                            gap: AppSpacing.sm,
                             children: [
-                              Expanded(
-                                child: AppStatTile(
-                                  value: data.ipkTerakhir.toStringAsFixed(2),
-                                  label: 'IPK',
-                                  accent: accent,
-                                ),
+                              AppStatTile(
+                                value: data.ipkTerakhir.toStringAsFixed(2),
+                                label: 'IPK',
+                                accent: accent,
                               ),
-                              const SizedBox(width: AppSpacing.sm),
-                              Expanded(
-                                child: AppStatTile(
-                                  value: '${data.totalSksLulus} SKS',
-                                  label: 'SKS Lulus',
-                                  accent: accent,
-                                ),
+                              AppStatTile(
+                                value: '${data.totalSksLulus} SKS',
+                                label: 'SKS Lulus',
+                                accent: accent,
                               ),
-                              const SizedBox(width: AppSpacing.sm),
-                              Expanded(
-                                child: AppStatTile(
-                                  value: '${data.semesterSaatIni}',
-                                  label: 'Semester',
-                                  accent: accent,
-                                ),
+                              AppStatTile(
+                                value: '${data.semesterSaatIni}',
+                                label: 'Semester',
+                                accent: accent,
                               ),
                             ],
                           ),

@@ -60,7 +60,7 @@ class _HistoriIpkSheetState extends State<HistoriIpkSheet> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = userErrorMessage(e);
           _loading = false;
         });
       }
@@ -126,23 +126,18 @@ class _HistoriIpkSheetState extends State<HistoriIpkSheet> {
       physics: const BouncingScrollPhysics(),
       children: [
         // Ringkasan
-        Row(
+        AppStatRow(
           children: [
-            Expanded(
-              child: AppStatTile(
-                value: d.ipkTerakhir.toStringAsFixed(2),
-                label: 'IPK Kumulatif',
-                icon: CupertinoIcons.chart_bar_alt_fill,
-              ),
+            AppStatTile(
+              value: d.ipkTerakhir.toStringAsFixed(2),
+              label: 'IPK Kumulatif',
+              icon: CupertinoIcons.chart_bar_alt_fill,
             ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: AppStatTile(
-                value: '${d.totalSksLulus} SKS',
-                label: 'Total SKS Lulus',
-                icon: CupertinoIcons.book_fill,
-                accent: AppColors.info,
-              ),
+            AppStatTile(
+              value: '${d.totalSksLulus} SKS',
+              label: 'Total SKS Lulus',
+              icon: CupertinoIcons.book_fill,
+              accent: AppColors.info,
             ),
           ],
         ),
