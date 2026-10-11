@@ -5,6 +5,8 @@ import 'skpi_file_picker.dart';
 import '../models/organisasi.dart';
 import '../services/organisasi_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/format.dart';
+import 'app_form_submit.dart';
 import 'app_kit.dart';
 
 class OrganisasiFormSheet extends StatefulWidget {
@@ -102,60 +104,41 @@ class _OrganisasiFormSheetState extends State<OrganisasiFormSheet> {
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    await AppFormSubmit.run(
+      context: context,
+      save: () async {
+        final isKepanitiaan = _selectedOrganisasi?.toLowerCase() == 'kepanitiaan';
+        final isJabatanLainnya = _selectedJabatan?.toLowerCase() == 'lainnya';
 
-    try {
-      final isKepanitiaan = _selectedOrganisasi?.toLowerCase() == 'kepanitiaan';
-      final isJabatanLainnya = _selectedJabatan?.toLowerCase() == 'lainnya';
+        final mapData = <String, dynamic>{
+          'organisasi': _selectedOrganisasi,
+          if (isKepanitiaan) 'nama_kegiatan_kepanitiaan': _kegiatanController.text,
+          'jabatan': _selectedJabatan,
+          if (isJabatanLainnya) 'jabatan_lainnya': _jabatanLainnyaController.text,
+          'tahun': _selectedTahun.toString(),
+        };
 
-      final mapData = <String, dynamic>{
-        'organisasi': _selectedOrganisasi,
-        if (isKepanitiaan) 'nama_kegiatan_kepanitiaan': _kegiatanController.text,
-        'jabatan': _selectedJabatan,
-        if (isJabatanLainnya) 'jabatan_lainnya': _jabatanLainnyaController.text,
-        'tahun': _selectedTahun.toString(),
-      };
+        if (_selectedFile != null && _selectedFile!.path != null) {
+          mapData['file_pengesahan'] = await MultipartFile.fromFile(
+            _selectedFile!.path!,
+            filename: _selectedFile!.name,
+          );
+        }
 
-      if (_selectedFile != null && _selectedFile!.path != null) {
-        mapData['file_pengesahan'] = await MultipartFile.fromFile(
-          _selectedFile!.path!,
-          filename: _selectedFile!.name,
-        );
-      }
+        final formData = FormData.fromMap(mapData);
 
-      final formData = FormData.fromMap(mapData);
-
-      if (_isEditing) {
-        await _service.editOrganisasi(widget.itemToEdit!.id, formData);
-      } else {
-        await _service.tambahOrganisasi(formData);
-      }
-
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isEditing
-                ? 'Organisasi berhasil diubah'
-                : 'Organisasi berhasil ditambahkan'),
-          ),
-        );
-        widget.onSuccess();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(userErrorMessage(e))),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
-    }
-  }
-
-  List<int> _getTahunList() {
-    final currentYear = DateTime.now().year;
-    return List.generate(5, (index) => currentYear - index);
+        if (_isEditing) {
+          await _service.editOrganisasi(widget.itemToEdit!.id, formData);
+        } else {
+          await _service.tambahOrganisasi(formData);
+        }
+      },
+      successMessage: _isEditing
+          ? 'Organisasi berhasil diubah'
+          : 'Organisasi berhasil ditambahkan',
+      setSubmitting: (v) => setState(() => _isSubmitting = v),
+      onSuccess: widget.onSuccess,
+    );
   }
 
   @override
@@ -277,7 +260,7 @@ class _OrganisasiFormSheetState extends State<OrganisasiFormSheet> {
                                 labelText: 'Tahun',
                               ),
                               initialValue: _selectedTahun,
-                              items: _getTahunList().map((thn) {
+                              items: yearOptions().map((thn) {
                                 return DropdownMenuItem(
                                   value: thn,
                                   child: Text(thn.toString()),

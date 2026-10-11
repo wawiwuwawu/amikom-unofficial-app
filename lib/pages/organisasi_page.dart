@@ -147,7 +147,7 @@ class _OrganisasiPageState extends State<OrganisasiPage> {
   }
 
   bool _isValid(OrganisasiItem item) =>
-      item.verifikasi == 1 || item.status.toLowerCase() == 'valid';
+      isAktivitasTerkunci(item.verifikasi, item.status);
 
   ButtonStyle get _compactAction => TextButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),

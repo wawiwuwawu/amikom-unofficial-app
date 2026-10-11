@@ -163,8 +163,7 @@ class _HistoriIpkSheetState extends State<HistoriIpkSheet> {
           )
         else
           AppListGroup.from([
-            for (var i = 0; i < trendList.length; i++)
-              _buildSemesterCard(trendList[i], i),
+            for (final item in trendList) _buildSemesterCard(item),
           ]),
       ],
     );
@@ -342,7 +341,7 @@ class _HistoriIpkSheetState extends State<HistoriIpkSheet> {
     );
   }
 
-  Widget _buildSemesterCard(TrendSemesterItem item, int index) {
+  Widget _buildSemesterCard(TrendSemesterItem item) {
     final AppPillTone deltaTone;
     final String deltaText;
 

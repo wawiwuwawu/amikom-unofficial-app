@@ -48,14 +48,12 @@ class MbkmBimbingan {
   final String tanggal;
   final String bimbingan;
   final String status;
-  final String aksi; // Usually contains HTML/Delete endpoint in web, but we'll parse it if needed
 
   MbkmBimbingan({
     required this.no,
     required this.tanggal,
     required this.bimbingan,
     required this.status,
-    required this.aksi,
   });
 
   factory MbkmBimbingan.fromJson(Map<String, dynamic> json) => MbkmBimbingan(
@@ -63,6 +61,5 @@ class MbkmBimbingan {
         tanggal: json['Tanggal'] ?? '',
         bimbingan: json['Bimbingan'] ?? '',
         status: json['Status'] ?? '',
-        aksi: json['Aksi'] ?? '',
       );
 }

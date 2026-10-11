@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'app_form_submit.dart';
 import 'skpi_file_picker.dart';
 import '../models/rekognisi.dart';
 import '../services/rekognisi_service.dart';
@@ -114,54 +115,43 @@ class _RekognisiFormSheetState extends State<RekognisiFormSheet> {
 
     setState(() => _isSubmitting = true);
 
-    try {
-      final formDataMap = <String, dynamic>{
-        'judul': _selectedJudul,
-        'tingkat': _selectedTingkat,
-        'tahun': _tahunController.text.trim(),
-        if (_linkController.text.trim().isNotEmpty) 'link': _linkController.text.trim(),
-        if (_selectedKontribusi != null && _selectedKontribusi!.isNotEmpty)
-          'kontribusi': _selectedKontribusi,
-      };
+    await AppFormSubmit.run(
+      context: context,
+      successMessage: _isEditing
+          ? 'Rekognisi berhasil diubah'
+          : 'Rekognisi berhasil ditambahkan',
+      successBackground: AppColors.success,
+      errorBackground: AppColors.danger,
+      onSuccessBeforeMessage: true,
+      onSuccess: widget.onSuccess,
+      setSubmitting: (v) => setState(() => _isSubmitting = v),
+      save: () async {
+        final formDataMap = <String, dynamic>{
+          'judul': _selectedJudul,
+          'tingkat': _selectedTingkat,
+          'tahun': _tahunController.text.trim(),
+          if (_linkController.text.trim().isNotEmpty)
+            'link': _linkController.text.trim(),
+          if (_selectedKontribusi != null && _selectedKontribusi!.isNotEmpty)
+            'kontribusi': _selectedKontribusi,
+        };
 
-      if (_selectedFile != null && _selectedFile!.path != null) {
-        formDataMap['file_dokumen'] = await MultipartFile.fromFile(
-          _selectedFile!.path!,
-          filename: _selectedFile!.name,
-        );
-      }
+        if (_selectedFile != null && _selectedFile!.path != null) {
+          formDataMap['file_dokumen'] = await MultipartFile.fromFile(
+            _selectedFile!.path!,
+            filename: _selectedFile!.name,
+          );
+        }
 
-      final formData = FormData.fromMap(formDataMap);
+        final formData = FormData.fromMap(formDataMap);
 
-      if (_isEditing) {
-        await _service.editRekognisi(widget.itemToEdit!.id, formData);
-      } else {
-        await _service.tambahRekognisi(formData);
-      }
-
-      if (!mounted) return;
-      Navigator.pop(context);
-      widget.onSuccess();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_isEditing
-              ? 'Rekognisi berhasil diubah'
-              : 'Rekognisi berhasil ditambahkan'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(userErrorMessage(e)),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
-    }
+        if (_isEditing) {
+          await _service.editRekognisi(widget.itemToEdit!.id, formData);
+        } else {
+          await _service.tambahRekognisi(formData);
+        }
+      },
+    );
   }
 
   @override

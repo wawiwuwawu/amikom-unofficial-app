@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import '../models/izin_penelitian.dart';
 import '../services/izin_penelitian_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/format.dart';
 import '../widgets/app_kit.dart';
 
 /// Izin penelitian — dua tab: form pengajuan dan riwayat pengajuan.
@@ -81,10 +82,6 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
     final month = dt.month.toString().padLeft(2, '0');
     final day = dt.day.toString().padLeft(2, '0');
     return '$month/$day/${dt.year}';
-  }
-
-  String _formatDateDisplay(DateTime dt) {
-    return '${dt.day}/${dt.month}/${dt.year}';
   }
 
   Future<void> _selectStartDate() async {
@@ -496,7 +493,7 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
                               prefixIcon: Icon(CupertinoIcons.calendar, color: AppColors.primary),
                             ),
                             child: Text(
-                              _startDate != null ? _formatDateDisplay(_startDate!) : 'Pilih Tanggal',
+                              _startDate != null ? formatDateDisplay(_startDate!) : 'Pilih Tanggal',
                               style: AppText.bodySm.copyWith(
                                 color: _startDate != null ? AppColors.textPrimary : AppColors.textMuted,
                               ),
@@ -515,7 +512,7 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
                               prefixIcon: Icon(CupertinoIcons.calendar, color: AppColors.primary),
                             ),
                             child: Text(
-                              _endDate != null ? _formatDateDisplay(_endDate!) : 'Pilih Tanggal',
+                              _endDate != null ? formatDateDisplay(_endDate!) : 'Pilih Tanggal',
                               style: AppText.bodySm.copyWith(
                                 color: _endDate != null ? AppColors.textPrimary : AppColors.textMuted,
                               ),

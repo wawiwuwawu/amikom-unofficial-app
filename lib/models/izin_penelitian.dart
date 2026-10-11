@@ -1,22 +1,7 @@
-class JenisPenelitianOption {
-  final String value;
-  final String label;
-
-  JenisPenelitianOption({
-    required this.value,
-    required this.label,
-  });
-
-  factory JenisPenelitianOption.fromJson(Map<String, dynamic> json) {
-    return JenisPenelitianOption(
-      value: json['value']?.toString() ?? '',
-      label: json['label']?.toString() ?? '',
-    );
-  }
-}
+import 'value_label_option.dart';
 
 class IzinPenelitianOptions {
-  final List<JenisPenelitianOption> jenisPenelitian;
+  final List<ValueLabelOption> jenisPenelitian;
   final List<String> ditujukanPenelitian;
 
   IzinPenelitianOptions({
@@ -27,7 +12,7 @@ class IzinPenelitianOptions {
   factory IzinPenelitianOptions.fromJson(Map<String, dynamic> json) {
     return IzinPenelitianOptions(
       jenisPenelitian: (json['jenis_penelitian'] as List?)
-              ?.map((e) => JenisPenelitianOption.fromJson(e))
+              ?.map((e) => ValueLabelOption.fromJson(e))
               .toList() ??
           [],
       ditujukanPenelitian: (json['ditujukan_penelitian'] as List?)

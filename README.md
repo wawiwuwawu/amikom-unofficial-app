@@ -29,27 +29,27 @@ mahasiswa — dibuat oleh mahasiswa, untuk mahasiswa. 🎓
 | 📊 **Dashboard** | Profil, statistik & status akademik, evaluasi cumlaude, progress kelulusan, ringkasan SKPI, simulator target IPK |
 | 💰 **Keuangan** | Riwayat & detail pembayaran, buat VA, pilih bank, multi-select bill, bukti PDF, panduan pembayaran |
 | 📚 **KRS** | Daftar & submit KRS, auto-sync, status badge, konfirmasi |
+| 📅 **Jadwal** | JadwalPage — jadwal kuliah, asisten praktikum, & jadwal ujian |
+| 📈 **Nilai** | KHS, Rincian Nilai, Transkrip |
 | 🎓 **KHS** | Pilih tahun/semester, tabel nilai, download PDF, share |
 | 📝 **Layanan Akademik** | Semester Pendek (SP), SKMK, Izin Penelitian, Surat Tugas, PKL, Ujian Susulan |
 | 🏆 **Prestasi & Organisasi** | Prestasi mahasiswa, organisasi mahasiswa, pusat studi, asisten praktikum |
 | 🎓 **Skripsi & Tugas Akhir** | 4 tab, download PDF, upload cek plagiarisme, pasca ujian |
 | 📰 **Informasi Kampus** | Berita kampus, pengumuman akademik + lampiran |
 
-🚧 *Dalam pengembangan: jadwal perkuliahan, nilai.*
-
 ## 🛠️ Tech Stack
 
 | Item | Detail |
 |------|--------|
 | Framework | Flutter 3.11+ (Dart SDK ^3.11.1) |
-| Platform | Android (Material 3, tema Ice Blue & Liquid Glass) |
+| Platform | Android (Material 3 design system, aksen Deep Purple #501F66) |
 | HTTP Client | Dio 5.9.x |
 | State Management | setState |
 | Persistence | flutter_secure_storage, shared_preferences |
 | Grafik & Kalender | fl_chart, table_calendar |
 | UI | google_fonts, flutter_animate |
-| File & Share | path_provider, file_picker, open_filex, share_plus, permission_handler |
-| Lainnya | flutter_dotenv, url_launcher, flutter_html, markdown |
+| File & Share | path_provider, file_picker, open_filex, share_plus |
+| Lainnya | flutter_dotenv, url_launcher, flutter_html |
 
 ## 📂 Struktur Proyek
 

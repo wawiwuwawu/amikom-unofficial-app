@@ -8,6 +8,7 @@ import '../models/surat_tugas.dart';
 import '../services/api_client.dart';
 import '../services/surat_tugas_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/format.dart';
 import '../widgets/app_kit.dart';
 
 /// Halaman Surat Tugas — pengajuan baru & riwayat pengajuan.
@@ -97,17 +98,6 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
         });
       }
     }
-  }
-
-  String _formatDateApi(DateTime dt) {
-    final year = dt.year.toString();
-    final month = dt.month.toString().padLeft(2, '0');
-    final day = dt.day.toString().padLeft(2, '0');
-    return '$year-$month-$day';
-  }
-
-  String _formatDateDisplay(DateTime dt) {
-    return '${dt.day}/${dt.month}/${dt.year}';
   }
 
   Future<void> _selectStartDate() async {
@@ -248,8 +238,8 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
     final body = <String, dynamic>{
       'nama_kegiatan': _namaKegiatanController.text.trim(),
       'penyelenggara': _penyelenggaraController.text.trim(),
-      'tanggal_mulai': _formatDateApi(_startDate!),
-      'tanggal_selesai': _formatDateApi(_endDate!),
+      'tanggal_mulai': formatDateApi(_startDate!),
+      'tanggal_selesai': formatDateApi(_endDate!),
       'bentuk_kegiatan': _bentukKegiatanController.text.trim(),
       'dosen_pendamping': _selectedNikPendamping,
       'link_kegiatan': _linkKegiatanController.text.trim(),
@@ -288,23 +278,12 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
   }
 
   Future<void> _showDeleteConfirmation(SuratTugasItem item) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hapus Surat Tugas'),
-        content: Text('Apakah Anda yakin ingin menghapus pengajuan surat tugas (${item.namaKegiatan})?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Hapus'),
-          ),
-        ],
-      ),
+    final confirm = await AppConfirm.ask(
+      context,
+      title: 'Hapus Surat Tugas',
+      content:
+          'Apakah Anda yakin ingin menghapus pengajuan surat tugas (${item.namaKegiatan})?',
+      confirmLabel: 'Hapus',
     );
 
     if (confirm == true) {
@@ -490,7 +469,7 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
                           child: InputDecorator(
                             decoration: const InputDecoration(labelText: 'Tanggal Mulai'),
                             child: Text(
-                              editStartDate != null ? _formatDateDisplay(editStartDate!) : 'Pilih Tanggal',
+                              editStartDate != null ? formatDateDisplay(editStartDate!) : 'Pilih Tanggal',
                               style: AppText.bodySm.copyWith(
                                 color: editStartDate != null ? AppColors.textPrimary : AppColors.textMuted,
                               ),
@@ -516,7 +495,7 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
                           child: InputDecorator(
                             decoration: const InputDecoration(labelText: 'Tanggal Selesai'),
                             child: Text(
-                              editEndDate != null ? _formatDateDisplay(editEndDate!) : 'Pilih Tanggal',
+                              editEndDate != null ? formatDateDisplay(editEndDate!) : 'Pilih Tanggal',
                               style: AppText.bodySm.copyWith(
                                 color: editEndDate != null ? AppColors.textPrimary : AppColors.textMuted,
                               ),
@@ -547,8 +526,8 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
                               final updateBody = {
                                 'nama_keg': namaKegController.text.trim(),
                                 'penyelenggara': penyelenggaraEditController.text.trim(),
-                                'tgl_mulai': _formatDateApi(editStartDate!),
-                                'tgl_selesai': _formatDateApi(editEndDate!),
+                                'tgl_mulai': formatDateApi(editStartDate!),
+                                'tgl_selesai': formatDateApi(editEndDate!),
                                 'bentuk_keg': bentukEditController.text.trim(),
                                 'nik_pendamping': editNikPendamping ?? '',
                                 'pendamping': editPendampingNama.isNotEmpty ? editPendampingNama : (editNikPendamping ?? ''),
@@ -1011,7 +990,7 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
           prefixIcon: const Icon(CupertinoIcons.calendar),
         ),
         child: Text(
-          value != null ? _formatDateDisplay(value) : 'Pilih Tanggal',
+          value != null ? formatDateDisplay(value) : 'Pilih Tanggal',
           style: AppText.bodySm.copyWith(
             color: value != null ? AppColors.textPrimary : AppColors.textMuted,
           ),

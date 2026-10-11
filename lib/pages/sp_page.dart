@@ -257,23 +257,12 @@ class _SpPageState extends State<SpPage> {
   }
 
   Future<void> _showDeleteConfirmation(SpTakenItem item) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hapus Matakuliah SP'),
-        content: Text('Apakah Anda yakin ingin menghapus matakuliah ${item.mkl} (${item.kode})?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Hapus'),
-          ),
-        ],
-      ),
+    final confirm = await AppConfirm.ask(
+      context,
+      title: 'Hapus Matakuliah SP',
+      content:
+          'Apakah Anda yakin ingin menghapus matakuliah ${item.mkl} (${item.kode})?',
+      confirmLabel: 'Hapus',
     );
 
     if (confirm == true) {

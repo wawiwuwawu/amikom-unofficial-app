@@ -66,7 +66,6 @@ class MatkulDitawarkan {
   final String status;
   final bool isUlang;
   final String? nilaiSebelumnya;
-  final String? rawValue;
 
   MatkulDitawarkan({
     required this.semester,
@@ -76,7 +75,6 @@ class MatkulDitawarkan {
     required this.status,
     required this.isUlang,
     this.nilaiSebelumnya,
-    this.rawValue,
   });
 
   factory MatkulDitawarkan.fromJson(Map<String, dynamic> json) {
@@ -88,7 +86,6 @@ class MatkulDitawarkan {
       status: json['status'] ?? '',
       isUlang: json['is_ulang'] ?? json['isUlang'] ?? false,
       nilaiSebelumnya: json['nilai_sebelumnya'] ?? json['nilaiSebelumnya'],
-      rawValue: json['raw_value']?.toString(),
     );
   }
 }
@@ -119,7 +116,6 @@ class KrsPengajuan {
   final int idKrs;
   final int sks;
   final String kode;
-  final int total;
   final String mkl;
   final int aktivasi;
   final int ambilKe;
@@ -128,7 +124,6 @@ class KrsPengajuan {
     required this.idKrs,
     required this.sks,
     required this.kode,
-    required this.total,
     required this.mkl,
     required this.aktivasi,
     required this.ambilKe,
@@ -139,7 +134,6 @@ class KrsPengajuan {
       idKrs: json['ID_KRS'] ?? json['id_krs'] ?? json['idKrs'] ?? json['id'] ?? 0,
       sks: json['SKS'] ?? json['sks'] ?? 0,
       kode: json['KODE'] ?? json['kode'] ?? json['kode_mk'] ?? '',
-      total: json['TOTAL'] ?? json['total'] ?? 0,
       mkl: json['MKL'] ?? json['mkl'] ?? json['nama'] ?? json['nama_matkul'] ?? '',
       aktivasi: json['AKTIVASI'] ?? json['aktivasi'] ?? 0,
       ambilKe: json['AMBILKE'] ?? json['ambil_ke'] ?? json['ambilKe'] ?? 1,
@@ -169,48 +163,33 @@ class KrsPengajuanResponse {
 }
 
 class KrsPengisian {
-  final String no;
   final String kodeMk;
   final String namaMataKuliah;
   final String dosenKelas;
   final String sks;
-  final String bU;
-  final String ket;
-  final String jenis;
   final String hari;
   final String ruang;
   final String jam;
-  final String? aksi;
 
   KrsPengisian({
-    required this.no,
     required this.kodeMk,
     required this.namaMataKuliah,
     required this.dosenKelas,
     required this.sks,
-    required this.bU,
-    required this.ket,
-    required this.jenis,
     required this.hari,
     required this.ruang,
     required this.jam,
-    this.aksi,
   });
 
   factory KrsPengisian.fromJson(Map<String, dynamic> json) {
     return KrsPengisian(
-      no: json['no']?.toString() ?? '',
       kodeMk: json['kode_mk'] ?? '',
       namaMataKuliah: json['nama_mata_kuliah'] ?? '',
       dosenKelas: json['dosen_kelas'] ?? '',
       sks: json['sks']?.toString() ?? '',
-      bU: json['b_u'] ?? '',
-      ket: json['ket'] ?? '',
-      jenis: json['jenis'] ?? '',
       hari: json['hari'] ?? '',
       ruang: json['ruang'] ?? '',
       jam: json['jam'] ?? '',
-      aksi: json['aksi'],
     );
   }
 }
@@ -224,24 +203,6 @@ class KrsPengisianResponse {
     var list = json['data'] as List? ?? [];
     return KrsPengisianResponse(
       data: list.map((e) => KrsPengisian.fromJson(e)).toList(),
-    );
-  }
-}
-
-class JadwalKuliahResponse {
-  final List<KrsPengisian> data;
-  final int totalSks;
-
-  JadwalKuliahResponse({
-    required this.data,
-    required this.totalSks,
-  });
-
-  factory JadwalKuliahResponse.fromJson(Map<String, dynamic> json) {
-    var list = json['data'] as List? ?? [];
-    return JadwalKuliahResponse(
-      data: list.map((e) => KrsPengisian.fromJson(e)).toList(),
-      totalSks: json['total_sks'] ?? 0,
     );
   }
 }

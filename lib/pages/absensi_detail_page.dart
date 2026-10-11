@@ -129,21 +129,6 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
     }
   }
 
-  static (Color, Color) _toneColors(AppPillTone tone) {
-    switch (tone) {
-      case AppPillTone.success:
-        return (AppColors.successBg, AppColors.success);
-      case AppPillTone.warning:
-        return (AppColors.warningBg, AppColors.warning);
-      case AppPillTone.danger:
-        return (AppColors.dangerBg, AppColors.danger);
-      case AppPillTone.info:
-        return (AppColors.infoBg, AppColors.info);
-      case AppPillTone.neutral:
-        return (AppColors.surfaceMuted, AppColors.textSecondary);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -165,7 +150,7 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
 
   Widget _buildContent(PresensiDetail d) {
     final tone = _statusTone(d.keterangan);
-    final (bg, fg) = _toneColors(tone);
+    final (bg, fg) = AppPill.toneColors(tone);
     final sudahValidasi = d.validasi != null;
 
     return Column(

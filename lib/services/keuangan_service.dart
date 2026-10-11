@@ -5,124 +5,105 @@ import '../models/keuangan.dart';
 class KeuanganService {
   final _dio = ApiClient.instance.dio;
 
-  Future<KeuanganHistoryResponse> getHistory() async {
-    try {
-      final response = await _dio.get('/api/v1/keuangan/history');
-      final root = ApiClient.unwrapRoot(response.data);
-      return KeuanganHistoryResponse.fromJson(root);
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat riwayat pembayaran');
-    }
-  }
+  Future<KeuanganHistoryResponse> getHistory() =>
+      ApiClient.guard<KeuanganHistoryResponse>(() async {
+        final response = await _dio.get('/api/v1/keuangan/history');
+        final root = ApiClient.unwrapRoot(response.data);
+        return KeuanganHistoryResponse.fromJson(root);
+      }, 'Gagal memuat riwayat pembayaran');
 
-  Future<List<KeuanganDetailItem>> getHistoryDetail(KeuanganHistoryItem item) async {
-    try {
-      final response = await _dio.post(
-        '/api/v1/keuangan/history/detail',
-        data: item.toDetailRequestBody(),
-      );
-      final list = response.data['data'] as List? ?? [];
-      return list.map((e) => KeuanganDetailItem.fromJson(e)).toList();
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat rincian pembayaran');
-    }
-  }
+  Future<List<KeuanganDetailItem>> getHistoryDetail(
+          KeuanganHistoryItem item) =>
+      ApiClient.guard<List<KeuanganDetailItem>>(() async {
+        final response = await _dio.post(
+          '/api/v1/keuangan/history/detail',
+          data: item.toDetailRequestBody(),
+        );
+        final list = response.data['data'] as List? ?? [];
+        return list.map((e) => KeuanganDetailItem.fromJson(e)).toList();
+      }, 'Gagal memuat rincian pembayaran');
 
-  Future<String> downloadHistoryPdf() async {
-    try {
-      // ponytail: centralized download dir via ApiClient
-      final dir = await ApiClient.getDownloadDir();
-      final nim = ApiClient.instance.nim ?? '';
-      final nama = ApiClient.instance.nama ?? '';
-      final namaFile = nama.isNotEmpty ? '$nama ($nim)' : nim;
-      final savePath = '$dir/Histori_Pembayaran_$namaFile.pdf';
+  Future<String> downloadHistoryPdf() => ApiClient.guard<String>(() async {
+        // ponytail: centralized download dir via ApiClient
+        final dir = await ApiClient.getDownloadDir();
+        final nim = ApiClient.instance.nim ?? '';
+        final nama = ApiClient.instance.nama ?? '';
+        final namaFile = nama.isNotEmpty ? '$nama ($nim)' : nim;
+        final savePath = '$dir/Histori_Pembayaran_$namaFile.pdf';
 
-      await _dio.download(
-        '/api/v1/keuangan/history/download',
-        savePath,
-        options: Options(responseType: ResponseType.bytes),
-      );
+        await _dio.download(
+          '/api/v1/keuangan/history/download',
+          savePath,
+          options: Options(responseType: ResponseType.bytes),
+        );
 
-      return savePath;
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal mengunduh riwayat pembayaran');
-    }
-  }
+        return savePath;
+      }, 'Gagal mengunduh riwayat pembayaran');
 
-  Future<String> downloadDetailPdf(KeuanganHistoryItem item) async {
-    try {
-      // ponytail: centralized download dir via ApiClient
-      final dir = await ApiClient.getDownloadDir();
-      final nim = ApiClient.instance.nim ?? '';
-      final kwitansi = item.nomorKwitansi ?? 'Detail';
-      final safeThn = item.tahunAkademik.replaceAll('/', '_');
-      final savePath = '$dir/Kwitansi_${kwitansi}_${nim}_SMT${item.semester}_$safeThn.pdf';
+  Future<String> downloadDetailPdf(KeuanganHistoryItem item) =>
+      ApiClient.guard<String>(() async {
+        // ponytail: centralized download dir via ApiClient
+        final dir = await ApiClient.getDownloadDir();
+        final nim = ApiClient.instance.nim ?? '';
+        final kwitansi = item.nomorKwitansi ?? 'Detail';
+        final safeThn = item.tahunAkademik.replaceAll('/', '_');
+        final savePath =
+            '$dir/Kwitansi_${kwitansi}_${nim}_SMT${item.semester}_$safeThn.pdf';
 
-      await _dio.download(
-        '/api/v1/keuangan/history/detail/download',
-        savePath,
-        queryParameters: item.toDownloadQueryParams(),
-        options: Options(responseType: ResponseType.bytes),
-      );
+        await _dio.download(
+          '/api/v1/keuangan/history/detail/download',
+          savePath,
+          queryParameters: item.toDownloadQueryParams(),
+          options: Options(responseType: ResponseType.bytes),
+        );
 
-      return savePath;
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal mengunduh rincian pembayaran');
-    }
-  }
+        return savePath;
+      }, 'Gagal mengunduh rincian pembayaran');
 
   Future<KeuanganVaResult> bayarTagihan(
     String channelBank,
     List<KeuanganTagihanItem> items,
-  ) async {
-    try {
-      final response = await _dio.post(
-        '/api/v1/keuangan/tagihan/bayar',
-        data: {
-          'channel_bank': channelBank,
-          'items': items.map((e) => e.toBayarPayload()).toList(),
-        },
-      );
-      final root = ApiClient.unwrapRoot(response.data);
-      final payload = ApiClient.unwrapData<dynamic>(response.data);
-      final Map<String, dynamic> merged = {};
-      if (payload is Map<String, dynamic>) {
-        merged.addAll(payload);
-      } else {
-        merged.addAll(root);
-      }
-      if (root['message'] != null) {
-        merged['message'] = root['message'];
-      }
-      return KeuanganVaResult.fromJson(merged);
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal melakukan pembayaran');
-    }
-  }
+  ) =>
+      ApiClient.guard<KeuanganVaResult>(() async {
+        final response = await _dio.post(
+          '/api/v1/keuangan/tagihan/bayar',
+          data: {
+            'channel_bank': channelBank,
+            'items': items.map((e) => e.toBayarPayload()).toList(),
+          },
+        );
+        final root = ApiClient.unwrapRoot(response.data);
+        final payload = ApiClient.unwrapData<dynamic>(response.data);
+        final Map<String, dynamic> merged = {};
+        if (payload is Map<String, dynamic>) {
+          merged.addAll(payload);
+        } else {
+          merged.addAll(root);
+        }
+        if (root['message'] != null) {
+          merged['message'] = root['message'];
+        }
+        return KeuanganVaResult.fromJson(merged);
+      }, 'Gagal melakukan pembayaran');
 
-  Future<KeuanganTagihanResponse> getTagihan() async {
-    try {
-      final response = await _dio.get('/api/v1/keuangan/tagihan');
-      final root = ApiClient.unwrapRoot(response.data);
-      return KeuanganTagihanResponse.fromJson(root);
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat tagihan');
-    }
-  }
+  Future<KeuanganTagihanResponse> getTagihan() =>
+      ApiClient.guard<KeuanganTagihanResponse>(() async {
+        final response = await _dio.get('/api/v1/keuangan/tagihan');
+        final root = ApiClient.unwrapRoot(response.data);
+        return KeuanganTagihanResponse.fromJson(root);
+      }, 'Gagal memuat tagihan');
 
-  Future<void> batalTagihan(String channelBank, String custCode, String idtrans) async {
-    try {
-      final response = await _dio.post(
-        '/api/v1/keuangan/tagihan/batal',
-        data: {
-          'channel_bank': channelBank,
-          'custCode': custCode,
-          'idtrans': idtrans,
-        },
-      );
-      ApiClient.unwrapMutation(response.data);
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal membatalkan tagihan');
-    }
-  }
+  Future<void> batalTagihan(
+          String channelBank, String custCode, String idtrans) =>
+      ApiClient.guard<void>(() async {
+        final response = await _dio.post(
+          '/api/v1/keuangan/tagihan/batal',
+          data: {
+            'channel_bank': channelBank,
+            'custCode': custCode,
+            'idtrans': idtrans,
+          },
+        );
+        ApiClient.unwrapMutation(response.data);
+      }, 'Gagal membatalkan tagihan');
 }

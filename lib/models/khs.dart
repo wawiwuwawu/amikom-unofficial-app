@@ -1,15 +1,3 @@
-class KhsOption {
-  final String value;
-  final String label;
-
-  KhsOption({required this.value, required this.label});
-
-  factory KhsOption.fromJson(Map<String, dynamic> json) => KhsOption(
-        value: json['value'] ?? '',
-        label: json['label'] ?? '',
-      );
-}
-
 class KhsItem {
   final String kode;
   final String mkl;

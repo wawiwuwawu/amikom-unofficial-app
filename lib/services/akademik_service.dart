@@ -9,75 +9,50 @@ import '../models/app_failure.dart';
 class AkademikService {
   final _dio = ApiClient.instance.dio;
 
-  Future<List<Agenda>> getAgenda() async {
-    try {
-      final response = await _dio.get('/api/v1/akademik/agenda');
-      final data = ApiClient.unwrapData<dynamic>(response.data);
-      if (data is! List) return [];
-      return data.map((e) => Agenda.fromJson(Map<String, dynamic>.from(e as Map))).toList();
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat agenda');
-    }
-  }
+  Future<List<Agenda>> getAgenda() => ApiClient.guard<List<Agenda>>(() async {
+        final response = await _dio.get('/api/v1/akademik/agenda');
+        final data = ApiClient.unwrapData<dynamic>(response.data);
+        return ApiClient.unwrapList<Agenda>(data, Agenda.fromJson);
+      }, 'Gagal memuat agenda');
 
   // ponytail: centralized agenda terpadu alongside akademik agenda endpoints
-  Future<AgendaTerpaduData> getAgendaTerpadu() async {
-    try {
-      final response = await _dio.get('/api/v1/agenda/terpadu');
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        return AgendaTerpaduData.fromJson(response.data['data']);
-      }
-      throw const AppFailure('Gagal memuat agenda terpadu');
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat agenda terpadu');
-    }
-  }
-
-  Future<List<JadwalUjian>> getJadwalUjian(String jenis) async {
-    try {
-      final response = await _dio.get(
-        '/api/v1/akademik/jadwal-ujian',
-        queryParameters: {'jenis': jenis},
-      );
-      final data = response.data['data'] as List?;
-      if (data == null) return [];
-      return data.map((e) => JadwalUjian.fromJson(e)).toList();
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat jadwal ujian');
-    }
-  }
-
-  Future<String> downloadKartuUjian(String jenis, {Function(int, int)? onReceiveProgress}) async {
-    try {
-      final dir = await ApiClient.getDownloadDir();
-      final response = await _dio.get(
-        '/api/v1/akademik/jadwal-ujian/download',
-        queryParameters: {'jenis': jenis},
-        options: Options(responseType: ResponseType.bytes),
-        onReceiveProgress: onReceiveProgress,
-      );
-      
-      String ext = '.pdf';
-      final contentDisposition = response.headers.value('content-disposition');
-      if (contentDisposition != null && contentDisposition.contains('filename=')) {
-        final match = RegExp(r'filename="?([^";]+)"?').firstMatch(contentDisposition);
-        if (match != null) {
-          final fname = match.group(1);
-          if (fname != null && fname.contains('.')) {
-            ext = '.${fname.split('.').last}';
-          }
+  Future<AgendaTerpaduData> getAgendaTerpadu() =>
+      ApiClient.guard<AgendaTerpaduData>(() async {
+        final response = await _dio.get('/api/v1/agenda/terpadu');
+        if (response.statusCode == 200 && response.data['data'] != null) {
+          return AgendaTerpaduData.fromJson(response.data['data']);
         }
-      }
+        throw const AppFailure('Gagal memuat agenda terpadu');
+      }, 'Gagal memuat agenda terpadu');
 
-      final nim = ApiClient.instance.nim ?? '';
-      final savePath = '$dir/Kartu_Ujian_${jenis.toUpperCase()}_$nim$ext';
-      
-      final file = File(savePath);
-      await file.writeAsBytes(response.data);
-      
-      return savePath;
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal mengunduh kartu ujian');
-    }
-  }
+  Future<List<JadwalUjian>> getJadwalUjian(String jenis) =>
+      ApiClient.guard<List<JadwalUjian>>(() async {
+        final response = await _dio.get(
+          '/api/v1/akademik/jadwal-ujian',
+          queryParameters: {'jenis': jenis},
+        );
+        final data = response.data['data'] as List?;
+        if (data == null) return [];
+        return data.map((e) => JadwalUjian.fromJson(e)).toList();
+      }, 'Gagal memuat jadwal ujian');
+
+  Future<String> downloadKartuUjian(String jenis) =>
+      ApiClient.guard<String>(() async {
+        final dir = await ApiClient.getDownloadDir();
+        final response = await _dio.get(
+          '/api/v1/akademik/jadwal-ujian/download',
+          queryParameters: {'jenis': jenis},
+          options: Options(responseType: ResponseType.bytes),
+        );
+
+        final ext = ApiClient.extensionFromHeaders(response.headers);
+
+        final nim = ApiClient.instance.nim ?? '';
+        final savePath = '$dir/Kartu_Ujian_${jenis.toUpperCase()}_$nim$ext';
+
+        final file = File(savePath);
+        await file.writeAsBytes(response.data);
+
+        return savePath;
+      }, 'Gagal mengunduh kartu ujian');
 }

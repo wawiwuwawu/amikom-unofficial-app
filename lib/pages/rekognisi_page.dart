@@ -213,7 +213,7 @@ class _RekognisiPageState extends State<RekognisiPage> {
 
   /// Satu blok data rekognisi: baris utama + detail + aksi.
   Widget _buildItemBlock(RekognisiItem item) {
-    final isValid = item.verifikasi == 1 || item.status.toLowerCase() == 'valid';
+    final isValid = isAktivitasTerkunci(item.verifikasi, item.status);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

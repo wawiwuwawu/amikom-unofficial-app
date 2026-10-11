@@ -25,6 +25,11 @@ import '../models/app_failure.dart';
 String userErrorMessage(Object? error, [String fallback = 'Terjadi kesalahan']) =>
     AppFailure.messageOf(error, fallback);
 
+/// Kunci verifikasi aktivitas: item yang sudah di-ACC dosen (verifikasi == 1
+/// atau status valid) tidak boleh diedit/dihapus — aturan portal Amikom.
+bool isAktivitasTerkunci(int verifikasi, String status) =>
+    verifikasi == 1 || status.toLowerCase() == 'valid';
+
 /// Kerangka halaman standar — menggantikan pola `Scaffold + AppBar + SafeArea`
 /// yang sebelumnya ditulis ulang di 41 halaman.
 class AppScaffold extends StatelessWidget {
@@ -39,9 +44,6 @@ class AppScaffold extends StatelessWidget {
   final bool scrollable;
   final EdgeInsetsGeometry? padding;
   final Widget? floatingActionButton;
-  final Widget? bottomNavigationBar;
-  final Widget? drawer;
-  final Color? background;
 
   const AppScaffold({
     super.key,
@@ -52,9 +54,6 @@ class AppScaffold extends StatelessWidget {
     this.scrollable = true,
     this.padding,
     this.floatingActionButton,
-    this.bottomNavigationBar,
-    this.drawer,
-    this.background,
   });
 
   @override
@@ -65,10 +64,8 @@ class AppScaffold extends StatelessWidget {
     );
 
     return Scaffold(
-      backgroundColor: background ?? AppColors.scaffold,
-      drawer: drawer,
+      backgroundColor: AppColors.scaffold,
       floatingActionButton: floatingActionButton,
-      bottomNavigationBar: bottomNavigationBar,
       appBar: AppBar(
         titleSpacing: AppSpacing.lg,
         title: subtitle == null
@@ -345,15 +342,22 @@ class AppPill extends StatelessWidget {
 
   const AppPill(this.label, {super.key, this.tone = AppPillTone.neutral});
 
-  @override
-  Widget build(BuildContext context) {
-    final (bg, fg) = switch (tone) {
+  /// (background, foreground) untuk satu nada — sumber tunggal bersama
+  /// [AppPill] dan halaman yang memakai warna nadanya sendiri (absensi,
+  /// surat tugas).
+  static (Color, Color) toneColors(AppPillTone tone) {
+    return switch (tone) {
       AppPillTone.success => (AppColors.successBg, AppColors.success),
       AppPillTone.warning => (AppColors.warningBg, AppColors.warning),
       AppPillTone.danger => (AppColors.dangerBg, AppColors.danger),
       AppPillTone.info => (AppColors.infoBg, AppColors.info),
       AppPillTone.neutral => (AppColors.surfaceMuted, AppColors.textSecondary),
     };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (bg, fg) = toneColors(tone);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -634,7 +638,6 @@ class AppAsyncView<T> extends StatelessWidget {
   final String emptyTitle;
   final String? emptyMessage;
   final IconData emptyIcon;
-  final bool wrapInSurface;
 
   const AppAsyncView({
     super.key,
@@ -648,7 +651,6 @@ class AppAsyncView<T> extends StatelessWidget {
     this.emptyTitle = 'Belum ada data',
     this.emptyMessage,
     this.emptyIcon = Icons.inbox_outlined,
-    this.wrapInSurface = false,
   });
 
   @override
@@ -676,8 +678,7 @@ class AppAsyncView<T> extends StatelessWidget {
       );
     }
 
-    final child = builder(value);
-    return wrapInSurface ? AppSurface(child: child) : child;
+    return builder(value);
   }
 }
 
@@ -717,6 +718,60 @@ class AppSearchField extends StatelessWidget {
                 onPressed: onClear,
               ),
         isDense: true,
+      ),
+    );
+  }
+}
+
+/// Snackbar ringkas — satu baris teks + warna, melayang (floating).
+class AppSnack {
+  const AppSnack._();
+
+  static void show(
+    BuildContext context,
+    String message, {
+    required Color backgroundColor,
+  }) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+}
+
+/// Dialog konfirmasi ya/batal — satu bentuk untuk semua aksi merusak.
+///
+/// `true` bila pengguna menekan tombol konfirmasi, `false` bila "Batal"
+/// (atau dialog ditutup lewat barrier → `null`).
+class AppConfirm {
+  const AppConfirm._();
+
+  static Future<bool?> ask(
+    BuildContext context, {
+    required String title,
+    required String content,
+    required String confirmLabel,
+    Color confirmColor = AppColors.danger,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: confirmColor),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(confirmLabel),
+          ),
+        ],
       ),
     );
   }

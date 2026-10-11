@@ -1,3 +1,5 @@
+import 'value_label_option.dart';
+
 class DosenPendampingOption {
   final String nik;
   final String nama;
@@ -15,26 +17,9 @@ class DosenPendampingOption {
   }
 }
 
-class JenisKegiatanOption {
-  final String value;
-  final String label;
-
-  JenisKegiatanOption({
-    required this.value,
-    required this.label,
-  });
-
-  factory JenisKegiatanOption.fromJson(Map<String, dynamic> json) {
-    return JenisKegiatanOption(
-      value: json['value']?.toString() ?? '',
-      label: json['label']?.toString() ?? '',
-    );
-  }
-}
-
 class SuratTugasOptions {
   final List<DosenPendampingOption> dosenPendamping;
-  final List<JenisKegiatanOption> jenisKegiatan;
+  final List<ValueLabelOption> jenisKegiatan;
 
   SuratTugasOptions({
     required this.dosenPendamping,
@@ -48,7 +33,7 @@ class SuratTugasOptions {
               .toList() ??
           [],
       jenisKegiatan: (json['jenis_kegiatan'] as List?)
-              ?.map((e) => JenisKegiatanOption.fromJson(e))
+              ?.map((e) => ValueLabelOption.fromJson(e))
               .toList() ??
           [],
     );

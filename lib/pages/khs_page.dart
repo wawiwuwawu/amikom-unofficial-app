@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/khs.dart';
+import '../models/value_label_option.dart';
 import '../services/khs_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
@@ -15,8 +16,8 @@ class KhsPage extends StatefulWidget {
 class _KhsPageState extends State<KhsPage> {
   final _service = KhsService();
 
-  List<KhsOption> _tahunList = [];
-  List<KhsOption> _semesterList = [];
+  List<ValueLabelOption> _tahunList = [];
+  List<ValueLabelOption> _semesterList = [];
   String? _selectedThn;
   String? _selectedSmt;
 
@@ -43,11 +44,11 @@ class _KhsPageState extends State<KhsPage> {
       final rawSemester = res['semester'] ?? (res['data'] is Map ? res['data']['semester'] : null);
       setState(() {
         _tahunList = (rawTahun is List)
-            ? rawTahun.map((e) => KhsOption.fromJson(e)).toList()
-            : <KhsOption>[];
+            ? rawTahun.map((e) => ValueLabelOption.fromJson(e)).toList()
+            : <ValueLabelOption>[];
         _semesterList = (rawSemester is List)
-            ? rawSemester.map((e) => KhsOption.fromJson(e)).toList()
-            : <KhsOption>[];
+            ? rawSemester.map((e) => ValueLabelOption.fromJson(e)).toList()
+            : <ValueLabelOption>[];
         _error = null;
       });
     } catch (e) {
@@ -284,7 +285,7 @@ class _KhsPageState extends State<KhsPage> {
 
   Widget _buildDropdown({
     required String? value,
-    required List<KhsOption> items,
+    required List<ValueLabelOption> items,
     required String hint,
     required ValueChanged<String?> onChanged,
   }) {

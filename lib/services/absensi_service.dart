@@ -1,103 +1,86 @@
 import 'api_client.dart';
 import '../models/absensi.dart';
 import '../models/app_failure.dart';
+import '../models/value_label_option.dart';
 
 class AbsensiService {
   final _dio = ApiClient.instance.dio;
 
-  Future<List<MakulBelumValidasi>> getMakulBelumValidasi() async {
-    try {
-      final response = await _dio.get('/api/v1/absensi/makul-belum-validasi');
-      final data = ApiClient.unwrapData<dynamic>(response.data);
-      if (data is Map) {
-        return data.entries
-            .map((e) => MakulBelumValidasi.fromJson(
-                MapEntry<String, dynamic>(e.key.toString(), e.value)))
-            .toList();
-      }
-      return [];
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat data absensi');
-    }
-  }
+  Future<List<MakulBelumValidasi>> getMakulBelumValidasi() =>
+      ApiClient.guard<List<MakulBelumValidasi>>(() async {
+        final response = await _dio.get('/api/v1/absensi/makul-belum-validasi');
+        final data = ApiClient.unwrapData<dynamic>(response.data);
+        if (data is Map) {
+          return data.entries
+              .map((e) => MakulBelumValidasi.fromJson(
+                  MapEntry<String, dynamic>(e.key.toString(), e.value)))
+              .toList();
+        }
+        return [];
+      }, 'Gagal memuat data absensi');
 
-  Future<List<OptionItem>> getSemester(String thnAkademik) async {
-    try {
-      final response = await _dio.post(
-        '/api/v1/absensi/semester',
-        data: {'thn_akademik': thnAkademik},
-      );
-      final data = ApiClient.unwrapData<List>(response.data);
-      return data
-          .map((e) => OptionItem.fromJson(Map<String, dynamic>.from(e as Map)))
-          .toList();
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat semester');
-    }
-  }
+  Future<List<ValueLabelOption>> getSemester(String thnAkademik) =>
+      ApiClient.guard<List<ValueLabelOption>>(() async {
+        final response = await _dio.post(
+          '/api/v1/absensi/semester',
+          data: {'thn_akademik': thnAkademik},
+        );
+        final data = ApiClient.unwrapData<List>(response.data);
+        return ApiClient.unwrapList<ValueLabelOption>(
+            data, ValueLabelOption.fromJson);
+      }, 'Gagal memuat semester');
 
-  Future<List<OptionItem>> getMatkul(String thnAkademik, String semester) async {
-    try {
-      final response = await _dio.post(
-        '/api/v1/absensi/matkul',
-        data: {'thn_akademik': thnAkademik, 'semester': semester},
-      );
-      final data = ApiClient.unwrapData<List>(response.data);
-      return data
-          .map((e) => OptionItem.fromJson(Map<String, dynamic>.from(e as Map)))
-          .toList();
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat matakuliah');
-    }
-  }
+  Future<List<ValueLabelOption>> getMatkul(String thnAkademik, String semester) =>
+      ApiClient.guard<List<ValueLabelOption>>(() async {
+        final response = await _dio.post(
+          '/api/v1/absensi/matkul',
+          data: {'thn_akademik': thnAkademik, 'semester': semester},
+        );
+        final data = ApiClient.unwrapData<List>(response.data);
+        return ApiClient.unwrapList<ValueLabelOption>(
+            data, ValueLabelOption.fromJson);
+      }, 'Gagal memuat matakuliah');
 
   Future<AbsensiMahasiswa> getMahasiswa(
-      String thnAkademik, String semester, String makul) async {
-    try {
-      final response = await _dio.post(
-        '/api/v1/absensi/mahasiswa',
-        data: {
-          'thn_akademik': thnAkademik,
-          'semester': semester,
-          'makul': makul,
-        },
-      );
-      return AbsensiMahasiswa.fromJson(
-          ApiClient.unwrapData<Map<String, dynamic>>(response.data));
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat data mahasiswa');
-    }
-  }
+          String thnAkademik, String semester, String makul) =>
+      ApiClient.guard<AbsensiMahasiswa>(() async {
+        final response = await _dio.post(
+          '/api/v1/absensi/mahasiswa',
+          data: {
+            'thn_akademik': thnAkademik,
+            'semester': semester,
+            'makul': makul,
+          },
+        );
+        return AbsensiMahasiswa.fromJson(
+            ApiClient.unwrapData<Map<String, dynamic>>(response.data));
+      }, 'Gagal memuat data mahasiswa');
 
-  Future<PresensiDetail> getPresensiDetail(String id) async {
-    try {
-      final response = await _dio.get('/api/v1/absensi/presensi/$id');
-      return PresensiDetail.fromJson(
-          ApiClient.unwrapData<Map<String, dynamic>>(response.data));
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat detail presensi');
-    }
-  }
+  Future<PresensiDetail> getPresensiDetail(String id) =>
+      ApiClient.guard<PresensiDetail>(() async {
+        final response = await _dio.get('/api/v1/absensi/presensi/$id');
+        return PresensiDetail.fromJson(
+            ApiClient.unwrapData<Map<String, dynamic>>(response.data));
+      }, 'Gagal memuat detail presensi');
 
-  Future<void> validasi(Map<String, dynamic> data) async {
-    try {
-      final response = await _dio.post('/api/v1/absensi/validasi', data: data);
-      ApiClient.unwrapMutation(response.data);
-      final dynamic raw = response.data;
-      if (raw is Map<String, dynamic>) {
-        final innerData = raw['data'];
-        if (innerData is Map<String, dynamic>) {
-          final nested = innerData['data'];
-          if (nested is Map<String, dynamic> && nested['success'] == false) {
-            throw AppFailure.fromServer(nested['message'], fallback: 'Validasi presensi ditolak');
-          }
-          if (innerData['success'] == false) {
-            throw AppFailure.fromServer(innerData['message'], fallback: 'Validasi presensi ditolak');
+  Future<void> validasi(Map<String, dynamic> data) =>
+      ApiClient.guard<void>(() async {
+        final response = await _dio.post('/api/v1/absensi/validasi', data: data);
+        ApiClient.unwrapMutation(response.data);
+        final dynamic raw = response.data;
+        if (raw is Map<String, dynamic>) {
+          final innerData = raw['data'];
+          if (innerData is Map<String, dynamic>) {
+            final nested = innerData['data'];
+            if (nested is Map<String, dynamic> && nested['success'] == false) {
+              throw AppFailure.fromServer(
+                  nested['message'], fallback: 'Validasi presensi ditolak');
+            }
+            if (innerData['success'] == false) {
+              throw AppFailure.fromServer(
+                  innerData['message'], fallback: 'Validasi presensi ditolak');
+            }
           }
         }
-      }
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal melakukan validasi');
-    }
-  }
+      }, 'Gagal melakukan validasi');
 }

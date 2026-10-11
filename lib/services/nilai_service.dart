@@ -12,64 +12,53 @@ class NilaiService {
   Future<RincianNilaiResponse> getRincianNilai({
     String? thnAkademik,
     String? semester,
-  }) async {
-    try {
-      final queryParams = <String, dynamic>{};
-      if (thnAkademik != null && thnAkademik.trim().isNotEmpty) {
-        queryParams['thn_akademik'] = thnAkademik.trim();
-      }
-      if (semester != null && semester.trim().isNotEmpty) {
-        queryParams['semester'] = semester.trim();
-      }
+  }) =>
+      ApiClient.guard<RincianNilaiResponse>(() async {
+        final queryParams = <String, dynamic>{};
+        if (thnAkademik != null && thnAkademik.trim().isNotEmpty) {
+          queryParams['thn_akademik'] = thnAkademik.trim();
+        }
+        if (semester != null && semester.trim().isNotEmpty) {
+          queryParams['semester'] = semester.trim();
+        }
 
-      final response = await _dio.get(
-        '/api/v1/nilai/rincian',
-        queryParameters: queryParams.isNotEmpty ? queryParams : null,
-      );
+        final response = await _dio.get(
+          '/api/v1/nilai/rincian',
+          queryParameters: queryParams.isNotEmpty ? queryParams : null,
+        );
 
-      final root = ApiClient.unwrapRoot(response.data);
-      return RincianNilaiResponse.fromJson(root);
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat rincian nilai');
-    }
-  }
+        final root = ApiClient.unwrapRoot(response.data);
+        return RincianNilaiResponse.fromJson(root);
+      }, 'Gagal memuat rincian nilai');
 
   /// Mengambil daftar tahun akademik untuk filter nilai.
   /// Memanggil GET /api/v1/nilai/tahun-akademik dan unwrap menggunakan `ApiClient.unwrapData<List>(response.data)`.
-  Future<List<NilaiOpsiItem>> getTahunAkademikList() async {
-    try {
-      final response = await _dio.get('/api/v1/nilai/tahun-akademik');
-      final list = ApiClient.unwrapData<List>(response.data);
-      return list
-          .map((e) =>
-              NilaiOpsiItem.fromJson(Map<String, dynamic>.from(e as Map)))
-          .toList();
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat opsi tahun akademik');
-    }
-  }
+  Future<List<NilaiOpsiItem>> getTahunAkademikList() =>
+      ApiClient.guard<List<NilaiOpsiItem>>(() async {
+        final response = await _dio.get('/api/v1/nilai/tahun-akademik');
+        final list = ApiClient.unwrapData<List>(response.data);
+        return list
+            .map((e) => NilaiOpsiItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
+      }, 'Gagal memuat opsi tahun akademik');
 
   /// Mengambil daftar semester untuk filter nilai.
   /// Memanggil GET /api/v1/nilai/semester dan unwrap menggunakan `ApiClient.unwrapData<List>(response.data)`.
-  Future<List<NilaiOpsiItem>> getSemesterList({String? thnAkademik}) async {
-    try {
-      final queryParams = <String, dynamic>{};
-      if (thnAkademik != null && thnAkademik.trim().isNotEmpty) {
-        queryParams['thn_akademik'] = thnAkademik.trim();
-      }
+  Future<List<NilaiOpsiItem>> getSemesterList({String? thnAkademik}) =>
+      ApiClient.guard<List<NilaiOpsiItem>>(() async {
+        final queryParams = <String, dynamic>{};
+        if (thnAkademik != null && thnAkademik.trim().isNotEmpty) {
+          queryParams['thn_akademik'] = thnAkademik.trim();
+        }
 
-      final response = await _dio.get(
-        '/api/v1/nilai/semester',
-        queryParameters: queryParams.isNotEmpty ? queryParams : null,
-      );
+        final response = await _dio.get(
+          '/api/v1/nilai/semester',
+          queryParameters: queryParams.isNotEmpty ? queryParams : null,
+        );
 
-      final list = ApiClient.unwrapData<List>(response.data);
-      return list
-          .map((e) =>
-              NilaiOpsiItem.fromJson(Map<String, dynamic>.from(e as Map)))
-          .toList();
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat opsi semester');
-    }
-  }
+        final list = ApiClient.unwrapData<List>(response.data);
+        return list
+            .map((e) => NilaiOpsiItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
+      }, 'Gagal memuat opsi semester');
 }

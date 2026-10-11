@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import '../models/notifikasi.dart';
@@ -8,64 +7,39 @@ class NotifikasiService {
   final _dio = ApiClient.instance.dio;
   static const _storageKey = 'read_notification_ids';
 
-  Future<List<NotifikasiItem>> getNotifikasi() async {
-    try {
-      final response = await _dio.get('/api/v1/notifikasi');
-      final data = ApiClient.unwrapData<dynamic>(response.data);
-      if (data is List) {
-        return data
-            .map((e) => NotifikasiItem.fromJson(Map<String, dynamic>.from(e as Map)))
-            .toList();
-      }
-      return [];
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat notifikasi');
-    }
-  }
+  Future<List<NotifikasiItem>> getNotifikasi() =>
+      ApiClient.guard<List<NotifikasiItem>>(() async {
+        final response = await _dio.get('/api/v1/notifikasi');
+        final data = ApiClient.unwrapData<dynamic>(response.data);
+        return ApiClient.unwrapList<NotifikasiItem>(
+            data, NotifikasiItem.fromJson);
+      }, 'Gagal memuat notifikasi');
 
-  Future<NotifikasiDetail> getNotifikasiDetail(String id) async {
-    try {
-      final endpoint = '/api/v1/notifikasi/$id';
-      final response = await _dio.get(endpoint);
-      final raw = ApiClient.unwrapData<dynamic>(response.data);
+  Future<NotifikasiDetail> getNotifikasiDetail(String id) =>
+      ApiClient.guard<NotifikasiDetail>(() async {
+        final endpoint = '/api/v1/notifikasi/$id';
+        final response = await _dio.get(endpoint);
+        final raw = ApiClient.unwrapData<dynamic>(response.data);
 
-      Map<String, dynamic> jsonMap = {};
-      if (raw is Map<String, dynamic>) {
-        jsonMap = raw;
-      } else if (raw is Map) {
-        jsonMap = Map<String, dynamic>.from(raw);
-      } else if (raw is List && raw.isNotEmpty && raw.first is Map) {
-        jsonMap = Map<String, dynamic>.from(raw.first);
-      } else if (raw is String) {
-        try {
-          final parsed = jsonDecode(raw);
-          if (parsed is Map) {
-            jsonMap = Map<String, dynamic>.from(parsed);
-          } else if (parsed is List && parsed.isNotEmpty && parsed.first is Map) {
-            jsonMap = Map<String, dynamic>.from(parsed.first);
-          }
-        } catch (_) {}
-      }
+        Map<String, dynamic> jsonMap = ApiClient.forceJsonMap(raw);
 
-      if (jsonMap.isEmpty) {
-        throw const AppFailure('Format data detail notifikasi tidak valid');
-      }
-
-      final detail = NotifikasiDetail.fromJson(jsonMap);
-
-      if (detail.judul.isEmpty && detail.konten.isEmpty) {
-        final msg = jsonMap['message']?.toString();
-        if (msg != null && msg.isNotEmpty) {
-          throw AppFailure.fromServer(msg, fallback: 'Data notifikasi tidak tersedia');
+        if (jsonMap.isEmpty) {
+          throw const AppFailure('Format data detail notifikasi tidak valid');
         }
-        throw const AppFailure('Data notifikasi tidak tersedia');
-      }
 
-      return detail;
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat detail notifikasi');
-    }
-  }
+        final detail = NotifikasiDetail.fromJson(jsonMap);
+
+        if (detail.judul.isEmpty && detail.konten.isEmpty) {
+          final msg = jsonMap['message']?.toString();
+          if (msg != null && msg.isNotEmpty) {
+            throw AppFailure.fromServer(
+                msg, fallback: 'Data notifikasi tidak tersedia');
+          }
+          throw const AppFailure('Data notifikasi tidak tersedia');
+        }
+
+        return detail;
+      }, 'Gagal memuat detail notifikasi');
 
   Future<Set<String>> getReadIds() async {
     final prefs = await SharedPreferences.getInstance();
@@ -91,16 +65,9 @@ class NotifikasiService {
     try {
       final items = await getNotifikasi();
       final readIds = await getReadIds();
-      int unread = 0;
-      for (final item in items) {
-        if (!readIds.contains(item.id)) {
-          unread++;
-        }
-      }
-      return unread;
+      return items.where((item) => !readIds.contains(item.id)).length;
     } catch (_) {
       return 0;
     }
   }
 }
-

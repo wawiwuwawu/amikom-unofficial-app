@@ -174,6 +174,13 @@ class KeuanganActiveTransaction {
       items: json['items'] as List? ?? [],
     );
   }
+
+  /// idtrans item pertama transaksi aktif (dipakai saat pembatalan VA).
+  String get firstIdtrans {
+    if (items.isEmpty) return '';
+    final first = items.first;
+    return first is Map ? (first['idtrans']?.toString() ?? '') : '';
+  }
 }
 
 class KeuanganTagihanResponse {

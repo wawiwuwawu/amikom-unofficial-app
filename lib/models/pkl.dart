@@ -1,22 +1,7 @@
-class PklJenisOption {
-  final String value;
-  final String label;
-
-  PklJenisOption({
-    required this.value,
-    required this.label,
-  });
-
-  factory PklJenisOption.fromJson(Map<String, dynamic> json) {
-    return PklJenisOption(
-      value: json['value']?.toString() ?? '',
-      label: json['label']?.toString() ?? '',
-    );
-  }
-}
+import 'value_label_option.dart';
 
 class PklOptions {
-  final List<PklJenisOption> jenis;
+  final List<ValueLabelOption> jenis;
 
   PklOptions({
     required this.jenis,
@@ -25,7 +10,7 @@ class PklOptions {
   factory PklOptions.fromJson(Map<String, dynamic> json) {
     return PklOptions(
       jenis: (json['jenis'] as List?)
-              ?.map((e) => PklJenisOption.fromJson(e))
+              ?.map((e) => ValueLabelOption.fromJson(e))
               .toList() ??
           [],
     );

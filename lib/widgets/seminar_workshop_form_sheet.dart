@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'app_form_submit.dart';
 import 'skpi_file_picker.dart';
 import '../models/seminar_workshop.dart';
 import '../services/seminar_workshop_service.dart';
@@ -104,55 +105,43 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
 
     setState(() => _isSubmitting = true);
 
-    try {
-      final formDataMap = <String, dynamic>{
-        'jenis_kegiatan': _selectedJenisKegiatan,
-        'judul': _judulController.text.trim(),
-        'sebagai': _selectedSebagai,
-        'tahun': _tahunController.text.trim(),
-      };
+    await AppFormSubmit.run(
+      context: context,
+      successMessage: _isEditing
+          ? 'Seminar / Workshop berhasil diubah'
+          : 'Seminar / Workshop berhasil ditambahkan',
+      successBackground: AppColors.success,
+      errorBackground: AppColors.danger,
+      onSuccessBeforeMessage: true,
+      onSuccess: widget.onSuccess,
+      setSubmitting: (v) => setState(() => _isSubmitting = v),
+      save: () async {
+        final formDataMap = <String, dynamic>{
+          'jenis_kegiatan': _selectedJenisKegiatan,
+          'judul': _judulController.text.trim(),
+          'sebagai': _selectedSebagai,
+          'tahun': _tahunController.text.trim(),
+        };
 
-      if (_selectedTingkatan != null && _selectedTingkatan!.isNotEmpty) {
-        formDataMap['tingkatan'] = _selectedTingkatan;
-      }
+        if (_selectedTingkatan != null && _selectedTingkatan!.isNotEmpty) {
+          formDataMap['tingkatan'] = _selectedTingkatan;
+        }
 
-      if (_selectedFile != null && _selectedFile!.path != null) {
-        formDataMap['file_sertifikat'] = await MultipartFile.fromFile(
-          _selectedFile!.path!,
-          filename: _selectedFile!.name,
-        );
-      }
+        if (_selectedFile != null && _selectedFile!.path != null) {
+          formDataMap['file_sertifikat'] = await MultipartFile.fromFile(
+            _selectedFile!.path!,
+            filename: _selectedFile!.name,
+          );
+        }
 
-      final formData = FormData.fromMap(formDataMap);
-      if (_isEditing) {
-        await _service.editSeminarWorkshop(widget.itemToEdit!.id, formData);
-      } else {
-        await _service.tambahSeminarWorkshop(formData);
-      }
-
-      if (!mounted) return;
-      Navigator.pop(context);
-      widget.onSuccess();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_isEditing
-              ? 'Seminar / Workshop berhasil diubah'
-              : 'Seminar / Workshop berhasil ditambahkan'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(userErrorMessage(e)),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
-    }
+        final formData = FormData.fromMap(formDataMap);
+        if (_isEditing) {
+          await _service.editSeminarWorkshop(widget.itemToEdit!.id, formData);
+        } else {
+          await _service.tambahSeminarWorkshop(formData);
+        }
+      },
+    );
   }
 
   @override

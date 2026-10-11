@@ -54,39 +54,27 @@ class Profile {
 
 class Statistik {
   final int totalSks;
-  final int totalSksMaksimal;
   final double ipk;
-  final int sksSekarang;
 
   Statistik({
     required this.totalSks,
-    required this.totalSksMaksimal,
     required this.ipk,
-    required this.sksSekarang,
   });
 
   factory Statistik.fromJson(Map<String, dynamic> json) => Statistik(
         totalSks: json['total_sks'] ?? 0,
-        totalSksMaksimal: json['total_sks_maksimal'] ?? 0,
         ipk: (json['ipk'] ?? 0).toDouble(),
-        sksSekarang: json['sks_sekarang'] ?? 0,
       );
 }
 
 class Status {
   final String status;
-  final String masaStudi;
-  final String sisaMasaStudi;
 
   Status({
     required this.status,
-    required this.masaStudi,
-    required this.sisaMasaStudi,
   });
 
   factory Status.fromJson(Map<String, dynamic> json) => Status(
         status: json['status'] ?? '',
-        masaStudi: json['masa_studi'] ?? '',
-        sisaMasaStudi: json['sisa_masa_studi'] ?? '',
       );
 }

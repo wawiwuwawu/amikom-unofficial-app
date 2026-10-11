@@ -1,15 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:app_amikom/models/rekognisi.dart';
-import 'package:dio/dio.dart';
-import 'package:app_amikom/services/aktivitas_helper.dart';
-import 'package:app_amikom/services/rekognisi_service.dart';
+import 'package:app_amikom/widgets/app_kit.dart';
 
 void main() {
-  setUpAll(() {
-    dotenv.loadFromString(envString: 'API_BASE_URL=http://localhost:3000\n');
-  });
-
   group('Rekognisi Models Tests', () {
     test('RekognisiItem.fromJson parses full valid json', () {
       final json = {
@@ -90,94 +83,25 @@ void main() {
       expect(options.tingkat.length, equals(2));
       expect(options.tingkat.last.label, equals('Nasional'));
       expect(options.kontribusi.length, equals(2));
-      expect(options.kontribusi.first.value, equals('Penulis Pertama'));
+      expect(options.kontribusi.first.label, equals('Penulis Pertama'));
     });
   });
 
-  group('Aktivitas Edit & Verification Lock Logic Tests', () {
-    test('Verification lock is true when verifikasi == 1 or status is valid', () {
-      final verifiedItem = RekognisiItem(
-        id: 1,
-        npm: '23.11.0001',
-        jenisAktivitas: 'REKOGNISI',
-        judul: 'Juri',
-        judulEnglish: '',
-        tingkat: 'Nasional',
-        tingkatEnglish: '',
-        link: '',
-        kontribusi: '',
-        tahun: 2025,
-        file: 'test.pdf',
-        fileUrl: '/file',
-        verifikasi: 1,
-        status: 'menunggu',
-        keterangan: '',
-        createdAt: '',
-        updatedAt: '',
-      );
-
-      final isLocked = verifiedItem.verifikasi == 1 || verifiedItem.status.toLowerCase() == 'valid';
-      expect(isLocked, isTrue);
-
-      final unverifiedItem = RekognisiItem(
-        id: 2,
-        npm: '23.11.0001',
-        jenisAktivitas: 'REKOGNISI',
-        judul: 'Juri',
-        judulEnglish: '',
-        tingkat: 'Nasional',
-        tingkatEnglish: '',
-        link: '',
-        kontribusi: '',
-        tahun: 2025,
-        file: 'test.pdf',
-        fileUrl: '/file',
-        verifikasi: 0,
-        status: 'menunggu',
-        keterangan: '',
-        createdAt: '',
-        updatedAt: '',
-      );
-
-      final isUnverifiedLocked = unverifiedItem.verifikasi == 1 || unverifiedItem.status.toLowerCase() == 'valid';
-      expect(isUnverifiedLocked, isFalse);
+  group('Kunci verifikasi aktivitas', () {
+    test('verifikasi == 1 → terkunci walau status masih menunggu', () {
+      expect(isAktivitasTerkunci(1, 'menunggu'), isTrue);
     });
 
-    test('FormData for edit omits file field when no new file is chosen', () {
-      final mapData = <String, dynamic>{
-        'judul': 'Bahasa Inggris',
-        'nilai': 'A',
-        'tahun': '2025',
-      };
-
-      // When file is null, file_sertifikat key is NOT in mapData
-      expect(mapData.containsKey('file_sertifikat'), isFalse);
-
-      final formData = FormData.fromMap(mapData);
-      expect(formData.fields.any((f) => f.key == 'judul' && f.value == 'Bahasa Inggris'), isTrue);
-      expect(formData.fields.any((f) => f.key == 'nilai' && f.value == 'A'), isTrue);
-      expect(formData.files.any((f) => f.key == 'file_sertifikat'), isFalse);
+    test("status 'Valid' campuran huruf → terkunci walau verifikasi 0", () {
+      expect(isAktivitasTerkunci(0, 'Valid'), isTrue);
     });
 
-    test('FormData for edit includes file field when new file is provided', () {
-      final mapData = <String, dynamic>{
-        'judul': 'Bahasa Inggris',
-        'nilai': 'A',
-        'tahun': '2025',
-        'file_sertifikat': MultipartFile.fromString('dummy binary pdf content', filename: 'sertifikat.pdf'),
-      };
-
-      expect(mapData.containsKey('file_sertifikat'), isTrue);
-
-      final formData = FormData.fromMap(mapData);
-      expect(formData.fields.any((f) => f.key == 'judul'), isTrue);
-      expect(formData.files.any((f) => f.key == 'file_sertifikat'), isTrue);
+    test('verifikasi 0 + status menunggu → belum terkunci', () {
+      expect(isAktivitasTerkunci(0, 'menunggu'), isFalse);
     });
 
-    test('RekognisiService and AktivitasHelper expose edit methods', () {
-      final service = RekognisiService();
-      expect(service, isNotNull);
-      expect(AktivitasHelper.edit, isA<Function>());
+    test('verifikasi 2 (ditolak) + status ditolak → tidak terkunci', () {
+      expect(isAktivitasTerkunci(2, 'ditolak'), isFalse);
     });
   });
 }

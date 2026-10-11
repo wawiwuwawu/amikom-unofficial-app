@@ -4,14 +4,12 @@ class MutationResult {
   final bool success;
   final String message;
   final dynamic data;
-  final Map<String, dynamic>? errors;
   final Map<String, dynamic>? rawRoot;
 
   MutationResult({
     required this.success,
     required this.message,
     this.data,
-    this.errors,
     this.rawRoot,
   });
 
@@ -24,15 +22,11 @@ class MutationResult {
           : (status == 'success' || status == true);
       final message = json['message']?.toString() ??
           (isSuccess ? 'Operasi berhasil' : 'Operasi gagal');
-      final errors = json['errors'] is Map<String, dynamic>
-          ? json['errors'] as Map<String, dynamic>
-          : null;
 
       return MutationResult(
         success: isSuccess,
         message: message,
         data: json['data'],
-        errors: errors,
         rawRoot: json,
       );
     }
@@ -58,8 +52,6 @@ class MutationResult {
         return message;
       case 'data':
         return data;
-      case 'errors':
-        return errors;
       default:
         if (rawRoot != null && rawRoot!.containsKey(key)) {
           return rawRoot![key];
@@ -67,12 +59,4 @@ class MutationResult {
         return null;
     }
   }
-
-  Map<String, dynamic> toJson() => {
-        'success': success,
-        'message': message,
-        'data': data,
-        if (errors != null) 'errors': errors,
-        ...?rawRoot,
-      };
 }

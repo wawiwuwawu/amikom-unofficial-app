@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -17,9 +18,6 @@ const _maxRetries = 2;
 int _getRetryCount(RequestOptions opts) =>
     opts.extra['retryCount'] as int? ?? 0;
 
-Future<void> _retryDelay() =>
-    Future.delayed(const Duration(seconds: 1));
-
 class ApiClient {
   static ApiClient? _instance;
   late final Dio dio;
@@ -33,23 +31,25 @@ class ApiClient {
   bool _isRefreshing = false;
   Completer<bool>? _refreshCompleter;
 
-  ApiClient._() {
-    dio = Dio(
-      BaseOptions(
+  static HttpClient _createHttpClient() {
+    final client = HttpClient();
+    client.idleTimeout = const Duration(seconds: 5);
+    return client;
+  }
+
+  BaseOptions _baseOptions(Duration receiveTimeout) => BaseOptions(
         baseUrl: dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000',
         connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 60),
+        receiveTimeout: receiveTimeout,
         sendTimeout: const Duration(seconds: 10),
         headers: {'Content-Type': 'application/json'},
-      ),
-    );
+      );
+
+  ApiClient._() {
+    dio = Dio(_baseOptions(const Duration(seconds: 60)));
 
     (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient =
-        () {
-      final client = HttpClient();
-      client.idleTimeout = const Duration(seconds: 5);
-      return client;
-    };
+        _createHttpClient;
 
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
@@ -83,36 +83,12 @@ class ApiClient {
               }
 
               response.requestOptions.extra['retryCount'] = retryCount + 1;
-              final renewed = await _renewSessionWithLock();
-              if (renewed) {
-                response.requestOptions.headers['Authorization'] =
-                    'Bearer $_token';
-                response.requestOptions.extra['retryCount'] = 0;
-                try {
-                  final retryResponse =
-                      await dio.fetch(response.requestOptions);
-                  handler.resolve(retryResponse);
-                  return;
-                } catch (e) {
-                  if (e is DioException) {
-                    handler.reject(e);
-                  } else {
-                    handler.reject(DioException(
-                      requestOptions: response.requestOptions,
-                      error: e,
-                    ));
-                  }
-                  return;
-                }
-              }
-
-              await _forceLogout();
-              handler.reject(DioException(
-                requestOptions: response.requestOptions,
-                response: response,
-                type: DioExceptionType.badResponse,
-                message: 'Sesi berakhir. Silakan login ulang.',
-              ));
+              await _renewAndRetry(
+                response.requestOptions,
+                response,
+                handler.resolve,
+                handler.reject,
+              );
               return;
             }
           }
@@ -120,13 +96,8 @@ class ApiClient {
         handler.next(response);
       },
       onError: (error, handler) async {
-        if (error.type == DioExceptionType.connectionError ||
-            error.type == DioExceptionType.receiveTimeout) {
-          handler.next(error.copyWith(
-            message: 'Koneksi terputus. Periksa jaringan Anda.',
-          ));
-          return;
-        }
+        // Pemetaan status/tipe ke pesan ramah dikelola terpusat oleh
+        // ApiClient.handleError — interceptor hanya meneruskan error.
         final statusCode = error.response?.statusCode;
         final resData = error.response?.data;
         final serverMsg = (resData is Map<String, dynamic>
@@ -134,14 +105,6 @@ class ApiClient {
                 : (resData?.toString() ?? ''))
             .toString()
             .toLowerCase();
-
-        // 429 Rate limit detection
-        if (statusCode == 429) {
-          handler.next(error.copyWith(
-            message: 'Terlalu banyak permintaan. Silakan tunggu sebentar.',
-          ));
-          return;
-        }
 
         // 500 Upstream portal session expired detection
         if (statusCode == 500 &&
@@ -186,27 +149,13 @@ class ApiClient {
               retryCount < _maxRetries &&
               _token != null &&
               _refreshToken != null) {
-            error.requestOptions.extra['retryCount'] = retryCount + 1;
-            final renewed = await _renewSessionWithLock();
-            if (renewed) {
-              error.requestOptions.headers['Authorization'] = 'Bearer $_token';
-              error.requestOptions.extra['retryCount'] = 0;
-              try {
-                final retryResponse = await dio.fetch(error.requestOptions);
-                handler.resolve(retryResponse);
-                return;
-              } catch (e) {
-                if (e is DioException) {
-                  handler.reject(e);
-                } else {
-                  handler.reject(DioException(
-                    requestOptions: error.requestOptions,
-                    error: e,
-                  ));
-                }
-                return;
-              }
-            }
+            await _renewAndRetry(
+              error.requestOptions,
+              error.response,
+              handler.resolve,
+              handler.reject,
+            );
+            return;
           }
 
           await _forceLogout();
@@ -257,20 +206,9 @@ class ApiClient {
   }
 
   Dio _createUtilityDio() {
-    final utilityDio = Dio(
-      BaseOptions(
-        baseUrl: dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000',
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 15),
-        sendTimeout: const Duration(seconds: 10),
-        headers: {'Content-Type': 'application/json'},
-      ),
-    );
-    (utilityDio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
-      final client = HttpClient();
-      client.idleTimeout = const Duration(seconds: 5);
-      return client;
-    };
+    final utilityDio = Dio(_baseOptions(const Duration(seconds: 15)));
+    (utilityDio.httpClientAdapter as IOHttpClientAdapter).createHttpClient =
+        _createHttpClient;
     return utilityDio;
   }
 
@@ -309,17 +247,11 @@ class ApiClient {
 
     bool success = false;
     try {
-      // 1. Refresh token dulu (aman, tanpa password, sesuai desain backend
-      //    yang me-rotate refresh token). JANGAN login ulang dengan password
-      //    — password tidak pernah disimpan di perangkat.
+      // Satu percobaan saja: refresh token bersifat single-use (dirotasi
+      // server). Percobaan kedua dengan token yang sama SELALU gagal dan
+      // hanya membakar token. Password tidak pernah disimpan — kalau refresh
+      // gagal, user harus login ulang manual.
       success = await _tryRefresh();
-
-      // Jika server baru saja restart / refresh token gagal sementara,
-      // coba sekali lagi setelah jeda singkat.
-      if (!success) {
-        await _retryDelay();
-        success = await _tryRefresh();
-      }
     } catch (_) {
       success = false;
     } finally {
@@ -328,6 +260,44 @@ class ApiClient {
     }
 
     return success;
+  }
+
+  /// Perbarui sesi lalu ulang request [opts] dengan token baru.
+  ///
+  /// Selalu menuntaskan handler (resolve hasil ulang, atau reject ketika
+  /// renew gagal / ulang juga gagal) — pemanggil cukup `return` setelah ini.
+  /// [originResponse] diteruskan ke payload reject khusus cabang 200-body
+  /// unauthorized dan 401.
+  Future<void> _renewAndRetry(
+    RequestOptions opts,
+    Response? originResponse,
+    void Function(Response) resolve,
+    void Function(DioException) reject,
+  ) async {
+    opts.extra['retryCount'] = _getRetryCount(opts) + 1;
+    final renewed = await _renewSessionWithLock();
+    if (!renewed) {
+      await _forceLogout();
+      reject(DioException(
+        requestOptions: opts,
+        response: originResponse,
+        type: DioExceptionType.badResponse,
+        message: 'Sesi berakhir. Silakan login ulang.',
+      ));
+      return;
+    }
+
+    opts.headers['Authorization'] = 'Bearer $_token';
+    opts.extra['retryCount'] = 0;
+    try {
+      resolve(await dio.fetch(opts));
+    } catch (e) {
+      if (e is DioException) {
+        reject(e);
+      } else {
+        reject(DioException(requestOptions: opts, error: e));
+      }
+    }
   }
 
   /// Memastikan sesi aktif: refresh token bila diperlukan.
@@ -429,6 +399,73 @@ class ApiClient {
     final result = MutationResult.fromJson(responseData);
     result.ensureSuccess();
     return result;
+  }
+
+  /// Satu guard untuk seluruh service: jalankan [body], petakan SEMUA galat
+  /// (bukan hanya DioException) ke AppFailure ramah lewat [handleError].
+  static Future<T> guard<T>(
+    Future<T> Function() body,
+    String fallback,
+  ) async {
+    try {
+      return await body();
+    } catch (e) {
+      throw handleError(e, fallback);
+    }
+  }
+
+  /// Ubah payload list JSON menjadi daftar model; non-list → list kosong.
+  static List<T> unwrapList<T>(
+    dynamic data,
+    T Function(Map<String, dynamic>) parse,
+  ) =>
+      data is List
+          ? data
+              .map((e) => parse(Map<String, dynamic>.from(e as Map)))
+              .toList()
+          : const [];
+
+  /// Hasil mutasi beserta metadata root bila portal menyertakannya.
+  static Map<String, dynamic> mutationRoot(dynamic responseData) {
+    final result = unwrapMutation(responseData);
+    return result.rawRoot ??
+        {'success': result.success, 'message': result.message};
+  }
+
+  /// Koersi payload (Map / List / String JSON) menjadi map; gagal → {}.
+  static Map<String, dynamic> forceJsonMap(dynamic raw) {
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    } else if (raw is List && raw.isNotEmpty && raw.first is Map) {
+      return Map<String, dynamic>.from(raw.first);
+    } else if (raw is String) {
+      try {
+        final parsed = jsonDecode(raw);
+        if (parsed is Map) {
+          return Map<String, dynamic>.from(parsed);
+        } else if (parsed is List && parsed.isNotEmpty && parsed.first is Map) {
+          return Map<String, dynamic>.from(parsed.first);
+        }
+      } catch (_) {}
+    }
+    return {};
+  }
+
+  /// Ekstensi berkas dari header content-disposition (fallback .pdf).
+  static String extensionFromHeaders(
+    Headers headers, {
+    String fallback = '.pdf',
+  }) {
+    final contentDisposition = headers.value('content-disposition');
+    if (contentDisposition != null && contentDisposition.contains('filename=')) {
+      final match =
+          RegExp(r'filename="?([^";]+)"?').firstMatch(contentDisposition);
+      final fname = match?.group(1);
+      if (fname != null && fname.contains('.')) {
+        return '.${fname.split('.').last}';
+      }
+    }
+    return fallback;
   }
 
   // ponytail: centralized error handler to prevent raw null/English network messages

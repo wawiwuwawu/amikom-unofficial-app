@@ -33,10 +33,7 @@ class SpMatkul {
 class SpAvailableData {
   final bool isOpen;
   final String periodeInfo;
-  final String? tanggalMulai;
-  final String? tanggalSelesai;
   final int totalSksTahunIni;
-  final int jumlahSksLampauDiambil;
   final int sisaSks;
   final int maxSks;
   final List<SpMatkul> matkulTahunBerjalan;
@@ -45,10 +42,7 @@ class SpAvailableData {
   SpAvailableData({
     required this.isOpen,
     required this.periodeInfo,
-    this.tanggalMulai,
-    this.tanggalSelesai,
     required this.totalSksTahunIni,
-    required this.jumlahSksLampauDiambil,
     required this.sisaSks,
     required this.maxSks,
     required this.matkulTahunBerjalan,
@@ -59,10 +53,7 @@ class SpAvailableData {
     return SpAvailableData(
       isOpen: json['is_open'] == true,
       periodeInfo: json['periode_info']?.toString() ?? '',
-      tanggalMulai: json['tanggal_mulai']?.toString(),
-      tanggalSelesai: json['tanggal_selesai']?.toString(),
       totalSksTahunIni: int.tryParse(json['total_sks_tahun_ini']?.toString() ?? '0') ?? 0,
-      jumlahSksLampauDiambil: int.tryParse(json['jumlah_sks_lampau_diambil']?.toString() ?? '0') ?? 0,
       sisaSks: int.tryParse(json['sisa_sks']?.toString() ?? '0') ?? 0,
       maxSks: int.tryParse(json['max_sks']?.toString() ?? '0') ?? 0,
       matkulTahunBerjalan: (json['matkul_tahun_berjalan'] as List?)
@@ -131,8 +122,6 @@ class SpRekomendasiItem {
   final String mkl;
   final int sks;
   final String nilaiSebelumnya;
-  final double bobot;
-  final String prioritas;
   final String alasan;
 
   SpRekomendasiItem({
@@ -140,8 +129,6 @@ class SpRekomendasiItem {
     required this.mkl,
     required this.sks,
     required this.nilaiSebelumnya,
-    required this.bobot,
-    required this.prioritas,
     required this.alasan,
   });
 
@@ -151,8 +138,6 @@ class SpRekomendasiItem {
       mkl: json['mkl']?.toString() ?? '',
       sks: int.tryParse(json['sks']?.toString() ?? '0') ?? 0,
       nilaiSebelumnya: json['nilai_sebelumnya']?.toString() ?? '',
-      bobot: double.tryParse(json['bobot']?.toString() ?? '0') ?? 0.0,
-      prioritas: json['prioritas']?.toString() ?? '',
       alasan: json['alasan']?.toString() ?? '',
     );
   }

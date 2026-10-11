@@ -4,18 +4,7 @@ import 'theme/app_theme.dart';
 import 'pages/login_page.dart';
 import 'pages/main_page.dart';
 import 'pages/splash_page.dart';
-import 'pages/keuangan_page.dart';
-import 'pages/sp_page.dart';
-import 'pages/skmk_page.dart';
-import 'pages/izin_penelitian_page.dart';
-import 'pages/surat_tugas_page.dart';
-import 'pages/pkl_page.dart';
-import 'pages/ujian_susulan_page.dart';
-import 'pages/ppks_page.dart';
-import 'pages/skripsi_page.dart';
 import 'pages/penafian_page.dart';
-import 'pages/nilai_rincian_page.dart';
-import 'pages/rekognisi_page.dart';
 import 'services/navigation_service.dart';
 
 void main() async {
@@ -42,18 +31,7 @@ class MyApp extends StatelessWidget {
         '/splash': (_) => const SplashPage(),
         '/login': (_) => const LoginPage(),
         '/main': (_) => const MainPage(),
-        '/keuangan': (_) => const KeuanganPage(),
-        '/sp': (_) => const SpPage(),
-        '/skmk': (_) => const SkmkPage(),
-        '/izin-penelitian': (_) => const IzinPenelitianPage(),
-        '/surat-tugas': (_) => const SuratTugasPage(),
-        '/pkl': (_) => const PklPage(),
-        '/ujian-susulan': (_) => const UjianSusulanPage(),
-        '/ppks': (_) => const PpksPage(),
-        '/skripsi': (_) => const SkripsiPage(),
         '/penafian': (_) => const PenafianPage(),
-        '/nilai-rincian': (_) => const NilaiRincianPage(),
-        '/rekognisi': (_) => const RekognisiPage(),
       },
     );
   }

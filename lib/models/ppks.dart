@@ -1,22 +1,7 @@
-class PpksStatusPelaporOption {
-  final String value;
-  final String label;
-
-  PpksStatusPelaporOption({
-    required this.value,
-    required this.label,
-  });
-
-  factory PpksStatusPelaporOption.fromJson(Map<String, dynamic> json) {
-    return PpksStatusPelaporOption(
-      value: json['value']?.toString() ?? '',
-      label: json['label']?.toString() ?? '',
-    );
-  }
-}
+import 'value_label_option.dart';
 
 class PpksOptions {
-  final List<PpksStatusPelaporOption> statusPelapor;
+  final List<ValueLabelOption> statusPelapor;
   final List<String> jenisKelamin;
   final List<String> statusPihak;
   final List<String> disabilitas;
@@ -35,7 +20,7 @@ class PpksOptions {
   factory PpksOptions.fromJson(Map<String, dynamic> json) {
     return PpksOptions(
       statusPelapor: (json['status_pelapor'] as List?)
-              ?.map((e) => PpksStatusPelaporOption.fromJson(e))
+              ?.map((e) => ValueLabelOption.fromJson(e))
               .toList() ??
           [],
       jenisKelamin: (json['jenis_kelamin'] as List?)?.map((e) => e.toString()).toList() ?? [],

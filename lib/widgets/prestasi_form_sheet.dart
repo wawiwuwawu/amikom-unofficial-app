@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'app_form_submit.dart';
 import 'skpi_file_picker.dart';
 import '../models/prestasi.dart';
 import '../services/prestasi_service.dart';
@@ -100,73 +101,63 @@ class _PrestasiFormSheetState extends State<PrestasiFormSheet> {
 
     setState(() => _isSubmitting = true);
 
-    try {
-      final formDataMap = <String, dynamic>{
-        'jenis_prestasi': _selectedJenisPrestasi,
-        'tahun': _tahunController.text.trim(),
-      };
+    await AppFormSubmit.run(
+      context: context,
+      successMessage: _isEditing
+          ? 'Prestasi Mahasiswa berhasil diubah'
+          : 'Prestasi Mahasiswa berhasil ditambahkan',
+      successBackground: AppColors.success,
+      errorBackground: AppColors.danger,
+      onSuccessBeforeMessage: true,
+      onSuccess: widget.onSuccess,
+      setSubmitting: (v) => setState(() => _isSubmitting = v),
+      save: () async {
+        final formDataMap = <String, dynamic>{
+          'jenis_prestasi': _selectedJenisPrestasi,
+          'tahun': _tahunController.text.trim(),
+        };
 
-      if (_selectedJenisPrestasi == 'KEJUARAAN LAINNYA') {
-        formDataMap['prestasi_lainnya'] = _prestasiLainnyaController.text.trim();
-      } else if (_selectedJenisPrestasi == 'Program Kreativitas Mahasiswa (PKM)') {
-        if (_selectedPrestasiPkm != null) {
-          formDataMap['prestasi_pkm'] = _selectedPrestasiPkm;
+        if (_selectedJenisPrestasi == 'KEJUARAAN LAINNYA') {
+          formDataMap['prestasi_lainnya'] =
+              _prestasiLainnyaController.text.trim();
+        } else if (_selectedJenisPrestasi ==
+            'Program Kreativitas Mahasiswa (PKM)') {
+          if (_selectedPrestasiPkm != null) {
+            formDataMap['prestasi_pkm'] = _selectedPrestasiPkm;
+          }
+          if (_selectedKategoriPkm != null) {
+            formDataMap['kategori_pkm'] = _selectedKategoriPkm;
+          }
+          if (_selectedKategoriPkm == 'Lainnya') {
+            formDataMap['kategori_pkm_lain'] =
+                _kategoriPkmLainController.text.trim();
+          }
+        } else {
+          if (_selectedPrestasi != null) {
+            formDataMap['prestasi'] = _selectedPrestasi;
+          }
+          if (_kategoriController.text.trim().isNotEmpty) {
+            formDataMap['kategori'] = _kategoriController.text.trim();
+          }
         }
-        if (_selectedKategoriPkm != null) {
-          formDataMap['kategori_pkm'] = _selectedKategoriPkm;
-        }
-        if (_selectedKategoriPkm == 'Lainnya') {
-          formDataMap['kategori_pkm_lain'] = _kategoriPkmLainController.text.trim();
-        }
-      } else {
-        if (_selectedPrestasi != null) {
-          formDataMap['prestasi'] = _selectedPrestasi;
-        }
-        if (_kategoriController.text.trim().isNotEmpty) {
-          formDataMap['kategori'] = _kategoriController.text.trim();
-        }
-      }
 
-      if (_selectedTingkatan != null && _selectedTingkatan!.isNotEmpty) {
-        formDataMap['tingkatan'] = _selectedTingkatan;
-      }
-
-      if (_selectedFile != null && _selectedFile!.path != null) {
-        formDataMap['file_sertifikat'] = await MultipartFile.fromFile(
-          _selectedFile!.path!,
-          filename: _selectedFile!.name,
-        );
-      }
-      final formData = FormData.fromMap(formDataMap);
-      if (_isEditing) {
-        await _service.editPrestasi(widget.itemToEdit!.id, formData);
-      } else {
-        await _service.tambahPrestasi(formData);
-      }
-
-      if (!mounted) return;
-      Navigator.pop(context);
-      widget.onSuccess();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_isEditing
-              ? 'Prestasi Mahasiswa berhasil diubah'
-              : 'Prestasi Mahasiswa berhasil ditambahkan'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(userErrorMessage(e)),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
-    }
+        if (_selectedTingkatan != null && _selectedTingkatan!.isNotEmpty) {
+          formDataMap['tingkatan'] = _selectedTingkatan;
+        }
+        if (_selectedFile != null && _selectedFile!.path != null) {
+          formDataMap['file_sertifikat'] = await MultipartFile.fromFile(
+            _selectedFile!.path!,
+            filename: _selectedFile!.name,
+          );
+        }
+        final formData = FormData.fromMap(formDataMap);
+        if (_isEditing) {
+          await _service.editPrestasi(widget.itemToEdit!.id, formData);
+        } else {
+          await _service.tambahPrestasi(formData);
+        }
+      },
+    );
   }
 
   @override

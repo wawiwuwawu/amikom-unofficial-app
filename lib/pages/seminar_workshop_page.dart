@@ -259,7 +259,7 @@ class _SeminarWorkshopPageState extends State<SeminarWorkshopPage> {
 
   /// Satu blok kegiatan: baris utama + detail + aksi.
   Widget _buildItemBlock(SeminarWorkshopItem item) {
-    final isVerified = item.verifikasi == 1 || item.status.toLowerCase() == 'valid';
+    final isVerified = isAktivitasTerkunci(item.verifikasi, item.status);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

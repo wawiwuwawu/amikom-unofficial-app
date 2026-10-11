@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:intl/intl.dart';
 import '../models/keuangan.dart';
 import '../services/keuangan_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/format.dart';
 import '../widgets/app_kit.dart';
 import 'panduan_pembayaran_page.dart';
 
@@ -94,44 +94,23 @@ class _RiwayatPembayaranTabState extends State<_RiwayatPembayaranTab> {
     }
   }
 
-  String _formatRupiah(int number) {
-    final currencyFormatter = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
-    return currencyFormatter.format(number);
-  }
-
-  String _semesterLabel(int semester) {
-    return semester == 1
-        ? 'Ganjil'
-        : semester == 2
-            ? 'Genap'
-            : 'Semester $semester';
-  }
-
   Future<void> _downloadHistoryPdf() async {
     setState(() => _downloadingAll = true);
     try {
       final path = await _service.downloadHistoryPdf();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Tersimpan di $path'),
-            backgroundColor: AppColors.primary,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppSnack.show(
+          context,
+          'Tersimpan di $path',
+          backgroundColor: AppColors.primary,
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(userErrorMessage(e, 'Gagal mengunduh PDF. Silakan coba lagi.')),
-            backgroundColor: AppColors.danger,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppSnack.show(
+          context,
+          userErrorMessage(e, 'Gagal mengunduh PDF. Silakan coba lagi.'),
+          backgroundColor: AppColors.danger,
         );
       }
     } finally {
@@ -174,7 +153,7 @@ class _RiwayatPembayaranTabState extends State<_RiwayatPembayaranTab> {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          Text(_formatRupiah(_totalBayar), style: AppText.metric),
+          Text(formatRupiah(_totalBayar), style: AppText.metric),
           const SizedBox(height: AppSpacing.lg),
           SizedBox(
             width: double.infinity,
@@ -206,7 +185,7 @@ class _RiwayatPembayaranTabState extends State<_RiwayatPembayaranTab> {
 
     final meta = [
       '${item.channelBank} • Angsuran ${item.angsuranKe}',
-      'TA ${item.tahunAkademik} • Semester ${_semesterLabel(item.semester)} (Smt Tempuh ${item.semesterTempuh})',
+      'TA ${item.tahunAkademik} • Semester ${semesterLabel(item.semester)} (Smt Tempuh ${item.semesterTempuh})',
       'Tgl Bayar: ${item.tglBayar}',
       if (hasKwitansi) 'No. Kwitansi: ${item.nomorKwitansi}',
       if (hasRefBank) 'No. Ref Bank: ${item.norefBank}',
@@ -222,7 +201,7 @@ class _RiwayatPembayaranTabState extends State<_RiwayatPembayaranTab> {
           color: AppColors.primary,
         ),
       ),
-      title: _formatRupiah(item.jumlahBayar),
+      title: formatRupiah(item.jumlahBayar),
       subtitle: meta.join('\n'),
       trailing: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -340,44 +319,23 @@ class _KeuanganDetailSheetState extends State<_KeuanganDetailSheet> {
     try {
       final path = await widget.service.downloadDetailPdf(widget.item);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Kwitansi tersimpan di $path'),
-            backgroundColor: AppColors.primary,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppSnack.show(
+          context,
+          'Kwitansi tersimpan di $path',
+          backgroundColor: AppColors.primary,
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(userErrorMessage(e, 'Gagal mengunduh kwitansi. Silakan coba lagi.')),
-            backgroundColor: AppColors.danger,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppSnack.show(
+          context,
+          userErrorMessage(e, 'Gagal mengunduh kwitansi. Silakan coba lagi.'),
+          backgroundColor: AppColors.danger,
         );
       }
     } finally {
       if (mounted) setState(() => _downloading = false);
     }
-  }
-
-  String _formatRupiah(int number) {
-    final currencyFormatter = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
-    return currencyFormatter.format(number);
-  }
-
-  String _semesterLabel(int semester) {
-    return semester == 1
-        ? 'Ganjil'
-        : semester == 2
-            ? 'Genap'
-            : 'Semester $semester';
   }
 
   @override
@@ -423,7 +381,7 @@ class _KeuanganDetailSheetState extends State<_KeuanganDetailSheet> {
               ],
             ),
             Text(
-              'TA ${widget.item.tahunAkademik} • Semester ${_semesterLabel(widget.item.semester)} (${widget.item.channelBank})',
+              'TA ${widget.item.tahunAkademik} • Semester ${semesterLabel(widget.item.semester)} (${widget.item.channelBank})',
               style: AppText.bodySm,
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -458,7 +416,7 @@ class _KeuanganDetailSheetState extends State<_KeuanganDetailSheet> {
                                       title: d.jenisBiaya,
                                       subtitle: 'Ref: ${d.noReferensi}',
                                       trailing: Text(
-                                        _formatRupiah(d.nominal),
+                                        formatRupiah(d.nominal),
                                         style: AppText.h3.copyWith(
                                           color: AppColors.primary,
                                         ),
@@ -476,7 +434,7 @@ class _KeuanganDetailSheetState extends State<_KeuanganDetailSheet> {
                 children: [
                   Text('Total Biaya Rincian:', style: AppText.h3),
                   Text(
-                    _formatRupiah(
+                    formatRupiah(
                       totalNominal > 0 ? totalNominal : widget.item.jumlahBayar,
                     ),
                     style: AppText.metric.copyWith(
@@ -558,15 +516,6 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
 
   bool get _hasActiveVa => _tagihan?.activeTransaction.hasActive ?? false;
 
-  String _formatRupiah(int number) {
-    final currencyFormatter = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
-    return currencyFormatter.format(number);
-  }
-
   String _formatTahunAkademik(String tahunAkademik) {
     final parts = tahunAkademik.split('-');
     if (parts.length == 2) {
@@ -585,12 +534,10 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
   Future<void> _copyToClipboard(String text, {String label = 'Nomor disalin'}) async {
     await Clipboard.setData(ClipboardData(text: text));
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$label: $text'),
-          backgroundColor: AppColors.primary,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppSnack.show(
+        context,
+        '$label: $text',
+        backgroundColor: AppColors.primary,
       );
     }
   }
@@ -626,7 +573,7 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
             Text('Pilih Channel Pembayaran', style: AppText.h2),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Total yang dibayar: ${_formatRupiah(_selectedNominal)}',
+              'Total yang dibayar: ${formatRupiah(_selectedNominal)}',
               style: AppText.bodySm,
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -713,12 +660,10 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
       await _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(userErrorMessage(e, 'Gagal membuat nomor VA. Silakan coba lagi.')),
-            backgroundColor: AppColors.danger,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppSnack.show(
+          context,
+          userErrorMessage(e, 'Gagal membuat nomor VA. Silakan coba lagi.'),
+          backgroundColor: AppColors.danger,
         );
       }
     } finally {
@@ -761,28 +706,22 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
       await _service.batalTagihan(
         active.channelBank,
         active.va,
-        active.items.isNotEmpty && active.items.first is Map
-            ? (active.items.first as Map)['idtrans']?.toString() ?? ''
-            : '',
+        active.firstIdtrans,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Transaksi pembayaran berhasil dibatalkan'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppSnack.show(
+          context,
+          'Transaksi pembayaran berhasil dibatalkan',
+          backgroundColor: AppColors.success,
         );
       }
       await _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(userErrorMessage(e, 'Gagal membatalkan transaksi. Silakan coba lagi.')),
-            backgroundColor: AppColors.danger,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppSnack.show(
+          context,
+          userErrorMessage(e, 'Gagal membatalkan transaksi. Silakan coba lagi.'),
+          backgroundColor: AppColors.danger,
         );
       }
     } finally {
@@ -804,7 +743,7 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
             Expanded(
               flex: 3,
               child: AppStatTile(
-                value: _formatRupiah(_tagihan?.totalTagihan ?? 0),
+                value: formatRupiah(_tagihan?.totalTagihan ?? 0),
                 label: 'Total Tagihan',
                 icon: CupertinoIcons.doc_text_fill,
                 accent: accent,
@@ -896,7 +835,7 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Total: ${_formatRupiah(active.totalNominal)} • ${active.channelBank.toUpperCase()}',
+            'Total: ${formatRupiah(active.totalNominal)} • ${active.channelBank.toUpperCase()}',
             style: AppText.bodySm,
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -950,7 +889,7 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Transaksi VA masih aktif (${_formatRupiah(totalNominal)})',
+                  'Transaksi VA masih aktif (${formatRupiah(totalNominal)})',
                   style: AppText.h3.copyWith(color: AppColors.warning),
                 ),
                 const SizedBox(height: AppSpacing.xs),
@@ -993,7 +932,7 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            _formatRupiah(item.nominal),
+            formatRupiah(item.nominal),
             style: AppText.h3.copyWith(
               color: disabled ? AppColors.textMuted : AppColors.primary,
             ),
@@ -1057,7 +996,7 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
             AppSection(
               title: 'Daftar Tagihan',
               trailing: Text(
-                'Terpilih: ${_formatRupiah(_selectedNominal)}',
+                'Terpilih: ${formatRupiah(_selectedNominal)}',
                 style: AppText.label.copyWith(
                   color: AppColors.primary,
                   fontWeight: FontWeight.w700,
@@ -1108,15 +1047,6 @@ class _VaSuksesPage extends StatelessWidget {
   final KeuanganVaResult result;
 
   const _VaSuksesPage({required this.result});
-
-  String _formatRupiah(int number) {
-    final currencyFormatter = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
-    return currencyFormatter.format(number);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1170,7 +1100,7 @@ class _VaSuksesPage extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    '${result.channelBank.toUpperCase()} • Total ${_formatRupiah(result.totalNominal)}',
+                    '${result.channelBank.toUpperCase()} • Total ${formatRupiah(result.totalNominal)}',
                     textAlign: TextAlign.center,
                     style: AppText.bodySm,
                   ),
@@ -1183,7 +1113,7 @@ class _VaSuksesPage extends StatelessWidget {
                 AppListRow(
                   title: item.jenisPembayaran,
                   trailing: Text(
-                    _formatRupiah(item.nominal),
+                    formatRupiah(item.nominal),
                     style: AppText.h3,
                   ),
                 ),
@@ -1216,12 +1146,10 @@ class _VaSuksesPage extends StatelessWidget {
                 onPressed: () async {
                   await Clipboard.setData(ClipboardData(text: result.va));
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Nomor VA disalin'),
-                        backgroundColor: AppColors.primary,
-                        behavior: SnackBarBehavior.floating,
-                      ),
+                    AppSnack.show(
+                      context,
+                      'Nomor VA disalin',
+                      backgroundColor: AppColors.primary,
                     );
                   }
                 },

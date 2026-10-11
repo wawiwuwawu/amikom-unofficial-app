@@ -8,25 +8,18 @@ class SpService {
 
   SpService() : _dio = ApiClient.instance.dio;
 
-  Future<SpAvailableData> getAvailable() async {
-    try {
-      final response = await _dio.get('/api/v1/sp/available');
-      final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
-      return SpAvailableData.fromJson(data);
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat daftar matakuliah SP yang tersedia');
-    }
-  }
+  Future<SpAvailableData> getAvailable() =>
+      ApiClient.guard<SpAvailableData>(() async {
+        final response = await _dio.get('/api/v1/sp/available');
+        final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
+        return SpAvailableData.fromJson(data);
+      }, 'Gagal memuat daftar matakuliah SP yang tersedia');
 
-  Future<SpTakenData> getTaken() async {
-    try {
-      final response = await _dio.get('/api/v1/sp/taken');
-      final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
-      return SpTakenData.fromJson(data);
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat matakuliah SP yang sudah diambil');
-    }
-  }
+  Future<SpTakenData> getTaken() => ApiClient.guard<SpTakenData>(() async {
+        final response = await _dio.get('/api/v1/sp/taken');
+        final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
+        return SpTakenData.fromJson(data);
+      }, 'Gagal memuat matakuliah SP yang sudah diambil');
 
   Future<SpRekomendasiData> getRekomendasi() async {
     try {
@@ -50,24 +43,18 @@ class SpService {
     }
   }
 
-  Future<MutationResult> submitSp(List<String> kodeList) async {
-    try {
-      final response = await _dio.post(
-        '/api/v1/sp/submit',
-        data: {'kode': kodeList},
-      );
-      return ApiClient.unwrapMutation(response.data);
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal mengajukan matakuliah SP');
-    }
-  }
+  Future<MutationResult> submitSp(List<String> kodeList) =>
+      ApiClient.guard<MutationResult>(() async {
+        final response = await _dio.post(
+          '/api/v1/sp/submit',
+          data: {'kode': kodeList},
+        );
+        return ApiClient.unwrapMutation(response.data);
+      }, 'Gagal mengajukan matakuliah SP');
 
-  Future<MutationResult> deleteSp(String idKrs) async {
-    try {
-      final response = await _dio.delete('/api/v1/sp/$idKrs');
-      return ApiClient.unwrapMutation(response.data);
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal menghapus matakuliah SP');
-    }
-  }
+  Future<MutationResult> deleteSp(String idKrs) =>
+      ApiClient.guard<MutationResult>(() async {
+        final response = await _dio.delete('/api/v1/sp/$idKrs');
+        return ApiClient.unwrapMutation(response.data);
+      }, 'Gagal menghapus matakuliah SP');
 }

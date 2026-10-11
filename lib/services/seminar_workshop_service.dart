@@ -7,45 +7,40 @@ import '../models/app_failure.dart';
 class SeminarWorkshopService {
   final _dio = ApiClient.instance.dio;
 
-  Future<List<SeminarWorkshopItem>> getSeminarWorkshop() async {
-    try {
-      final response = await _dio.get('/api/v1/seminar-workshop');
-      final data = ApiClient.unwrapData<dynamic>(response.data);
-      if (data is List) {
-        return data
-            .map((e) => SeminarWorkshopItem.fromJson(Map<String, dynamic>.from(e as Map)))
-            .toList();
-      }
-      return [];
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat data Seminar & Workshop');
-    }
-  }
+  Future<List<SeminarWorkshopItem>> getSeminarWorkshop() =>
+      ApiClient.guard<List<SeminarWorkshopItem>>(() async {
+        final response = await _dio.get('/api/v1/seminar-workshop');
+        final data = ApiClient.unwrapData<dynamic>(response.data);
+        return ApiClient.unwrapList<SeminarWorkshopItem>(
+            data, SeminarWorkshopItem.fromJson);
+      }, 'Gagal memuat data Seminar & Workshop');
 
-  Future<SeminarWorkshopOptionsData> getOptions() async {
-    try {
-      final response = await _dio.get('/api/v1/seminar-workshop/options');
-      final data = ApiClient.unwrapData<dynamic>(response.data);
-      if (data is Map<String, dynamic>) {
-        return SeminarWorkshopOptionsData.fromJson(data);
-      } else if (data is Map) {
-        return SeminarWorkshopOptionsData.fromJson(Map<String, dynamic>.from(data));
-      }
-      throw const AppFailure('Data opsi seminar & workshop kosong');
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat pilihan Seminar & Workshop');
-    }
-  }
+  Future<SeminarWorkshopOptionsData> getOptions() =>
+      ApiClient.guard<SeminarWorkshopOptionsData>(() async {
+        final response = await _dio.get('/api/v1/seminar-workshop/options');
+        final data = ApiClient.unwrapData<dynamic>(response.data);
+        if (data is Map<String, dynamic>) {
+          return SeminarWorkshopOptionsData.fromJson(data);
+        } else if (data is Map) {
+          return SeminarWorkshopOptionsData.fromJson(
+              Map<String, dynamic>.from(data));
+        }
+        throw const AppFailure('Data opsi seminar & workshop kosong');
+      }, 'Gagal memuat pilihan Seminar & Workshop');
 
   Future<void> tambahSeminarWorkshop(FormData data) =>
-      AktivitasHelper.submit('/api/v1/seminar-workshop', data, 'Gagal menambahkan Seminar & Workshop');
+      AktivitasHelper.submit('/api/v1/seminar-workshop', data,
+          'Gagal menambahkan Seminar & Workshop');
 
   Future<void> editSeminarWorkshop(int id, FormData data) =>
-      AktivitasHelper.edit('/api/v1/seminar-workshop', id, data, 'Gagal mengubah data Seminar atau Workshop');
+      AktivitasHelper.edit('/api/v1/seminar-workshop', id, data,
+          'Gagal mengubah data Seminar atau Workshop');
 
-  Future<void> hapusSeminarWorkshop(int id) =>
-      AktivitasHelper.delete('/api/v1/seminar-workshop', id, 'Gagal menghapus Seminar & Workshop');
+  Future<void> hapusSeminarWorkshop(int id) => AktivitasHelper.delete(
+      '/api/v1/seminar-workshop', id,
+      'Gagal menghapus Seminar & Workshop');
 
   Future<String> downloadFile(int id, String namaFile) =>
-      AktivitasHelper.downloadFile('/api/v1/seminar-workshop', id, namaFile, 'Gagal mengunduh file sertifikat');
+      AktivitasHelper.downloadFile('/api/v1/seminar-workshop', id, namaFile,
+          'Gagal mengunduh file sertifikat');
 }

@@ -1,25 +1,19 @@
 class AsistenMahasiswa {
   final String npm;
   final String nama;
-  final String koda;
   final String namaDept;
-  final String pa;
 
   AsistenMahasiswa({
     required this.npm,
     required this.nama,
-    required this.koda,
     required this.namaDept,
-    required this.pa,
   });
 
   factory AsistenMahasiswa.fromJson(Map<String, dynamic> json) {
     return AsistenMahasiswa(
       npm: json['npm'] ?? '',
       nama: json['NAMA'] ?? '',
-      koda: json['koda'] ?? '',
       namaDept: json['nama_dept'] ?? '',
-      pa: json['pa'] ?? '',
     );
   }
 }
@@ -50,33 +44,14 @@ class AsistenStats {
   }
 }
 
-class AsistenAturan {
-  final int totalPresensi;
-  final double rataRata;
-
-  AsistenAturan({
-    required this.totalPresensi,
-    required this.rataRata,
-  });
-
-  factory AsistenAturan.fromJson(Map<String, dynamic> json) {
-    return AsistenAturan(
-      totalPresensi: json['total_presensi'] ?? 0,
-      rataRata: (json['rata_rata'] ?? 0).toDouble(),
-    );
-  }
-}
-
 class AsistenInfo {
   final AsistenMahasiswa mahasiswa;
   final AsistenStats stats;
-  final AsistenAturan aturan;
   final bool bisaAjukanBebasKP;
 
   AsistenInfo({
     required this.mahasiswa,
     required this.stats,
-    required this.aturan,
     required this.bisaAjukanBebasKP,
   });
 
@@ -87,7 +62,6 @@ class AsistenInfo {
     return AsistenInfo(
       mahasiswa: AsistenMahasiswa.fromJson(map['mahasiswa'] ?? {}),
       stats: AsistenStats.fromJson(map['stats'] ?? {}),
-      aturan: AsistenAturan.fromJson(map['aturan'] ?? {}),
       bisaAjukanBebasKP: map['bisaAjukanBebasKP'] ?? false,
     );
   }
@@ -163,21 +137,13 @@ class AsistenJadwal {
 
 class AsistenJadwalResponse {
   final List<AsistenJadwal> data;
-  final int jumlah;
-  final int jumlahPage;
 
-  AsistenJadwalResponse({
-    required this.data,
-    required this.jumlah,
-    required this.jumlahPage,
-  });
+  AsistenJadwalResponse({required this.data});
 
   factory AsistenJadwalResponse.fromJson(Map<String, dynamic> json) {
     var list = json['data'] as List? ?? [];
     return AsistenJadwalResponse(
       data: list.map((e) => AsistenJadwal.fromJson(e)).toList(),
-      jumlah: json['jumlah'] ?? 0,
-      jumlahPage: json['jumlahPage'] ?? 0,
     );
   }
 }
@@ -185,13 +151,11 @@ class AsistenJadwalResponse {
 class AsistenDataset {
   final String type;
   final String label;
-  final String borderColor;
   final List<double> data;
 
   AsistenDataset({
     required this.type,
     required this.label,
-    required this.borderColor,
     required this.data,
   });
 
@@ -200,7 +164,6 @@ class AsistenDataset {
     return AsistenDataset(
       type: json['type'] ?? '',
       label: json['label'] ?? '',
-      borderColor: json['borderColor'] ?? '',
       data: rawData.map((e) => (e as num).toDouble()).toList(),
     );
   }

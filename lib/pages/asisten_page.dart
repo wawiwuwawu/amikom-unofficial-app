@@ -712,26 +712,17 @@ class _AsistenPageState extends State<AsistenPage> {
     );
   }
 
-  int _getHariWeight(String hari) {
-    switch (hari.toUpperCase()) {
-      case 'SENIN':
-        return 1;
-      case 'SELASA':
-        return 2;
-      case 'RABU':
-        return 3;
-      case 'KAMIS':
-        return 4;
-      case 'JUMAT':
-        return 5;
-      case 'SABTU':
-        return 6;
-      case 'MINGGU':
-        return 7;
-      default:
-        return 99;
-    }
-  }
+  static const _hariOrder = {
+    'SENIN': 1,
+    'SELASA': 2,
+    'RABU': 3,
+    'KAMIS': 4,
+    'JUMAT': 5,
+    'SABTU': 6,
+    'MINGGU': 7,
+  };
+
+  int _getHariWeight(String hari) => _hariOrder[hari.toUpperCase()] ?? 99;
 
   Future<void> _addToGoogleCalendar(AsistenJadwal item) async {
     final title = Uri.encodeComponent('Asisten: ${item.mkl}');

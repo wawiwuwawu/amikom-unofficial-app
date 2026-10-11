@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../models/pkl.dart';
+import '../models/value_label_option.dart';
 import '../services/pkl_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
@@ -319,7 +320,7 @@ class _PklPageState extends State<PklPage> {
     if (_selectedJenis != null) {
       final selectedOpt = jenisOptions.firstWhere(
         (opt) => opt.value == _selectedJenis,
-        orElse: () => PklJenisOption(value: '', label: 'Judul Pendaftaran'),
+        orElse: () => ValueLabelOption(value: '', label: 'Judul Pendaftaran'),
       );
       if (selectedOpt.label.isNotEmpty) {
         dynamicLabel = selectedOpt.label;

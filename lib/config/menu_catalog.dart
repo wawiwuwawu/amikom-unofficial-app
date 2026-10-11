@@ -81,13 +81,6 @@ extension MenuFrequencyX on MenuFrequency {
         MenuFrequency.semesteran => 'Saat periode akademik tertentu',
         MenuFrequency.insidental => 'Sesekali — penting tapi jarang',
       };
-
-  IconData get icon => switch (this) {
-        MenuFrequency.harian => CupertinoIcons.bolt_fill,
-        MenuFrequency.berkala => CupertinoIcons.clock_fill,
-        MenuFrequency.semesteran => CupertinoIcons.calendar,
-        MenuFrequency.insidental => CupertinoIcons.archivebox_fill,
-      };
 }
 
 /// Satu entri menu.

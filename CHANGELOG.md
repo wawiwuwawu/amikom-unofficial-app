@@ -7,6 +7,19 @@ rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-
 
 ## [Belum Dirilis]
 
+### Added
+- ✨ Tab "Cetak & Jadwal" di halaman KRS kini punya tampilan sendiri (`KrsJadwalTab`): daftar mata kuliah KRS per hari (tanpa filter Asisten/Ujian yang tidak relevan) + tombol unduh & bagikan KRS
+
+### Fixed
+- 🐛 Perbaikan sesi: `_renewSessionWithLock` tidak lagi mencoba refresh dua kali — refresh token bersifat single-use, percobaan kedua hanya membakar token dan memaksa login ulang
+
+### Refactor
+- ♻️ Konsolidasi layanan: guard galat terpusat `ApiClient.guard`, `unwrapList`, `mutationRoot`, `forceJsonMap`, `extensionFromHeaders`; hapus 126 blok try/catch duplikat
+- ♻️ Konsolidasi 11 kelas opsi dropdown kembar menjadi `ValueLabelOption`
+- ♻️ Helper bersama: `AppSnack.show`, `AppConfirm.ask`, `AppPill.toneColors`, `AppFormSubmit.run`, `isAktivitasTerkunci`, `lib/utils/format.dart` (rupiah, semester, tanggal, opsi tahun)
+- ♻️ Hapus kode mati: 11 route tak terpakai, method tanpa caller, field model tak terbaca, parameter widget tak dipakai
+- ♻️ Hapus test duplikat/tautologi; tambah test nyata untuk kunci verifikasi aktivitas
+
 ## [v1.9.0] - 2026-08
 
 - ✨ Rekomendasi Matakuliah Semester Pendek (SP)

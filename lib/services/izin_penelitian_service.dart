@@ -8,34 +8,25 @@ class IzinPenelitianService {
 
   IzinPenelitianService() : _dio = ApiClient.instance.dio;
 
-  Future<IzinPenelitianData> getIzinPenelitianData() async {
-    try {
-      final response = await _dio.get('/api/v1/izin-penelitian');
-      final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
-      return IzinPenelitianData.fromJson(data);
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal memuat data Izin Penelitian');
-    }
-  }
+  Future<IzinPenelitianData> getIzinPenelitianData() =>
+      ApiClient.guard<IzinPenelitianData>(() async {
+        final response = await _dio.get('/api/v1/izin-penelitian');
+        final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
+        return IzinPenelitianData.fromJson(data);
+      }, 'Gagal memuat data Izin Penelitian');
 
-  Future<MutationResult> submitIzinPenelitian(Map<String, dynamic> body) async {
-    try {
-      final response = await _dio.post(
-        '/api/v1/izin-penelitian',
-        data: body,
-      );
-      return ApiClient.unwrapMutation(response.data);
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal menambahkan pengajuan izin penelitian');
-    }
-  }
+  Future<MutationResult> submitIzinPenelitian(Map<String, dynamic> body) =>
+      ApiClient.guard<MutationResult>(() async {
+        final response = await _dio.post(
+          '/api/v1/izin-penelitian',
+          data: body,
+        );
+        return ApiClient.unwrapMutation(response.data);
+      }, 'Gagal menambahkan pengajuan izin penelitian');
 
-  Future<MutationResult> deleteIzinPenelitian(String id) async {
-    try {
-      final response = await _dio.delete('/api/v1/izin-penelitian/$id');
-      return ApiClient.unwrapMutation(response.data);
-    } catch (e) {
-      throw ApiClient.handleError(e, 'Gagal menghapus pengajuan izin penelitian');
-    }
-  }
+  Future<MutationResult> deleteIzinPenelitian(String id) =>
+      ApiClient.guard<MutationResult>(() async {
+        final response = await _dio.delete('/api/v1/izin-penelitian/$id');
+        return ApiClient.unwrapMutation(response.data);
+      }, 'Gagal menghapus pengajuan izin penelitian');
 }

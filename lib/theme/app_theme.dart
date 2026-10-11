@@ -183,13 +183,6 @@ abstract final class AppDeco {
         border: Border.all(color: AppColors.border),
       );
 
-  /// Permukaan dengan sudut lebih besar (kartu hero / banner).
-  static BoxDecoration panel({Color? color}) => BoxDecoration(
-        color: color ?? AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
-      );
-
   /// Sorotan lembut memakai warna primary (badge, ikon bulat).
   static BoxDecoration softPrimary({double radius = AppRadius.pill}) =>
       BoxDecoration(

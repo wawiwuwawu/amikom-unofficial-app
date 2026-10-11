@@ -4,7 +4,7 @@ import '../../services/krs_service.dart';
 import '../../models/krs.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_kit.dart';
-import '../jadwal_page.dart';
+import 'krs_jadwal_tab.dart';
 
 class KrsMainPage extends StatefulWidget {
   const KrsMainPage({super.key});
@@ -39,7 +39,7 @@ class _KrsMainPageState extends State<KrsMainPage> {
                   _InfoPengajuanTab(),
                   _DaftarPengajuanTab(),
                   _PengisianKelasTab(),
-                  JadwalPage(showDownloadKrs: true),
+                  KrsJadwalTab(),
                 ],
               ),
             ),

@@ -7,10 +7,7 @@ class JadwalUjian {
   final String jamMulai;
   final String jamSelesai;
   final int noKursi;
-  final int noRef;
   final dynamic nilai;
-  final int totalPresensi;
-  final int totalPresensiMhs;
 
   JadwalUjian({
     required this.kode,
@@ -21,10 +18,7 @@ class JadwalUjian {
     required this.jamMulai,
     required this.jamSelesai,
     required this.noKursi,
-    required this.noRef,
     required this.nilai,
-    required this.totalPresensi,
-    required this.totalPresensiMhs,
   });
 
   factory JadwalUjian.fromJson(Map<String, dynamic> json) {
@@ -37,10 +31,7 @@ class JadwalUjian {
       jamMulai: json['JAM_MULAI']?.toString().trim() ?? '',
       jamSelesai: json['JAM_SELESEI']?.toString().trim() ?? '',
       noKursi: json['NOKURSI'] ?? 0,
-      noRef: json['NOREF'] ?? 0,
       nilai: json['nilai'],
-      totalPresensi: json['total_presensi'] ?? 0,
-      totalPresensiMhs: json['total_presensi_mhs'] ?? 0,
     );
   }
 }

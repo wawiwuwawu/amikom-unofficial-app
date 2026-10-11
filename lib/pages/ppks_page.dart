@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/ppks.dart';
 import '../services/ppks_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/format.dart';
 import '../widgets/app_kit.dart';
 
 /// Halaman Satgas PPKS Amikom (layanan & formulir pengaduan).
@@ -106,17 +107,6 @@ class _PpksPageState extends State<PpksPage> {
         });
       }
     }
-  }
-
-  String _formatDateApi(DateTime dt) {
-    final year = dt.year.toString();
-    final month = dt.month.toString().padLeft(2, '0');
-    final day = dt.day.toString().padLeft(2, '0');
-    return '$year-$month-$day';
-  }
-
-  String _formatDateDisplay(DateTime dt) {
-    return '${dt.day}/${dt.month}/${dt.year}';
   }
 
   Future<void> _selectTanggalKejadian() async {
@@ -243,7 +233,7 @@ class _PpksPageState extends State<PpksPage> {
       'status_terlapor': _selectedStatusTerlapor ?? '',
       'alasan_pengaduan': _selectedAlasan.toList(),
       'kebutuhan_korban': _selectedKebutuhan.toList(),
-      'tanggal_kejadian': _formatDateApi(_tanggalKejadian!),
+      'tanggal_kejadian': formatDateApi(_tanggalKejadian!),
       'lokasi_kejadian': _lokasiKejadianController.text.trim(),
       'kronologi_kejadian': _kronologiKejadianController.text.trim(),
       'bukti': _buktiController.text.trim(),
@@ -712,7 +702,7 @@ class _PpksPageState extends State<PpksPage> {
               ),
               child: Text(
                 _tanggalKejadian != null
-                    ? _formatDateDisplay(_tanggalKejadian!)
+                    ? formatDateDisplay(_tanggalKejadian!)
                     : 'Pilih Tanggal Kejadian',
                 style: AppText.body.copyWith(
                   color: _tanggalKejadian != null

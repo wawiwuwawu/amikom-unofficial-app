@@ -165,7 +165,7 @@ class _PrestasiPageState extends State<PrestasiPage> {
   }
 
   bool _isValid(PrestasiItem item) =>
-      item.verifikasi == 1 || item.status.toLowerCase() == 'valid';
+      isAktivitasTerkunci(item.verifikasi, item.status);
 
   ButtonStyle get _compactAction => TextButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),

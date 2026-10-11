@@ -82,135 +82,86 @@ class _SkripsiPageState extends State<SkripsiPage>
     ]);
   }
 
-  Future<void> _fetchMainInfo() async {
+  /// Rangka pengambilan data bersama untuk kelima tab: tandai memuat dan
+  /// bersihkan galat lama, jalankan [load], tandani hasil lewat [onData],
+  /// lalu selalu matikan indikator memuat. Semua galat (bukan hanya
+  /// DioException) dipetakan ke pesan ramah [fallback] lewat [userErrorMessage].
+  Future<void> _fetchData<T>({
+    required Future<T> Function() load,
+    required void Function(T) onData,
+    required String fallback,
+    required void Function(bool) setLoading,
+    required void Function(String?) setError,
+  }) async {
     setState(() {
-      _isLoadingMain = true;
-      _errorMain = null;
+      setLoading(true);
+      setError(null);
     });
     try {
-      final data = await _service.getMainInfo();
-      if (mounted) {
-        setState(() {
+      final data = await load();
+      if (mounted) onData(data);
+    } catch (e) {
+      if (mounted) setState(() => setError(userErrorMessage(e, fallback)));
+    } finally {
+      if (mounted) setState(() => setLoading(false));
+    }
+  }
+
+  Future<void> _fetchMainInfo() => _fetchData<SkripsiMainData>(
+        load: _service.getMainInfo,
+        onData: (data) => setState(() {
           _mainData = data;
           _isLoadingMain = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMain = userErrorMessage(
-            e,
+        }),
+        fallback:
             'Informasi utama skripsi gagal dimuat. Periksa koneksi lalu coba lagi.',
-          );
-          _isLoadingMain = false;
-        });
-      }
-    }
-  }
+        setLoading: (value) => _isLoadingMain = value,
+        setError: (value) => _errorMain = value,
+      );
 
-  Future<void> _fetchProposals() async {
-    setState(() {
-      _isLoadingProposal = true;
-      _errorProposal = null;
-    });
-    try {
-      final list = await _service.getProposals();
-      if (mounted) {
-        setState(() {
+  Future<void> _fetchProposals() => _fetchData<List<SkripsiProposalItem>>(
+        load: _service.getProposals,
+        onData: (list) => setState(() {
           _proposals = list;
           _isLoadingProposal = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorProposal = userErrorMessage(
-            e,
-            'Daftar proposal skripsi gagal dimuat. Silakan coba lagi.',
-          );
-          _isLoadingProposal = false;
-        });
-      }
-    }
-  }
+        }),
+        fallback: 'Daftar proposal skripsi gagal dimuat. Silakan coba lagi.',
+        setLoading: (value) => _isLoadingProposal = value,
+        setError: (value) => _errorProposal = value,
+      );
 
-  Future<void> _fetchBimbingans() async {
-    setState(() {
-      _isLoadingBimbingan = true;
-      _errorBimbingan = null;
-    });
-    try {
-      final list = await _service.getBimbinganList();
-      if (mounted) {
-        setState(() {
+  Future<void> _fetchBimbingans() => _fetchData<List<SkripsiBimbinganItem>>(
+        load: _service.getBimbinganList,
+        onData: (list) => setState(() {
           _bimbingans = list;
           _isLoadingBimbingan = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorBimbingan = userErrorMessage(
-            e,
-            'Catatan bimbingan gagal dimuat. Silakan coba lagi.',
-          );
-          _isLoadingBimbingan = false;
-        });
-      }
-    }
-  }
+        }),
+        fallback: 'Catatan bimbingan gagal dimuat. Silakan coba lagi.',
+        setLoading: (value) => _isLoadingBimbingan = value,
+        setError: (value) => _errorBimbingan = value,
+      );
 
-  Future<void> _fetchPendaftarans() async {
-    setState(() {
-      _isLoadingPendaftaran = true;
-      _errorPendaftaran = null;
-    });
-    try {
-      final list = await _service.getPendaftaranList();
-      if (mounted) {
-        setState(() {
+  Future<void> _fetchPendaftarans() => _fetchData<List<SkripsiPendaftaranItem>>(
+        load: _service.getPendaftaranList,
+        onData: (list) => setState(() {
           _pendaftarans = list;
           _isLoadingPendaftaran = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorPendaftaran = userErrorMessage(
-            e,
-            'Data pendaftaran ujian gagal dimuat. Silakan coba lagi.',
-          );
-          _isLoadingPendaftaran = false;
-        });
-      }
-    }
-  }
+        }),
+        fallback: 'Data pendaftaran ujian gagal dimuat. Silakan coba lagi.',
+        setLoading: (value) => _isLoadingPendaftaran = value,
+        setError: (value) => _errorPendaftaran = value,
+      );
 
-  Future<void> _fetchPlagiarsmes() async {
-    setState(() {
-      _isLoadingPlagiarisme = true;
-      _errorPlagiarisme = null;
-    });
-    try {
-      final list = await _service.getPlagiarismeList();
-      if (mounted) {
-        setState(() {
+  Future<void> _fetchPlagiarsmes() => _fetchData<List<SkripsiPlagiarismeItem>>(
+        load: _service.getPlagiarismeList,
+        onData: (list) => setState(() {
           _plagiarsmes = list;
           _isLoadingPlagiarisme = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorPlagiarisme = userErrorMessage(
-            e,
-            'Data plagiarisme gagal dimuat. Silakan coba lagi.',
-          );
-          _isLoadingPlagiarisme = false;
-        });
-      }
-    }
-  }
+        }),
+        fallback: 'Data plagiarisme gagal dimuat. Silakan coba lagi.',
+        setLoading: (value) => _isLoadingPlagiarisme = value,
+        setError: (value) => _errorPlagiarisme = value,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -1331,25 +1282,12 @@ class _SkripsiPageState extends State<SkripsiPage>
   }
 
   void _handleTemaUlang(SkripsiProposalItem item) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Konfirmasi Tema Ulang'),
-        content: const Text(
-          'Apakah Anda yakin ingin mengajukan ulang tema skripsi ke Pusat Studi?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.warning),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Ya, Ajukan Tema Ulang'),
-          ),
-        ],
-      ),
+    final confirm = await AppConfirm.ask(
+      context,
+      title: 'Konfirmasi Tema Ulang',
+      content: 'Apakah Anda yakin ingin mengajukan ulang tema skripsi ke Pusat Studi?',
+      confirmLabel: 'Ya, Ajukan Tema Ulang',
+      confirmColor: AppColors.warning,
     );
 
     if (confirm == true) {
@@ -1576,25 +1514,11 @@ class _SkripsiPageState extends State<SkripsiPage>
   }
 
   void _handleDeletePendaftaran(String id) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Batal Pengajuan Ujian'),
-        content: const Text(
-          'Apakah Anda yakin ingin membatalkan pengajuan ujian skripsi ini?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hapus'),
-          ),
-        ],
-      ),
+    final confirm = await AppConfirm.ask(
+      context,
+      title: 'Batal Pengajuan Ujian',
+      content: 'Apakah Anda yakin ingin membatalkan pengajuan ujian skripsi ini?',
+      confirmLabel: 'Hapus',
     );
 
     if (confirm == true) {
@@ -1664,25 +1588,11 @@ class _SkripsiPageState extends State<SkripsiPage>
   }
 
   void _handleDeletePlagiarisme(String id) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Hapus Dokumen Plagiarisme'),
-        content: const Text(
-          'Apakah Anda yakin ingin menghapus dokumen plagiarisme ini?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hapus'),
-          ),
-        ],
-      ),
+    final confirm = await AppConfirm.ask(
+      context,
+      title: 'Hapus Dokumen Plagiarisme',
+      content: 'Apakah Anda yakin ingin menghapus dokumen plagiarisme ini?',
+      confirmLabel: 'Hapus',
     );
 
     if (confirm == true) {

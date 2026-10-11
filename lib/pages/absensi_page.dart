@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../models/absensi.dart';
+import '../models/value_label_option.dart';
 import '../services/absensi_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
@@ -34,8 +35,8 @@ class _AbsensiPageState extends State<AbsensiPage> {
   List<MakulBelumValidasi> _belumValidasi = [];
   bool _loadingBelumValidasi = true;
 
-  List<OptionItem> _semesterList = [];
-  List<OptionItem> _matkulList = [];
+  List<ValueLabelOption> _semesterList = [];
+  List<ValueLabelOption> _matkulList = [];
   String? _selectedThn;
   String? _selectedSmt;
   String? _selectedMakul;
@@ -325,22 +326,6 @@ class _AbsensiPageState extends State<AbsensiPage> {
     }
   }
 
-  /// Warna latar/teks untuk satu nada status (selaras dengan [AppPill]).
-  static (Color, Color) _toneColors(AppPillTone tone) {
-    switch (tone) {
-      case AppPillTone.success:
-        return (AppColors.successBg, AppColors.success);
-      case AppPillTone.warning:
-        return (AppColors.warningBg, AppColors.warning);
-      case AppPillTone.danger:
-        return (AppColors.dangerBg, AppColors.danger);
-      case AppPillTone.info:
-        return (AppColors.infoBg, AppColors.info);
-      case AppPillTone.neutral:
-        return (AppColors.surfaceMuted, AppColors.textSecondary);
-    }
-  }
-
   static Widget _iconBadge(IconData icon) {
     return Container(
       width: 40,
@@ -430,7 +415,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
 
     final terakhir = m.riwayatPertemuan.first;
     final tone = _statusTone(terakhir.status);
-    final (bg, fg) = _toneColors(tone);
+    final (bg, fg) = AppPill.toneColors(tone);
     final kehadiran = m.statistik.kehadiran;
 
     return AppSurface(
@@ -616,7 +601,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
 
   Widget _buildDropdown({
     required String? value,
-    required List<OptionItem> items,
+    required List<ValueLabelOption> items,
     required String hint,
     required ValueChanged<String?>? onChanged,
   }) {
@@ -739,7 +724,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
 
   Widget _buildRiwayatRow(RiwayatPertemuan r) {
     final tone = _statusTone(r.status);
-    final (bg, fg) = _toneColors(tone);
+    final (bg, fg) = AppPill.toneColors(tone);
 
     return AppListRow(
       leading: Container(

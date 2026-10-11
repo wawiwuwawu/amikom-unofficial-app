@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:share_plus/share_plus.dart';
 import '../services/akademik_service.dart';
-import '../services/krs_service.dart';
 import '../models/agenda_terpadu.dart';
 import '../theme/app_theme.dart';
+import '../utils/format.dart';
 import '../widgets/app_kit.dart';
 
 /// Jadwal perkuliahan (agenda terpadu) — fitur yang dibuka hampir tiap hari,
@@ -14,8 +13,7 @@ import '../widgets/app_kit.dart';
 /// Hari yang sedang berjalan ditonjolkan lewat `AppSurface` varian `hero`
 /// plus label "Hari ini", supaya kelas berikutnya langsung terlihat.
 class JadwalPage extends StatefulWidget {
-  final bool showDownloadKrs;
-  const JadwalPage({super.key, this.showDownloadKrs = false});
+  const JadwalPage({super.key});
 
   @override
   State<JadwalPage> createState() => _JadwalPageState();
@@ -23,15 +21,12 @@ class JadwalPage extends StatefulWidget {
 
 class _JadwalPageState extends State<JadwalPage> {
   final _akademikService = AkademikService();
-  final _krsService = KrsService();
 
   bool _loading = true;
   String? _error;
   AgendaTerpaduData? _agendaData;
 
   String _filterTipe = 'semua'; // 'semua', 'kuliah', 'asisten', 'ujian'
-  bool _downloading = false;
-  String? _downloadPath;
 
   @override
   void initState() {
@@ -59,89 +54,18 @@ class _JadwalPageState extends State<JadwalPage> {
     }
   }
 
-  Future<void> _downloadKrs({bool silent = false}) async {
-    setState(() => _downloading = true);
-    try {
-      final path = await _krsService.downloadKrs((p0, p1) {});
-      if (mounted) {
-        setState(() => _downloadPath = path);
-        if (!silent) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('KRS tersimpan di $path'),
-              backgroundColor: AppColors.primary,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted && !silent) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(userErrorMessage(e)),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _downloading = false);
-    }
-  }
-
-  Future<void> _shareKrs() async {
-    String? path = _downloadPath;
-    if (path == null) {
-      await _downloadKrs(silent: true);
-      path = _downloadPath;
-      if (path == null) return;
-    }
-    await SharePlus.instance.share(
-      ShareParams(files: [XFile(path)], text: 'Jadwal & KRS Amikom'),
-    );
-  }
-
-  int _dayValue(String day) {
-    switch (day.toLowerCase().trim()) {
-      case 'senin':
-        return 1;
-      case 'selasa':
-        return 2;
-      case 'rabu':
-        return 3;
-      case 'kamis':
-        return 4;
-      case 'jumat':
-      case 'jum\'at':
-        return 5;
-      case 'sabtu':
-        return 6;
-      case 'minggu':
-        return 7;
-      default:
-        return 8;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final canPop = Navigator.canPop(context);
-    if (!canPop) {
-      // Dipakai sebagai isi tab (mis. tab "Cetak & Jadwal" di halaman KRS):
-      // kerangka halaman sudah disediakan induknya, jadi tampilkan isinya saja.
-      return _buildBody(showInlineTools: true);
-    }
-
     return AppScaffold(
       title: 'Jadwal Perkuliahan',
       subtitle: 'Kuliah, asisten, dan ujian dalam satu agenda',
       scrollable: false,
       padding: EdgeInsets.zero,
-      actions: [_downloadAction(), _shareAction()],
-      body: _buildBody(showInlineTools: false),
+      body: _buildBody(),
     );
   }
 
-  Widget _buildBody({required bool showInlineTools}) {
+  Widget _buildBody() {
     if (_loading) return const AppLoading(message: 'Memuat jadwal…');
 
     final error = _error;
@@ -178,7 +102,7 @@ class _JadwalPageState extends State<JadwalPage> {
     }
 
     final sortedDays = data.agenda.keys.toList()
-      ..sort((a, b) => _dayValue(a).compareTo(_dayValue(b)));
+      ..sort((a, b) => dayValue(a).compareTo(dayValue(b)));
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -192,16 +116,16 @@ class _JadwalPageState extends State<JadwalPage> {
           MediaQuery.of(context).padding.bottom + 130,
         ),
         children: [
-          _filterRow(showInlineTools: showInlineTools, total: data.totalAgenda),
+          _filterRow(total: data.totalAgenda),
           for (final day in sortedDays) _daySection(day, data.agenda[day]!),
         ],
       ),
     );
   }
 
-  // ── Baris alat: filter tipe + unduh/bagikan KRS ────────────────────────────
+  // ── Baris alat: filter tipe ────────────────────────────────────────────────
 
-  Widget _filterRow({required bool showInlineTools, required int total}) {
+  Widget _filterRow({required int total}) {
     return Row(
       children: [
         Expanded(
@@ -220,10 +144,6 @@ class _JadwalPageState extends State<JadwalPage> {
             ),
           ),
         ),
-        if (showInlineTools) ...[
-          _downloadAction(),
-          _shareAction(),
-        ],
       ],
     );
   }
@@ -251,25 +171,6 @@ class _JadwalPageState extends State<JadwalPage> {
     );
   }
 
-  Widget _downloadAction() {
-    return IconButton(
-      tooltip: 'Download KRS',
-      icon: Icon(
-        _downloading ? CupertinoIcons.hourglass : CupertinoIcons.cloud_download,
-        color: AppColors.primary,
-      ),
-      onPressed: _downloading ? null : () => _downloadKrs(),
-    );
-  }
-
-  Widget _shareAction() {
-    return IconButton(
-      tooltip: 'Bagikan KRS',
-      icon: const Icon(CupertinoIcons.share, color: AppColors.primary),
-      onPressed: _downloading ? null : _shareKrs,
-    );
-  }
-
   // ── Satu seksi per hari ────────────────────────────────────────────────────
 
   Widget _daySection(String day, List<AgendaItem> items) {
@@ -283,7 +184,7 @@ class _JadwalPageState extends State<JadwalPage> {
 
     if (filteredItems.isEmpty) return const SizedBox.shrink();
 
-    final isToday = _dayValue(day) == DateTime.now().weekday;
+    final isToday = dayValue(day) == DateTime.now().weekday;
     final rows = [for (final item in filteredItems) _agendaRow(item)];
 
     return AppSection(

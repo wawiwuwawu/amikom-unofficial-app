@@ -29,31 +29,17 @@ class MakulBelumValidasi {
       );
 }
 
-class OptionItem {
-  final String value;
-  final String label;
-
-  OptionItem({required this.value, required this.label});
-
-  factory OptionItem.fromJson(Map<String, dynamic> json) => OptionItem(
-        value: json['value'] ?? '',
-        label: json['label'] ?? '',
-      );
-}
-
 class AbsensiMahasiswa {
   final String jenisPerkuliahan;
   final String namaDosen;
   final List<RiwayatPertemuan> riwayatPertemuan;
   final StatistikAbsensi statistik;
-  final StatistikAbsensi total;
 
   AbsensiMahasiswa({
     required this.jenisPerkuliahan,
     required this.namaDosen,
     required this.riwayatPertemuan,
     required this.statistik,
-    required this.total,
   });
 
   factory AbsensiMahasiswa.fromJson(Map<String, dynamic> json) =>
@@ -65,7 +51,6 @@ class AbsensiMahasiswa {
                 .toList() ??
             [],
         statistik: StatistikAbsensi.fromJson(json['statistik']),
-        total: StatistikAbsensi.fromJson(json['total']),
       );
 }
 

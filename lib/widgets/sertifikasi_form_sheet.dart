@@ -3,8 +3,11 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'skpi_file_picker.dart';
 import '../models/sertifikasi.dart';
+import '../models/value_label_option.dart';
 import '../services/sertifikasi_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/format.dart';
+import 'app_form_submit.dart';
 import 'app_kit.dart';
 
 class SertifikasiFormSheet extends StatefulWidget {
@@ -26,7 +29,7 @@ class _SertifikasiFormSheetState extends State<SertifikasiFormSheet> {
   final _formKey = GlobalKey<FormState>();
 
   bool _loadingOptions = true;
-  List<SertifikasiOption> _options = [];
+  List<ValueLabelOption> _options = [];
   String? _error;
 
   String? _selectedJudul;
@@ -102,56 +105,37 @@ class _SertifikasiFormSheetState extends State<SertifikasiFormSheet> {
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    await AppFormSubmit.run(
+      context: context,
+      save: () async {
+        final mapData = <String, dynamic>{
+          'judul': _selectedJudul,
+          if (_selectedJudul == 'SERTIFIKASI LAINNYA') 'judul_lainnya': _judulLainnyaController.text,
+          'nilai': _nilaiController.text,
+          'tahun': _selectedTahun.toString(),
+        };
 
-    try {
-      final mapData = <String, dynamic>{
-        'judul': _selectedJudul,
-        if (_selectedJudul == 'SERTIFIKASI LAINNYA') 'judul_lainnya': _judulLainnyaController.text,
-        'nilai': _nilaiController.text,
-        'tahun': _selectedTahun.toString(),
-      };
+        if (_selectedFile != null && _selectedFile!.path != null) {
+          mapData['file_sertifikat'] = await MultipartFile.fromFile(
+            _selectedFile!.path!,
+            filename: _selectedFile!.name,
+          );
+        }
 
-      if (_selectedFile != null && _selectedFile!.path != null) {
-        mapData['file_sertifikat'] = await MultipartFile.fromFile(
-          _selectedFile!.path!,
-          filename: _selectedFile!.name,
-        );
-      }
+        final formData = FormData.fromMap(mapData);
 
-      final formData = FormData.fromMap(mapData);
-
-      if (_isEditing) {
-        await _service.editSertifikasi(widget.itemToEdit!.id, formData);
-      } else {
-        await _service.tambahSertifikasi(formData);
-      }
-
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isEditing
-                ? 'Sertifikasi berhasil diubah'
-                : 'Sertifikasi berhasil ditambahkan'),
-          ),
-        );
-        widget.onSuccess();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(userErrorMessage(e))),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
-    }
-  }
-
-  List<int> _getTahunList() {
-    final currentYear = DateTime.now().year;
-    return List.generate(5, (index) => currentYear - index);
+        if (_isEditing) {
+          await _service.editSertifikasi(widget.itemToEdit!.id, formData);
+        } else {
+          await _service.tambahSertifikasi(formData);
+        }
+      },
+      successMessage: _isEditing
+          ? 'Sertifikasi berhasil diubah'
+          : 'Sertifikasi berhasil ditambahkan',
+      setSubmitting: (v) => setState(() => _isSubmitting = v),
+      onSuccess: widget.onSuccess,
+    );
   }
 
   @override
@@ -246,7 +230,7 @@ class _SertifikasiFormSheetState extends State<SertifikasiFormSheet> {
                                 labelText: 'Tahun Sertifikasi',
                               ),
                               initialValue: _selectedTahun,
-                              items: _getTahunList().map((thn) {
+                              items: yearOptions().map((thn) {
                                 return DropdownMenuItem(
                                   value: thn,
                                   child: Text(thn.toString()),
