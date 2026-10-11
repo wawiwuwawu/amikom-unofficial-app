@@ -71,11 +71,13 @@ void main() {
         'ruang': 'D.1.1',
         'matakuliah': 'Pemrograman Mobile',
         'detail': 'Pak Budi',
+        'komponen': 'praktek',
       });
 
       expect(item.jamMulai, '10:40');
       expect(item.jamSelesai, '12:20');
       expect(item.jam, '10:40 - 12:20');
+      expect(item.komponen, 'praktek');
     });
 
     test('respons lama tanpa jam_mulai/jam_selesai tetap aman', () {
@@ -91,6 +93,7 @@ void main() {
       expect(item.jamMulai, '');
       expect(item.jamSelesai, '');
       expect(item.jam, '10:40 - 12:20');
+      expect(item.komponen, isNull);
     });
 
     test('bucket "Tanpa Jadwal" ikut ter-parse pada peta agenda', () {

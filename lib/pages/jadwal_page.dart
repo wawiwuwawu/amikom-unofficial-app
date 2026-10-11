@@ -54,6 +54,54 @@ class _JadwalPageState extends State<JadwalPage> {
     }
   }
 
+  /// Chip jam: utamakan `jam_mulai` (marker kosong portal adalah '-', bukan
+  /// string kosong), jatuh ke `jam` warisan. Satu sumber untuk predikat
+  /// "berjam" supaya tak ada divergensi antara aturan tampil dan tampilan.
+  String _jamChip(AgendaItem i) {
+    final m = i.jamMulai.trim();
+    if (m.isNotEmpty && m != '-') return m;
+    final j = i.jam.trim();
+    return j.isEmpty || j == '-' ? '-' : j;
+  }
+
+  bool _adaJam(AgendaItem i) => _jamChip(i) != '-';
+
+  /// Baris lolos filter tipe yang sedang aktif.
+  bool _sesuaiTipe(AgendaItem item) {
+    switch (_filterTipe) {
+      case 'kuliah':
+        return item.tipe == 'kuliah';
+      case 'asisten':
+        return item.tipe == 'asisten';
+      case 'ujian':
+        return item.tipe == 'uts' || item.tipe == 'uas';
+      default:
+        return true;
+    }
+  }
+
+  /// Aturan tampil per bucket: hari biasa wajib berjam (sisanya jadi bising),
+  /// "Tanpa Jadwal" tetap pengingat Skripsi tapi buang praktikum yang belum
+  /// berjam, dan "Lainnya" dibiarkan utuh.
+  bool _tampil(String day, AgendaItem i) {
+    final key = day.trim().toLowerCase();
+    if (key == 'tanpa jadwal') {
+      // Baris yang memang sudah berjam jangan sampai hilang karena bucket.
+      if (_adaJam(i)) return true;
+      return (i.komponen ?? '').trim().toLowerCase() != 'praktek';
+    }
+    if (key == 'lainnya') return true;
+    return _adaJam(i);
+  }
+
+  /// Jumlah baris yang benar-benar tampil setelah aturan di atas — dipakai
+  /// chip "Semua (N)" supaya tidak mengumumkan lebih dari yang ada di layar.
+  int _jumlahTampil(AgendaTerpaduData data) => data.agenda.entries.fold<int>(
+        0,
+        (sum, entry) =>
+            sum + entry.value.where((item) => _tampil(entry.key, item)).length,
+      );
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -79,25 +127,31 @@ class _JadwalPageState extends State<JadwalPage> {
     }
 
     final data = _agendaData;
-    if (data == null || data.agenda.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _load,
-        color: AppColors.primary,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).padding.bottom + 130,
-          ),
-          children: [
-            SizedBox(height: MediaQuery.of(context).size.height * 0.15),
-            const AppEmptyState(
-              title: 'Belum ada agenda',
-              message: 'Tidak ada jadwal agenda terpadu untuk ditampilkan. '
-                  'Tarik ke bawah untuk menyegarkan.',
-              icon: CupertinoIcons.calendar,
-            ),
-          ],
-        ),
+    if (data == null) return _emptyAgendaState();
+
+    // Map agenda selalu berisi semua bucket (termasuk yang kosong) — yang
+    // menentukan "kosong" adalah ADA BARIS, bukan jumlah key.
+    final adaBaris = data.agenda.values.any((baris) => baris.isNotEmpty);
+    if (!adaBaris) return _emptyAgendaState(total: 0);
+
+    final jumlahTampil = _jumlahTampil(data);
+    final jumlahSesuaiFilter = data.agenda.entries.fold<int>(
+      0,
+      (sum, entry) => sum +
+          entry.value
+              .where((item) => _tampil(entry.key, item) && _sesuaiTipe(item))
+              .length,
+    );
+    if (jumlahSesuaiFilter == 0) {
+      // Chip filter ikut ditampilkan supaya pengguna selalu punya jalan keluar
+      // (filter aktif tak bisa diubah dari state kosong tanpa ini).
+      return _emptyAgendaState(
+        message: _filterTipe == 'semua'
+            ? 'Jadwal yang tersimpan belum punya jam, jadi belum bisa '
+                'ditampilkan. Tarik ke bawah untuk menyegarkan.'
+            : 'Tidak ada jadwal untuk filter ini. Pilih "Semua" untuk '
+                'melihat seluruh agenda.',
+        total: jumlahTampil,
       );
     }
 
@@ -116,8 +170,35 @@ class _JadwalPageState extends State<JadwalPage> {
           MediaQuery.of(context).padding.bottom + 130,
         ),
         children: [
-          _filterRow(total: data.totalAgenda),
+          _filterRow(total: jumlahTampil),
           for (final day in sortedDays) _daySection(day, data.agenda[day]!),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyAgendaState({String? message, int? total}) {
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: AppColors.primary,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom + 130,
+        ),
+        children: [
+          if (total != null) ...[
+            _filterRow(total: total),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          SizedBox(height: MediaQuery.of(context).size.height * 0.15),
+          AppEmptyState(
+            title: 'Belum ada agenda',
+            message: message ??
+                'Tidak ada jadwal agenda terpadu untuk ditampilkan. '
+                    'Tarik ke bawah untuk menyegarkan.',
+            icon: CupertinoIcons.calendar,
+          ),
         ],
       ),
     );
@@ -174,13 +255,10 @@ class _JadwalPageState extends State<JadwalPage> {
   // ── Satu seksi per hari ────────────────────────────────────────────────────
 
   Widget _daySection(String day, List<AgendaItem> items) {
-    final filteredItems = items.where((item) {
-      if (_filterTipe == 'semua') return true;
-      if (_filterTipe == 'kuliah') return item.tipe == 'kuliah';
-      if (_filterTipe == 'asisten') return item.tipe == 'asisten';
-      if (_filterTipe == 'ujian') return item.tipe == 'uts' || item.tipe == 'uas';
-      return true;
-    }).toList();
+    final filteredItems = items
+        .where(_sesuaiTipe)
+        .where((item) => _tampil(day, item))
+        .toList();
 
     if (filteredItems.isEmpty) return const SizedBox.shrink();
 
@@ -233,7 +311,7 @@ class _JadwalPageState extends State<JadwalPage> {
         ),
         decoration: AppDeco.softPrimary(radius: AppRadius.sm),
         child: Text(
-          item.jam.isEmpty ? '-' : item.jam,
+          _jamChip(item),
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,

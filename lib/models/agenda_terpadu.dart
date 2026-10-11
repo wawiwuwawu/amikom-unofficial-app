@@ -8,6 +8,11 @@ class AgendaItem {
   final String matakuliah;
   final String detail;
 
+  /// Komponen perkuliahan dari portal — hanya berarti untuk `tipe == 'kuliah'`:
+  /// `'teori'` atau `'praktek'`. `null` pada respons lama yang tidak mengirim
+  /// field ini; tampilan lalu jatuh ke perilaku warisan.
+  final String? komponen;
+
   AgendaItem({
     required this.tipe,
     required this.hari,
@@ -17,6 +22,7 @@ class AgendaItem {
     required this.ruang,
     required this.matakuliah,
     required this.detail,
+    this.komponen,
   });
 
   factory AgendaItem.fromJson(Map<String, dynamic> json) {
@@ -29,6 +35,7 @@ class AgendaItem {
       ruang: json['ruang']?.toString() ?? '',
       matakuliah: json['matakuliah']?.toString() ?? '',
       detail: json['detail']?.toString() ?? '',
+      komponen: json['komponen']?.toString(),
     );
   }
 }

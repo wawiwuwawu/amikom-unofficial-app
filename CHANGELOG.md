@@ -8,12 +8,18 @@ rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-
 ## [Belum Dirilis]
 
 ### Added
+- ✨ Jadwal KRS: dukungan `komponen` (teori/praktek) dari agenda portal — baris berjadwal berpil "Praktikum"/"Kuliah Teori", seksi "Tanpa Praktikum" & "Tanpa Kelas" (dengan penjelasan), serta seksi "Ringkasan Mata Kuliah" (satu baris per mata kuliah + status) di tab "Cetak & Jadwal" KRS
 - ✨ Validasi otomatis absensi: alur inspeksi → konfirmasi → kirim (`POST /api/v1/absensi/auto-validasi`, mode `inspeksi`/`tulis`), hasil tampil inline (sukses / gagal / dilewati) tanpa menutup halaman
 - ✨ Dukungan penilaian asdos pada validasi praktikum: parse `asdoss[]`, key `asdospenilaian` `{indexAsdos}_{kritId}`, dan `asdos_npms` sesuai urutan
 - ✨ Agenda terpadu: field baru `jam_mulai`/`jam_selesai` + bucket "Tanpa Jadwal" (matkul belum dijadwalkan) berlabel "Belum ada jadwal"
 - ♻️ Helper `api_client` (guard/unwrapList/mutationRoot/forceJsonMap/extensionFromHeaders) + tab "Cetak & Jadwal" KRS (`KrsJadwalTab`): daftar mata kuliah KRS per hari + unduh/bagikan KRS
 
+### Changed
+- ♻️ Halaman Jadwal Perkuliahan: baris kuliah tanpa jam tidak lagi dirender di hari biasa (bising secara visual); bucket "Belum ada jadwal" (Skripsi) dipertahankan sebagai pengingat tapi praktikum yang belum berjam dibuang; chip "Semua (N)" kini menghitung baris yang benar-benar tampil; keadaan kosong memakai pesan jujur dan tetap menyediakan chip filter
+- ♻️ Jadwal KRS: dukungan `komponen` (teori/praktikum) — seksi "Tanpa Praktikum"/"Tanpa Kelas" + "Ringkasan Mata Kuliah", chip jam memakai `jam_mulai`
+
 ### Fixed
+- 🐛 Tab "Cetak & Jadwal" KRS kini menghitung **mata kuliah unik**, bukan baris (matkul teori+praktikum sebelumnya dihitung dua kali), dan chip jam memakai `jam_mulai` dengan fallback `jam` lama
 - 🐛 Deteksi "sedang berlangsung" di beranda memakai `jam_mulai`/`jam_selesai` — tak lagi rusak untuk ujian (`"12:30:00"`) maupun matkul tanpa jam
 - 🐛 `jenispilih` tidak lagi ditebak dari keterangan huruf kehadiran; memakai jenis pertemuan dari BE dengan fallback `kuliah_tp_id` + `kuliahpraktek`
 - 🐛 Validasi massal tak lagi bisa melaporkan "berhasil" palsu: envelope galat portal (`status:'error'`/`success:false`) kini dilempar sebagai `AppFailure` ramah
