@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../models/absensi.dart';
+import '../models/absensi_validasi.dart';
+import '../models/app_failure.dart';
 import '../models/value_label_option.dart';
 import '../services/absensi_service.dart';
 import '../theme/app_theme.dart';
@@ -53,6 +55,10 @@ class _AbsensiPageState extends State<AbsensiPage> {
   _SumberMuat? _errorSource;
 
   bool _validatingAll = false;
+
+  /// Hasil auto-validasi terakhir (ditampilkan inline di seksi "Perlu
+  /// validasi" sampai pengguna menutup/memuat ulang).
+  AutoValidasiResult? _autoResult;
 
   @override
   void initState() {
@@ -219,65 +225,295 @@ class _AbsensiPageState extends State<AbsensiPage> {
     }
   }
 
-  Future<void> _validasiSemua(MakulBelumValidasi item) async {
-    final confirm = await showDialog<bool>(
+  /// Auto-validasi dua langkah: INSPEKSI (lihat dulu apa yang akan ditulis)
+  /// → konfirmasi → TULIS. Endpoint auto-validasi tidak menerima parameter
+  /// makul, jadi cakupan sebenarnya ditampilkan eksplisit di dialog.
+  ///
+  /// Satu lock `_validatingAll` menutupi inspeksi → dialog → tulis agar tak
+  /// ada double-submit pada operasi tulis massal.
+  Future<void> _validasiSemua() async {
+    if (_validatingAll) return;
+    setState(() {
+      _validatingAll = true;
+      _autoResult = null;
+    });
+
+    AutoValidasiResult inspeksi;
+    try {
+      inspeksi = await _service.autoValidasi(AutoValidasiMode.inspeksi);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _validatingAll = false);
+        AppSnack.show(
+          context,
+          userErrorMessage(e, 'Gagal memeriksa pertemuan yang perlu divalidasi.'),
+          backgroundColor: AppColors.danger,
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+
+    AutoValidasiResult? hasilTulis;
+    String? galatTulis;
+    var dialogMenulis = false;
+
+    final lanjut = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Validasi Semua'),
-        content: Text('Validasi ${item.count} pertemuan "${item.makul}" dengan nilai default?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Validasi'),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          Future<void> konfirmasi() async {
+            setDialogState(() => dialogMenulis = true);
+            try {
+              hasilTulis = await _service.autoValidasi(AutoValidasiMode.tulis);
+              if (ctx.mounted) Navigator.pop(ctx, true);
+            } catch (e) {
+              galatTulis = userErrorMessage(e, 'Validasi gagal dikirim.');
+              setDialogState(() => dialogMenulis = false);
+            }
+          }
+
+          return AlertDialog(
+            title: Text(
+              'Validasi Otomatis',
+              style: AppText.h2.copyWith(color: AppColors.primary),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Validasi mencakup ${inspeksi.pertemuan.length} pertemuan '
+                    'yang menunggu validasi — termasuk mata kuliah lain yang '
+                    'tidak Anda tekan.',
+                    style: AppText.body,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'Cakupan validasi',
+                    style: AppText.label.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  AppListGroup.from([
+                    for (final entry in _grupMakul(inspeksi.pertemuan).entries)
+                      AppListRow(
+                        title: entry.key,
+                        subtitle: '${entry.value.length} pertemuan'
+                            '${_labelJenis(entry.value)}',
+                      ),
+                  ]),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'Nilai yang akan dikirim (preset wajar)',
+                    style: AppText.label.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  AppSurface(
+                    variant: AppSurfaceVariant.plain,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        AppKeyValue(
+                            label: 'Kesesuaian Perkuliahan', value: 'Sesuai'),
+                        AppKeyValue(label: 'Kesesuaian Materi', value: 'Ya'),
+                        AppKeyValue(
+                            label: 'Penilaian Mahasiswa',
+                            value: 'Sangat Baik'),
+                        AppKeyValue(
+                            label: 'Penilaian Asdos',
+                            value: 'Pilihan terbaik otomatis'),
+                        AppKeyValue(
+                            label: 'Kritik & Saran', value: 'Dikosongkan'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'Validasi tidak dapat dibatalkan setelah dikirim.',
+                    style: AppText.bodySm.copyWith(color: AppColors.danger),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed:
+                    dialogMenulis ? null : () => Navigator.pop(ctx, false),
+                child: const Text('Batal'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                ),
+                onPressed: dialogMenulis ? null : konfirmasi,
+                child: dialogMenulis
+                    ? const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(width: AppSpacing.sm),
+                          Text('Memvalidasi…'),
+                        ],
+                      )
+                    : const Text('Lanjut validasi'),
+              ),
+            ],
+          );
+        },
       ),
     );
-    if (confirm != true) return;
 
-    setState(() => _validatingAll = true);
-    int success = 0;
-    int failed = 0;
-
-    for (final idPresensi in item.idPresensiMhs) {
-      try {
-        final detail = await _service.getPresensiDetail(idPresensi);
-        await _service.validasi({
-          'jenispilih': detail.keterangan == 'H' ? 'teori' : detail.keterangan,
-          'idpresensimhstexs': detail.idPresensiMhs,
-          'idpresensidosen': detail.idPresensiDosen,
-          'kuliahteori': detail.kuliahTpId,
-          'kesesuaian_perkuliahan': '1',
-          'kesesuaian_materi': '1',
-          'penilaianmhs': '4',
-          'kritiksaran': '',
-          'asdos_npms': [],
-          'asdospenilaian': {
-            for (final k in detail.kriterias)
-              if (k.nilai.isNotEmpty)
-                k.id: k.nilai.reduce((a, b) => a.nilai >= b.nilai ? a : b).id
-          },
-        });
-        success++;
-      } catch (_) {
-        failed++;
+    if (!mounted) return;
+    if (lanjut == true && hasilTulis != null) {
+      setState(() => _autoResult = hasilTulis);
+    } else {
+      final pesan = galatTulis;
+      if (pesan != null) {
+        AppSnack.show(context, pesan, backgroundColor: AppColors.danger);
       }
     }
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Validasi: $success berhasil, $failed gagal'),
-          backgroundColor: AppColors.primary,
+    // Segarkan badge "perlu validasi" DAN riwayat/statistik terpilih supaya
+    // angka basi tidak tertinggal setelah penulisan massal.
+    await _loadBelumValidasi();
+    if (_selectedThn != null && _selectedSmt != null && _selectedMakul != null) {
+      await _loadMahasiswa();
+    }
+    if (mounted) setState(() => _validatingAll = false);
+  }
+
+  /// Pertemuan dikelompokkan per mata kuliah untuk dialog cakupan.
+  Map<String, List<AutoValidasiPertemuan>> _grupMakul(
+      List<AutoValidasiPertemuan> pertemuan) {
+    final result = <String, List<AutoValidasiPertemuan>>{};
+    for (final p in pertemuan) {
+      result.putIfAbsent(p.makul.isEmpty ? '—' : p.makul, () => []).add(p);
+    }
+    return result;
+  }
+
+  /// Label jenis pertemuan; dikosongkan bila BE tidak mengirim jenis
+  /// (respons lama), supaya tak ada klasifikasi yang salah.
+  String _labelJenis(List<AutoValidasiPertemuan> pertemuan) {
+    final jenis = pertemuan
+        .map((p) => p.jenis.toLowerCase())
+        .where((j) => j.isNotEmpty)
+        .toSet();
+    if (jenis.isEmpty) return '';
+    if (jenis.length > 1) return ' · teori & praktek';
+    return jenis.first == 'praktek' ? ' · praktek' : ' · teori';
+  }
+
+  /// Pesan dari portal selalu disaring dulu — jangan pernah tampil mentah.
+  String _alasanRamah(String alasan) =>
+      AppFailure.fromServer(alasan, fallback: 'Ditolak portal').message;
+
+  /// Hasil auto-validasi terakhir, tampil inline di seksi "Perlu validasi".
+  Widget _buildAutoResult() {
+    final result = _autoResult;
+    if (result == null) return const SizedBox.shrink();
+    final r = result.ringkasan;
+
+    // Semua pertemuan dilewati (sudah tervalidasi / tak memenuhi syarat).
+    if (r.sukses == 0 && r.gagal == 0) {
+      return AppSection(
+        title: 'Hasil validasi',
+        child: AppEmptyState(
+          title: 'Tidak ada pertemuan yang perlu divalidasi.',
+          message:
+              'Semua pertemuan sudah divalidasi atau tidak memenuhi syarat.',
+          actionLabel: 'Muat ulang',
+          onAction: () {
+            setState(() => _autoResult = null);
+            _loadBelumValidasi();
+          },
         ),
       );
     }
-    _loadBelumValidasi();
-    setState(() => _validatingAll = false);
+
+    // Tidak ada yang berhasil — beda dari gagal sebagian.
+    if (r.sukses == 0) {
+      return AppSection(
+        title: 'Hasil validasi',
+        child: AppSurface(
+          variant: AppSurfaceVariant.danger,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Validasi gagal',
+                style: AppText.h3.copyWith(color: AppColors.danger),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                '${r.gagal} pertemuan gagal divalidasi. '
+                'Periksa koneksi lalu coba lagi.',
+                style: AppText.bodySm,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              OutlinedButton.icon(
+                onPressed: _validatingAll ? null : _validasiSemua,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Coba lagi'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final gagal = result.pertemuan.where((p) => p.status == 'gagal').toList();
+    return AppSection(
+      title: 'Hasil validasi',
+      trailing: AppPill('${r.sukses} berhasil', tone: AppPillTone.success),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppSurface(
+            variant: AppSurfaceVariant.success,
+            child: Text(
+              'Validasi selesai: ${r.sukses} berhasil, ${r.gagal} gagal, '
+              '${r.dilewati} dilewati.',
+              style: AppText.bodySm,
+            ),
+          ),
+          if (gagal.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            AppListGroup.from([
+              for (final p in gagal)
+                AppListRow(
+                  title: p.makul.isEmpty ? '—' : p.makul,
+                  subtitle:
+                      '${p.tanggal.isEmpty ? '—' : p.tanggal} · ${_alasanRamah(p.alasan)}',
+                ),
+            ]),
+          ],
+          if (r.dilewati > 0) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              '${r.dilewati} pertemuan dilewati karena sudah divalidasi atau '
+              'tidak memenuhi syarat.',
+              style: AppText.bodySm.copyWith(color: AppColors.textSecondary),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   // ── Turunan tampilan ───────────────────────────────────────────────────────
@@ -358,6 +594,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
             children: [
               _buildStatusHero(),
               _buildBelumValidasi(),
+              _buildAutoResult(),
               _buildFilter(),
               if (_errorFilter != null)
                 Padding(
@@ -510,7 +747,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
             title: item.makul,
             subtitle: item.kelasgab.isNotEmpty ? item.kelasgab[0] : item.kode,
             trailing: FilledButton(
-              onPressed: _validatingAll ? null : () => _validasiSemua(item),
+              onPressed: _validatingAll ? null : _validasiSemua,
               child: const Text('Validasi'),
             ),
           ),
@@ -756,7 +993,12 @@ class _AbsensiPageState extends State<AbsensiPage> {
           ? () async {
               final result = await Navigator.push<bool>(
                 context,
-                MaterialPageRoute(builder: (_) => AbsensiDetailPage(idPresensi: r.idPresensi!)),
+                MaterialPageRoute(
+                  builder: (_) => AbsensiDetailPage(
+                    idPresensi: r.idPresensi!,
+                    pertemuan: r,
+                  ),
+                ),
               );
               if (result == true) {
                 _loadBelumValidasi();

@@ -59,12 +59,18 @@ class RiwayatPertemuan {
   final String materi;
   final String status;
   final String? idPresensi;
+  final String? jenis;
+  final String? idKuliahTeori;
+  final String? idKuliahPraktek;
 
   RiwayatPertemuan({
     required this.tanggal,
     required this.materi,
     required this.status,
     this.idPresensi,
+    this.jenis,
+    this.idKuliahTeori,
+    this.idKuliahPraktek,
   });
 
   factory RiwayatPertemuan.fromJson(Map<String, dynamic> json) =>
@@ -73,6 +79,10 @@ class RiwayatPertemuan {
         materi: json['materi'] ?? '',
         status: json['status'] ?? '',
         idPresensi: json['id_presensi']?.toString(),
+        // Field di bawah hanya dikirim portal untuk pertemuan status 'B'.
+        jenis: json['jenis']?.toString(),
+        idKuliahTeori: json['id_kuliah_teori']?.toString(),
+        idKuliahPraktek: json['id_kuliah_praktek']?.toString(),
       );
 }
 
@@ -125,6 +135,7 @@ class PresensiDetail {
   final String? validasi;
   final String kuliahTpId;
   final List<Kriteria> kriterias;
+  final List<Asdos> asdoss;
 
   PresensiDetail({
     required this.nik,
@@ -138,6 +149,7 @@ class PresensiDetail {
     this.validasi,
     required this.kuliahTpId,
     required this.kriterias,
+    this.asdoss = const [],
   });
 
   factory PresensiDetail.fromJson(Map<String, dynamic> json) =>
@@ -156,6 +168,10 @@ class PresensiDetail {
                 ?.map((e) => Kriteria.fromJson(e))
                 .toList() ??
             [],
+        asdoss: (json['asdoss'] as List?)
+                ?.map((e) => Asdos.fromJson(e))
+                .toList() ??
+            const [],
       );
 }
 
@@ -187,5 +203,30 @@ class NilaiOption {
         id: json['asdos_krit_nilai_id']?.toString() ?? '',
         isi: json['asdos_krit_nilai_isi'] ?? '',
         nilai: (json['asdos_krit_nilai'] ?? 0).toInt(),
+      );
+}
+
+/// Asisten praktikum untuk satu pertemuan, beserta kriteria penilaiannya.
+///
+/// Dikirim portal pada `asdoss[]` di detail presensi praktikum; setiap asdos
+/// punya daftar kriteria sendiri (model [Kriteria] yang sama).
+class Asdos {
+  final String npm;
+  final String nama;
+  final List<Kriteria> kriterias;
+
+  Asdos({
+    required this.npm,
+    required this.nama,
+    required this.kriterias,
+  });
+
+  factory Asdos.fromJson(Map<String, dynamic> json) => Asdos(
+        npm: json['npm']?.toString() ?? '',
+        nama: json['nama']?.toString() ?? '',
+        kriterias: (json['kriterias'] as List?)
+                ?.map((e) => Kriteria.fromJson(e))
+                .toList() ??
+            const [],
       );
 }

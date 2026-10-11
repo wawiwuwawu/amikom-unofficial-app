@@ -8,10 +8,17 @@ rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-
 ## [Belum Dirilis]
 
 ### Added
-- ✨ Tab "Cetak & Jadwal" di halaman KRS kini punya tampilan sendiri (`KrsJadwalTab`): daftar mata kuliah KRS per hari (tanpa filter Asisten/Ujian yang tidak relevan) + tombol unduh & bagikan KRS
+- ✨ Validasi otomatis absensi: alur inspeksi → konfirmasi → kirim (`POST /api/v1/absensi/auto-validasi`, mode `inspeksi`/`tulis`), hasil tampil inline (sukses / gagal / dilewati) tanpa menutup halaman
+- ✨ Dukungan penilaian asdos pada validasi praktikum: parse `asdoss[]`, key `asdospenilaian` `{indexAsdos}_{kritId}`, dan `asdos_npms` sesuai urutan
+- ✨ Agenda terpadu: field baru `jam_mulai`/`jam_selesai` + bucket "Tanpa Jadwal" (matkul belum dijadwalkan) berlabel "Belum ada jadwal"
+- ♻️ Helper `api_client` (guard/unwrapList/mutationRoot/forceJsonMap/extensionFromHeaders) + tab "Cetak & Jadwal" KRS (`KrsJadwalTab`): daftar mata kuliah KRS per hari + unduh/bagikan KRS
 
 ### Fixed
-- 🐛 Perbaikan sesi: `_renewSessionWithLock` tidak lagi mencoba refresh dua kali — refresh token bersifat single-use, percobaan kedua hanya membakar token dan memaksa login ulang
+- 🐛 Deteksi "sedang berlangsung" di beranda memakai `jam_mulai`/`jam_selesai` — tak lagi rusak untuk ujian (`"12:30:00"`) maupun matkul tanpa jam
+- 🐛 `jenispilih` tidak lagi ditebak dari keterangan huruf kehadiran; memakai jenis pertemuan dari BE dengan fallback `kuliah_tp_id` + `kuliahpraktek`
+- 🐛 Validasi massal tak lagi bisa melaporkan "berhasil" palsu: envelope galat portal (`status:'error'`/`success:false`) kini dilempar sebagai `AppFailure` ramah
+- 🐛 Hasil validasi menyegarkan badge "perlu validasi" DAN riwayat/statistik terpilih (sebelumnya data basi)
+- 🐛 `_renewSessionWithLock` tidak lagi mencoba refresh dua kali — refresh token single-use; percobaan kedua hanya membakar token
 
 ### Refactor
 - ♻️ Konsolidasi layanan: guard galat terpusat `ApiClient.guard`, `unwrapList`, `mutationRoot`, `forceJsonMap`, `extensionFromHeaders`; hapus 126 blok try/catch duplikat

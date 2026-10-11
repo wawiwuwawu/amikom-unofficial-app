@@ -63,17 +63,19 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       final results = await Future.wait([
         ApiClient.instance.getDashboard(),
-        _akademikService
-            .getAgendaTerpadu()
-            .catchError((_) => AgendaTerpaduData(totalAgenda: 0, agenda: {})),
-        _spService.getRekomendasi().catchError((_) => SpRekomendasiData(
-              hasRekomendasi: false,
-              warningMessage: '',
-              totalRekomendasi: 0,
-              totalSks: 0,
-              kategoriSangatDianjurkan: [],
-              kategoriOpsionalSksBesar: [],
-            )),
+        _akademikService.getAgendaTerpadu().catchError(
+          (_) => AgendaTerpaduData(totalAgenda: 0, agenda: {}),
+        ),
+        _spService.getRekomendasi().catchError(
+          (_) => SpRekomendasiData(
+            hasRekomendasi: false,
+            warningMessage: '',
+            totalRekomendasi: 0,
+            totalSks: 0,
+            kategoriSangatDianjurkan: [],
+            kategoriOpsionalSksBesar: [],
+          ),
+        ),
       ]);
       if (!mounted) return;
       setState(() {
@@ -86,8 +88,12 @@ class _DashboardPageState extends State<DashboardPage> {
       if (!mounted) return;
       // `userErrorMessage` hanya memakai pesan ramah; detail teknis tidak
       // pernah sampai ke layar.
-      setState(() => _error =
-          userErrorMessage(e, 'Gagal memuat beranda. Silakan coba lagi.'));
+      setState(
+        () => _error = userErrorMessage(
+          e,
+          'Gagal memuat beranda. Silakan coba lagi.',
+        ),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -144,9 +150,9 @@ class _DashboardPageState extends State<DashboardPage> {
           ],
           if (adaSp) ...[
             const SizedBox(height: AppSpacing.lg),
-            _buildSpRekomendasiBanner(_spRekomendasiData!)
-                .animate()
-                .fadeIn(delay: 120.ms),
+            _buildSpRekomendasiBanner(
+              _spRekomendasiData!,
+            ).animate().fadeIn(delay: 120.ms),
           ],
 
           // Informasi paling dicari saat membuka aplikasi.
@@ -265,12 +271,24 @@ class _DashboardPageState extends State<DashboardPage> {
     final now = DateTime.now();
     final nowMins = now.hour * 60 + now.minute;
     for (final item in items) {
-      final parts = item.jam.split('-');
-      if (parts.length >= 2) {
-        final start = _timeToMinutes(parts[0]);
-        final end = _timeToMinutes(parts[1]);
-        if (nowMins >= start && nowMins <= end) return item;
-      }
+      final range = _ongoingRange(item);
+      if (range == null) continue;
+      final (start, end) = range;
+      if (nowMins >= start && nowMins <= end) return item;
+    }
+    return null;
+  }
+
+  /// Rentang (mulai, selesai) dalam menit untuk deteksi "berlangsung".
+  /// `jamMulai`/`jamSelesai` dipilih bila keduanya terisi (respons baru);
+  /// jika tidak, jatuh ke parsing `jam` "hh:mm - hh:mm" (respons lama).
+  (int, int)? _ongoingRange(AgendaItem item) {
+    if (item.jamMulai.isNotEmpty && item.jamSelesai.isNotEmpty) {
+      return (_timeToMinutes(item.jamMulai), _timeToMinutes(item.jamSelesai));
+    }
+    final parts = item.jam.split('-');
+    if (parts.length >= 2) {
+      return (_timeToMinutes(parts[0]), _timeToMinutes(parts[1]));
     }
     return null;
   }
@@ -289,10 +307,7 @@ class _DashboardPageState extends State<DashboardPage> {
         decoration: AppDeco.softPrimary(radius: AppRadius.sm),
         child: Text(
           item.jam.split('-').first.trim(),
-          style: AppText.h3.copyWith(
-            fontSize: 12.5,
-            color: AppColors.primary,
-          ),
+          style: AppText.h3.copyWith(fontSize: 12.5, color: AppColors.primary),
         ),
       ),
       title: item.matakuliah,
@@ -336,8 +351,7 @@ class _DashboardPageState extends State<DashboardPage> {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: () =>
-                  _push(AbsensiPage()),
+              onPressed: () => _push(AbsensiPage()),
               icon: const Icon(CupertinoIcons.qrcode_viewfinder, size: 18),
               label: const Text('Presensi Sekarang'),
             ),
@@ -508,9 +522,11 @@ class _DashboardPageState extends State<DashboardPage> {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: () =>
-                  _push(SpPage()),
-              icon: const Icon(CupertinoIcons.arrow_right_circle_fill, size: 18),
+              onPressed: () => _push(SpPage()),
+              icon: const Icon(
+                CupertinoIcons.arrow_right_circle_fill,
+                size: 18,
+              ),
               label: const Text('Lihat Rekomendasi'),
             ),
           ),

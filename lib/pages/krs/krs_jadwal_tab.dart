@@ -214,7 +214,7 @@ class _KrsJadwalTabState extends State<KrsJadwalTab> {
     final isToday = dayValue(day) == DateTime.now().weekday;
 
     return AppSection(
-      title: day,
+      title: agendaDayLabel(day),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

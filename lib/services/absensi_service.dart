@@ -1,5 +1,6 @@
 import 'api_client.dart';
 import '../models/absensi.dart';
+import '../models/absensi_validasi.dart';
 import '../models/app_failure.dart';
 import '../models/value_label_option.dart';
 
@@ -83,4 +84,34 @@ class AbsensiService {
           }
         }
       }, 'Gagal melakukan validasi');
+
+  /// Auto-validasi massal portal: `inspeksi` hanya memeriksa, `tulis` benar-
+  /// benar menulis. Endpoint ini menjawab HTTP 200 dengan envelope galat
+  /// ({status:'error'} atau `data.success:false`), jadi root WAJIB dipecah
+  /// manual — `unwrapData` hanya akan menelan penolakan sebagai hasil nol.
+  Future<AutoValidasiResult> autoValidasi(
+    AutoValidasiMode mode, {
+    String preset = 'wajar',
+  }) =>
+      ApiClient.guard<AutoValidasiResult>(() async {
+        final response = await _dio.post(
+          '/api/v1/absensi/auto-validasi',
+          data: {'mode': mode.wire, 'preset': preset},
+        );
+        final root = ApiClient.unwrapRoot(response.data);
+        final data = root['data'];
+        if (root['status'] != 'success' || data is! Map<String, dynamic>) {
+          throw AppFailure.fromServer(
+            root['message'],
+            fallback: 'Gagal memproses validasi otomatis',
+          );
+        }
+        if (data['success'] == false) {
+          throw AppFailure.fromServer(
+            data['message'],
+            fallback: 'Validasi otomatis ditolak portal',
+          );
+        }
+        return AutoValidasiResult.fromJson(data);
+      }, 'Gagal memproses validasi otomatis');
 }

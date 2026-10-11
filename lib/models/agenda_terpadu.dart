@@ -2,6 +2,8 @@ class AgendaItem {
   final String tipe; // 'kuliah', 'asisten', 'uts', 'uas'
   final String hari;
   final String jam;
+  final String jamMulai;
+  final String jamSelesai;
   final String ruang;
   final String matakuliah;
   final String detail;
@@ -10,6 +12,8 @@ class AgendaItem {
     required this.tipe,
     required this.hari,
     required this.jam,
+    this.jamMulai = '',
+    this.jamSelesai = '',
     required this.ruang,
     required this.matakuliah,
     required this.detail,
@@ -20,6 +24,8 @@ class AgendaItem {
       tipe: json['tipe']?.toString() ?? 'kuliah',
       hari: json['hari']?.toString() ?? '',
       jam: json['jam']?.toString() ?? '',
+      jamMulai: json['jam_mulai']?.toString() ?? '',
+      jamSelesai: json['jam_selesai']?.toString() ?? '',
       ruang: json['ruang']?.toString() ?? '',
       matakuliah: json['matakuliah']?.toString() ?? '',
       detail: json['detail']?.toString() ?? '',

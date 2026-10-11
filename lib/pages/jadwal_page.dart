@@ -188,7 +188,7 @@ class _JadwalPageState extends State<JadwalPage> {
     final rows = [for (final item in filteredItems) _agendaRow(item)];
 
     return AppSection(
-      title: day,
+      title: agendaDayLabel(day),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

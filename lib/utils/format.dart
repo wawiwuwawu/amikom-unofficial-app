@@ -32,6 +32,8 @@ List<int> yearOptions() =>
     List.generate(5, (index) => DateTime.now().year - index);
 
 /// Urutan hari untuk pengelompokan jadwal (Senin = 1 … Minggu = 7).
+/// Bucket di luar hari biasa: "Lainnya" (8) dan "Tanpa Jadwal" (9) —
+/// keduanya selalu dirender paling bawah.
 int dayValue(String day) => switch (day.toLowerCase().trim()) {
       'senin' => 1,
       'selasa' => 2,
@@ -40,5 +42,12 @@ int dayValue(String day) => switch (day.toLowerCase().trim()) {
       'jumat' || "jum'at" => 5,
       'sabtu' => 6,
       'minggu' => 7,
+      'lainnya' => 8,
+      'tanpa jadwal' => 9,
       _ => 8,
     };
+
+/// Label tampilan untuk judul seksi hari agenda — hanya bucket khusus yang
+/// diterjemahkan, hari biasa apa adanya.
+String agendaDayLabel(String day) =>
+    day.trim().toLowerCase() == 'tanpa jadwal' ? 'Belum ada jadwal' : day;

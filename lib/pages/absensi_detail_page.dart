@@ -13,7 +13,17 @@ import '../widgets/app_kit.dart';
 /// hanya informasi pertemuan yang tampil.
 class AbsensiDetailPage extends StatefulWidget {
   final String idPresensi;
-  const AbsensiDetailPage({super.key, required this.idPresensi});
+
+  /// Pertemuan terpilih dari halaman daftar (opsional). Dipakai untuk
+  /// mengisi `jenispilih`/`kuliahteori`/`kuliahpraktek` dari field portal
+  /// (hanya ada untuk status 'B'), bukan menebak dari keterangan.
+  final RiwayatPertemuan? pertemuan;
+
+  const AbsensiDetailPage({
+    super.key,
+    required this.idPresensi,
+    this.pertemuan,
+  });
 
   @override
   State<AbsensiDetailPage> createState() => _AbsensiDetailPageState();
@@ -48,6 +58,35 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
     super.dispose();
   }
 
+  /// Satu-satunya urutan yang dipakai form: seeding nilai, render dropdown,
+  /// dan key `asdospenilaian` WAJIB identik. Praktikum mengirim `asdoss[]`
+  /// (satu set kriteria per asdos, indeks = posisi npm di `asdos_npms`);
+  /// selain itu dipakai kriteria tingkat atas dengan indeks 0.
+  ///
+  /// Komponen ketiga adalah label asdos (hanya bila >1 asdos, agar dropdown
+  /// bernama sama tetap bisa dibedakan) — dikosongkan untuk kasus lainnya.
+  List<(int, Kriteria, String?)> _formPairs(PresensiDetail d) {
+    if (d.asdoss.isEmpty) {
+      return [for (final k in d.kriterias) (0, k, null)];
+    }
+    if (d.asdoss.length == 1) {
+      return [for (final k in d.asdoss.first.kriterias) (0, k, null)];
+    }
+    return [
+      for (var i = 0; i < d.asdoss.length; i++)
+        for (var j = 0; j < d.asdoss[i].kriterias.length; j++)
+          (
+            i,
+            d.asdoss[i].kriterias[j],
+            j == 0 && d.asdoss[i].nama.isNotEmpty ? d.asdoss[i].nama : null,
+          ),
+    ];
+  }
+
+  /// Key kiriman `asdospenilaian`: "{indeksAsdos}_{kriteriaId}".
+  static String _penilaianKey(int asdosIndex, Kriteria k) =>
+      '${asdosIndex}_${k.id}';
+
   Future<void> _load() async {
     if (!mounted) return;
     setState(() => _loading = true);
@@ -57,11 +96,13 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
       setState(() {
         _detail = data;
         _error = null;
-        for (final k in data.kriterias) {
+        for (final (asdosIndex, k, _) in _formPairs(data)) {
           final best = k.nilai.isNotEmpty
               ? k.nilai.reduce((a, b) => a.nilai >= b.nilai ? a : b)
               : null;
-          if (best != null) _asdosPenilaian[k.id] = best.id;
+          if (best != null) {
+            _asdosPenilaian[_penilaianKey(asdosIndex, k)] = best.id;
+          }
         }
       });
     } catch (e) {
@@ -73,19 +114,21 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
   }
 
   Future<void> _submitValidasi() async {
-    if (_detail == null) return;
+    final d = _detail;
+    if (d == null) return;
     setState(() => _submitting = true);
     try {
       await _service.validasi({
-        'jenispilih': _detail!.keterangan == 'H' ? 'teori' : _detail!.keterangan,
-        'idpresensimhstexs': _detail!.idPresensiMhs,
-        'idpresensidosen': _detail!.idPresensiDosen,
-        'kuliahteori': _detail!.kuliahTpId,
+        'jenispilih': widget.pertemuan?.jenis ?? 'teori',
+        'idpresensimhstexs': d.idPresensiMhs,
+        'idpresensidosen': d.idPresensiDosen,
+        'kuliahteori': widget.pertemuan?.idKuliahTeori ?? d.kuliahTpId,
+        'kuliahpraktek': widget.pertemuan?.idKuliahPraktek ?? '0',
         'kesesuaian_perkuliahan': _kesesuaianPerkuliahan.text,
         'kesesuaian_materi': _kesesuaianMateri.text,
         'penilaianmhs': _penilaianMhs.text,
         'kritiksaran': _kritikSaran.text,
-        'asdos_npms': [],
+        'asdos_npms': [for (final a in d.asdoss) a.npm],
         'asdospenilaian': _asdosPenilaian,
       });
       if (mounted) {
@@ -103,7 +146,9 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              message.isNotEmpty ? message : 'Gagal melakukan validasi presensi',
+              message.isNotEmpty
+                  ? message
+                  : 'Gagal melakukan validasi presensi',
             ),
             backgroundColor: AppColors.danger,
           ),
@@ -141,7 +186,8 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
         onRetry: _load,
         loadingMessage: 'Memuat detail presensi…',
         emptyTitle: 'Detail presensi tidak tersedia',
-        emptyMessage: 'Data pertemuan ini belum bisa ditampilkan. Coba muat ulang.',
+        emptyMessage:
+            'Data pertemuan ini belum bisa ditampilkan. Coba muat ulang.',
         emptyIcon: CupertinoIcons.time,
         builder: _buildContent,
       ),
@@ -169,7 +215,9 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
                   ),
                   AppPill(
                     sudahValidasi ? 'Tervalidasi' : 'Belum divalidasi',
-                    tone: sudahValidasi ? AppPillTone.success : AppPillTone.warning,
+                    tone: sudahValidasi
+                        ? AppPillTone.success
+                        : AppPillTone.warning,
                   ),
                 ],
               ),
@@ -218,7 +266,11 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
                 AppKeyValue(label: 'Dosen', value: d.nama),
                 AppKeyValue(label: 'NIK', value: d.nik),
                 AppKeyValue(label: 'Tanggal', value: d.tanggal),
-                AppKeyValue(label: 'Materi', value: d.judulMateri, emphasize: true),
+                AppKeyValue(
+                  label: 'Materi',
+                  value: d.judulMateri,
+                  emphasize: true,
+                ),
                 AppKeyValue(label: 'Jam', value: d.jam),
                 AppKeyValue(label: 'Status', value: _statusLabel(d.keterangan)),
                 if (d.validasi != null)
@@ -256,12 +308,28 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
                       _buildFormDropdown(
                         'Penilaian Mahasiswa',
                         _penilaianMhs,
-                        ['4 (Sangat Baik)', '3 (Baik)', '2 (Cukup)', '1 (Kurang)'],
+                        [
+                          '4 (Sangat Baik)',
+                          '3 (Baik)',
+                          '2 (Cukup)',
+                          '1 (Kurang)',
+                        ],
                         ['4', '3', '2', '1'],
                       ),
-                      for (final k in d.kriterias) ...[
+                      for (final (asdosIndex, k, asdosLabel) in _formPairs(
+                        d,
+                      )) ...[
+                        if (asdosLabel != null) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          Text(
+                            'Asdos $asdosLabel',
+                            style: AppText.label.copyWith(
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: AppSpacing.sm),
-                        _buildKriteriaDropdown(k),
+                        _buildKriteriaDropdown(asdosIndex, k),
                       ],
                       const SizedBox(height: AppSpacing.md),
                       Text('Kritik & Saran (opsional)', style: AppText.label),
@@ -280,7 +348,9 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
                 FilledButton.icon(
                   onPressed: _submitting ? null : _submitValidasi,
                   icon: const Icon(CupertinoIcons.check_mark_circled_solid),
-                  label: Text(_submitting ? 'Memvalidasi…' : 'Validasi Presensi'),
+                  label: Text(
+                    _submitting ? 'Memvalidasi…' : 'Validasi Presensi',
+                  ),
                 ),
               ],
             ),
@@ -300,10 +370,7 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: AppText.label.copyWith(color: AppColors.primary),
-          ),
+          Text(label, style: AppText.label.copyWith(color: AppColors.primary)),
           const SizedBox(height: AppSpacing.sm),
           Container(
             padding: const EdgeInsets.symmetric(
@@ -339,14 +406,12 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
     );
   }
 
-  Widget _buildKriteriaDropdown(Kriteria k) {
+  Widget _buildKriteriaDropdown(int asdosIndex, Kriteria k) {
+    final key = _penilaianKey(asdosIndex, k);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          k.isi,
-          style: AppText.label.copyWith(color: AppColors.primary),
-        ),
+        Text(k.isi, style: AppText.label.copyWith(color: AppColors.primary)),
         const SizedBox(height: AppSpacing.sm),
         Container(
           padding: const EdgeInsets.symmetric(
@@ -356,8 +421,8 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
           decoration: AppDeco.card(),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              key: ValueKey('krit_${k.id}_${_asdosPenilaian[k.id]}'),
-              value: _asdosPenilaian[k.id],
+              key: ValueKey('krit_${key}_${_asdosPenilaian[key]}'),
+              value: _asdosPenilaian[key],
               isExpanded: true,
               icon: const Icon(
                 CupertinoIcons.chevron_down,
@@ -365,13 +430,15 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
                 size: 16,
               ),
               items: k.nilai
-                  .map((n) => DropdownMenuItem(
-                        value: n.id,
-                        child: Text('${n.isi} (${n.nilai})', style: AppText.body),
-                      ))
+                  .map(
+                    (n) => DropdownMenuItem(
+                      value: n.id,
+                      child: Text('${n.isi} (${n.nilai})', style: AppText.body),
+                    ),
+                  )
                   .toList(),
               onChanged: (v) {
-                if (v != null) setState(() => _asdosPenilaian[k.id] = v);
+                if (v != null) setState(() => _asdosPenilaian[key] = v);
               },
             ),
           ),
