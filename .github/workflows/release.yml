@@ -20,8 +20,14 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Prepare .env from template
-        run: cp .env.example .env
+      # .env CI: template + override dari repository VARIABLES (vars.*),
+      # bukan file .env pribadi yang tidak boleh masuk git.
+      - name: Prepare .env from template + CI overrides
+        run: |
+          cp .env.example .env
+          if [ -n "${{ vars.API_BASE_URL }}" ]; then sed -i "s|^API_BASE_URL=.*|API_BASE_URL=${{ vars.API_BASE_URL }}|" .env; fi
+          if [ -n "${{ vars.SEC_KEY_USER }}" ]; then sed -i "s|^SEC_KEY_USER=.*|SEC_KEY_USER=${{ vars.SEC_KEY_USER }}|" .env; fi
+          if [ -n "${{ vars.SEC_KEY_PASS }}" ]; then sed -i "s|^SEC_KEY_PASS=.*|SEC_KEY_PASS=${{ vars.SEC_KEY_PASS }}|" .env; fi
 
       - name: Install dependencies
         run: flutter pub get
@@ -29,8 +35,22 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
+      # Catatan rilis = bagian CHANGELOG versi tag ini (v1.12.0 -> [v1.12.0]),
+      # tanpa heading dan tanpa bagian versi berikutnya.
+      - name: Extract release notes from CHANGELOG
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          awk -v pat="## [v${V}]" 'index($0,pat)==1{f=1;next} f&&/^## \[/{exit} f' CHANGELOG.md > RELEASE_NOTES.md
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "::error::Bagian [v${V}] tidak ditemukan di CHANGELOG.md — tulis dulu sebelum tag."
+            exit 1
+          fi
+          head -5 RELEASE_NOTES.md
+
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v3
         with:
           files: build/app/outputs/flutter-apk/app-release.apk
-          generate_release_notes: true
+          body_path: RELEASE_NOTES.md
+          generate_release_notes: false
+          overwrite_files: true
