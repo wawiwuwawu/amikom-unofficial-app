@@ -5,6 +5,16 @@ Semua perubahan penting dicatat di sini. Format mengikuti
 [Semantic Versioning](https://semver.org/lang/id/). Detail lengkap tiap
 rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-app/releases).
 
+## [v1.11.1] - 2026-10-12
+
+Rilis ini untuk menguji alur pembuatan APK otomatis — bukan menambah atau mengubah fitur. Yang dibuktikan: APK dari proses rilis otomatis memakai pengaturan server yang benar, dan catatan rilis bisa diambil sendiri dari CHANGELOG di tag yang sama. Fungsinya sama persis dengan v1.11.0; tidak ada perubahan apa pun di aplikasi.
+
+### Fixed
+- 🐛 APK hasil build GitHub Actions kini memakai `API_BASE_URL` asli dari repository variables, bukan `http://localhost:3000` dari `.env.example` — APK rilis CI sebelumnya memakai URL placeholder sehingga tidak bisa terhubung ke server (login dan data gagal)
+
+### Changed
+- ♻️ Catatan rilis GitHub diambil dari CHANGELOG sesuai tag; build gagal dengan pesan jelas bila bagian rilis untuk tag tersebut belum ditulis di CHANGELOG
+
 ## [v1.11.0] - 2026-10-12
 
 ### Added
@@ -88,7 +98,8 @@ rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-
 - 🚀 Rilis pertama
 - 🔐 Login/logout, dashboard, berita kampus, KHS (pilih semester, tabel nilai, download PDF, share), pengumuman akademik
 
-[Belum Dirilis]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.11.0...HEAD
+[Belum Dirilis]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.11.1...HEAD
+[v1.11.1]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.11.0...v1.11.1
 [v1.11.0]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.10.0...v1.11.0
 [v1.9.0]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.8.0...v1.9.0
 [v1.8.0]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.7.0...v1.8.0
