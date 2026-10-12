@@ -20,23 +20,8 @@ jobs:
           channel: stable
           cache: true
 
-      # .env CI: template + override dari repository VARIABLES (vars.*),
-      # bukan file .env pribadi yang tidak boleh masuk git.
-      - name: Prepare .env from template + CI overrides
-        run: |
-          cp .env.example .env
-          if [ -n "${{ vars.API_BASE_URL }}" ]; then sed -i "s|^API_BASE_URL=.*|API_BASE_URL=${{ vars.API_BASE_URL }}|" .env; fi
-          if [ -n "${{ vars.SEC_KEY_USER }}" ]; then sed -i "s|^SEC_KEY_USER=.*|SEC_KEY_USER=${{ vars.SEC_KEY_USER }}|" .env; fi
-          if [ -n "${{ vars.SEC_KEY_PASS }}" ]; then sed -i "s|^SEC_KEY_PASS=.*|SEC_KEY_PASS=${{ vars.SEC_KEY_PASS }}|" .env; fi
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build APK
-        run: flutter build apk --release
-
-      # Catatan rilis = bagian CHANGELOG versi tag ini (v1.12.0 -> [v1.12.0]),
-      # tanpa heading dan tanpa bagian versi berikutnya.
+      # Prasyarat rilis: catatan untuk tag ini harus sudah ada di CHANGELOG.
+      # Ditaruh sebelum build supaya gagal dalam hitungan detik, bukan 40 menit.
       - name: Extract release notes from CHANGELOG
         run: |
           V="${GITHUB_REF_NAME#v}"
@@ -46,6 +31,28 @@ jobs:
             exit 1
           fi
           head -5 RELEASE_NOTES.md
+
+      # .env asli tidak pernah masuk git (gitignore). CI membuatnya dari
+      # template lalu menimpa nilai dari repository VARIABLES. Di jalur rilis,
+      # API_BASE_URL WAJIB ada: tanpa itu APK akan memakai URL placeholder
+      # http://localhost:3000 dari .env.example dan rilis bocor tanpa gejala.
+      - name: Prepare .env from template + CI overrides
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+        run: |
+          cp .env.example .env
+          if [ -z "$API_BASE_URL" ]; then
+            echo "::error::repository variable API_BASE_URL belum diset — jalankan: gh variable set API_BASE_URL --body https://host-anda/"
+            exit 1
+          fi
+          esc=$(printf '%s' "$API_BASE_URL" | sed 's/[\\&|]/\\&/g')
+          sed -i "s|^API_BASE_URL=.*|API_BASE_URL=$esc|" .env
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release
 
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v3

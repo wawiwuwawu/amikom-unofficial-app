@@ -20,14 +20,17 @@ jobs:
 
       # .env tidak pernah di-commit (lihat .gitignore), tapi terdaftar
       # sebagai asset di pubspec.yaml — jadi perlu dibuat dari template.
-      # Nilai CI (API_BASE_URL dll.) di-override dari repository VARIABLES
-      # (`gh variable set`) — non-secret; jangan pernah commit .env asli.
+      # Nilai lewat env (bukan substitusi ke teks skrip) dan di-escape untuk
+      # karakter khusus sed. Di sini tidak wajib: analyze/test memakai template.
       - name: Prepare .env from template + CI overrides
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
         run: |
           cp .env.example .env
-          if [ -n "${{ vars.API_BASE_URL }}" ]; then sed -i "s|^API_BASE_URL=.*|API_BASE_URL=${{ vars.API_BASE_URL }}|" .env; fi
-          if [ -n "${{ vars.SEC_KEY_USER }}" ]; then sed -i "s|^SEC_KEY_USER=.*|SEC_KEY_USER=${{ vars.SEC_KEY_USER }}|" .env; fi
-          if [ -n "${{ vars.SEC_KEY_PASS }}" ]; then sed -i "s|^SEC_KEY_PASS=.*|SEC_KEY_PASS=${{ vars.SEC_KEY_PASS }}|" .env; fi
+          if [ -n "$API_BASE_URL" ]; then
+            esc=$(printf '%s' "$API_BASE_URL" | sed 's/[\\&|]/\\&/g')
+            sed -i "s|^API_BASE_URL=.*|API_BASE_URL=$esc|" .env
+          fi
 
       - name: Install dependencies
         run: flutter pub get
