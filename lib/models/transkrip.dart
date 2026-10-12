@@ -128,6 +128,7 @@ class CumlaudeData {
   final String predikatSaatIni;
   final double ipkTerakhir;
   final int totalSksLulus;
+  final int totalSksDiambil;
   final int semesterSaatIni;
   final AnalisisSyarat analisisSyarat;
   final List<String> rekomendasiTindakan;
@@ -137,6 +138,7 @@ class CumlaudeData {
     required this.predikatSaatIni,
     required this.ipkTerakhir,
     required this.totalSksLulus,
+    required this.totalSksDiambil,
     required this.semesterSaatIni,
     required this.analisisSyarat,
     required this.rekomendasiTindakan,
@@ -148,6 +150,7 @@ class CumlaudeData {
       predikatSaatIni: json['predikat_saat_ini']?.toString() ?? 'Memuaskan',
       ipkTerakhir: double.tryParse(json['ipk_terakhir']?.toString() ?? '0') ?? 0.0,
       totalSksLulus: int.tryParse(json['total_sks_lulus']?.toString() ?? '0') ?? 0,
+      totalSksDiambil: int.tryParse(json['total_sks_diambil']?.toString() ?? '0') ?? 0,
       semesterSaatIni: int.tryParse(json['semester_saat_ini']?.toString() ?? '0') ?? 0,
       analisisSyarat: AnalisisSyarat.fromJson(json['analisis_syarat'] ?? {}),
       rekomendasiTindakan: (json['rekomendasi_tindakan'] as List?)
@@ -156,6 +159,10 @@ class CumlaudeData {
           [],
     );
   }
+
+  /// SKS yang sedang ditempuh = diambil - lulus (penjaga agar tidak negatif).
+  int get sksBerjalan =>
+      totalSksDiambil > totalSksLulus ? totalSksDiambil - totalSksLulus : 0;
 }
 
 class KelayakanWisuda {
@@ -258,6 +265,7 @@ class ProgressKelulusanData {
   final String prodi;
   final int targetSks;
   final int totalSksLulus;
+  final int totalSksDiambil;
   final int sisaSks;
   final double persentaseKelulusan;
   final int semesterSaatIni;
@@ -270,6 +278,7 @@ class ProgressKelulusanData {
     required this.prodi,
     required this.targetSks,
     required this.totalSksLulus,
+    required this.totalSksDiambil,
     required this.sisaSks,
     required this.persentaseKelulusan,
     required this.semesterSaatIni,
@@ -284,6 +293,7 @@ class ProgressKelulusanData {
       prodi: json['prodi']?.toString() ?? '',
       targetSks: int.tryParse(json['target_sks']?.toString() ?? '144') ?? 144,
       totalSksLulus: int.tryParse(json['total_sks_lulus']?.toString() ?? '0') ?? 0,
+      totalSksDiambil: int.tryParse(json['total_sks_diambil']?.toString() ?? '0') ?? 0,
       sisaSks: int.tryParse(json['sisa_sks']?.toString() ?? '0') ?? 0,
       persentaseKelulusan: double.tryParse(json['persentase_kelulusan']?.toString() ?? '0') ?? 0.0,
       semesterSaatIni: int.tryParse(json['semester_saat_ini']?.toString() ?? '0') ?? 0,
@@ -292,6 +302,10 @@ class ProgressKelulusanData {
       jalurKelulusan: JalurKelulusan.fromJson(json['jalur_kelulusan'] ?? {}),
     );
   }
+
+  /// SKS yang sedang ditempuh = diambil - lulus (penjaga agar tidak negatif).
+  int get sksBerjalan =>
+      totalSksDiambil > totalSksLulus ? totalSksDiambil - totalSksLulus : 0;
 }
 
 class SkkmPoinInfo {

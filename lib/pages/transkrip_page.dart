@@ -22,7 +22,7 @@ const List<String> _gradeOrder = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'D', 'E
 /// bagian yang berbobot kartu — ringkasan total — dan selebihnya baris-baris
 /// ringkas yang bisa dipindai sekali lihat:
 ///
-///   1. ringkasan: IPK kumulatif & total SKS (AppSurface + AppStatTile);
+///   1. ringkasan: IPK kumulatif & SKS Lulus Final (AppSurface + AppStatTile);
 ///   2. status predikat kelulusan (bila data cumlaude tersedia);
 ///   3. progress kelulusan & ringkasan SKPI (widget bersama);
 ///   4. daftar mata kuliah — satu AppListGroup, trailing [AppGradeBadge];
@@ -244,10 +244,15 @@ class _TranskripPageState extends State<TranskripPage> {
     );
   }
 
-  /// Ringkasan total: IPK kumulatif + total SKS, satu-satunya bagian halaman
-  /// yang berbobot kartu.
+  /// Ringkasan total: IPK kumulatif + SKS Lulus Final, satu-satunya bagian
+  /// halaman yang berbobot kartu.
   Widget _buildRingkasan(List<TranskripItem> list, int totalSks) {
     final cumlaude = _cumlaudeData;
+    // Jembatan: angka tile adalah SKS final, sedangkan gate kelulusan memakai
+    // total SKS diambil (final + berjalan). Hanya tampil bila angka dari API
+    // memang berbeda — jangan menebak. Basis "final" memakai angka yang tampil
+    // di tile ($totalSks) supaya kartu tak pernah membantah dirinya sendiri.
+    final diambilSks = cumlaude?.totalSksDiambil;
 
     return AppSection(
       title: 'Ringkasan',
@@ -262,19 +267,34 @@ class _TranskripPageState extends State<TranskripPage> {
             ),
       child: AppSurface(
         variant: AppSurfaceVariant.hero,
-        child: AppStatRow(
+        // Column (bukan Row) + stretch: kalimat jembatan panjang tetap wrap di
+        // layar 360dp, tidak overflow.
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            AppStatTile(
-              value: _ipkKumulatif(list).toStringAsFixed(2),
-              label: 'IPK Kumulatif',
-              icon: CupertinoIcons.rosette,
+            AppStatRow(
+              children: [
+                AppStatTile(
+                  value: _ipkKumulatif(list).toStringAsFixed(2),
+                  label: 'IPK Kumulatif',
+                  icon: CupertinoIcons.rosette,
+                ),
+                AppStatTile(
+                  value: '$totalSks',
+                  label: 'SKS Lulus Final',
+                  icon: CupertinoIcons.book_fill,
+                  accent: AppColors.info,
+                ),
+              ],
             ),
-            AppStatTile(
-              value: '$totalSks',
-              label: 'Total SKS',
-              icon: CupertinoIcons.book_fill,
-              accent: AppColors.info,
-            ),
+            if (diambilSks != null && diambilSks > totalSks) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                '$totalSks SKS final + ${diambilSks - totalSks} SKS berjalan = $diambilSks SKS terkumpul',
+                style: AppText.label.copyWith(color: AppColors.textMuted),
+              ),
+            ],
           ],
         ),
       ),

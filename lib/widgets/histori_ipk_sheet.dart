@@ -134,12 +134,17 @@ class _HistoriIpkSheetState extends State<HistoriIpkSheet> {
               icon: CupertinoIcons.chart_bar_alt_fill,
             ),
             AppStatTile(
-              value: '${d.totalSksLulus} SKS',
-              label: 'Total SKS Lulus',
+              value: '${d.totalSksDiambil} SKS',
+              label: 'SKS Terkumpul',
               icon: CupertinoIcons.book_fill,
               accent: AppColors.info,
             ),
           ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'IPK & grafik memakai ${d.totalSksLulus} SKS final; ${d.sksBerjalan} SKS berjalan belum masuk hitungan',
+          style: AppText.label.copyWith(color: AppColors.textMuted),
         ),
         const SizedBox(height: AppSpacing.md),
 

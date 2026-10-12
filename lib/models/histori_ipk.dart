@@ -30,11 +30,13 @@ class TrendSemesterItem {
 class HistoriIpkData {
   final double ipkTerakhir;
   final int totalSksLulus;
+  final int totalSksDiambil;
   final List<TrendSemesterItem> trendSemester;
 
   HistoriIpkData({
     required this.ipkTerakhir,
     required this.totalSksLulus,
+    required this.totalSksDiambil,
     required this.trendSemester,
   });
 
@@ -42,10 +44,15 @@ class HistoriIpkData {
     return HistoriIpkData(
       ipkTerakhir: double.tryParse(json['ipk_terakhir']?.toString() ?? '0') ?? 0.0,
       totalSksLulus: int.tryParse(json['total_sks_lulus']?.toString() ?? '0') ?? 0,
+      totalSksDiambil: int.tryParse(json['total_sks_diambil']?.toString() ?? '0') ?? 0,
       trendSemester: (json['trend_semester'] as List?)
               ?.map((e) => TrendSemesterItem.fromJson(e))
               .toList() ??
           [],
     );
   }
+
+  /// SKS yang sedang ditempuh = diambil - lulus (penjaga agar tidak negatif).
+  int get sksBerjalan =>
+      totalSksDiambil > totalSksLulus ? totalSksDiambil - totalSksLulus : 0;
 }

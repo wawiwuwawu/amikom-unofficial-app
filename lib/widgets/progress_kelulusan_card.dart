@@ -22,8 +22,12 @@ class _ProgressKelulusanCardState extends State<ProgressKelulusanCard> {
   Widget build(BuildContext context) {
     final d = widget.data;
     final pct = (d.persentaseKelulusan / 100.0).clamp(0.0, 1.0);
+    final pctTampil = d.persentaseKelulusan.clamp(0.0, 100.0);
     final wisuda = d.kelayakanAkademikWisuda;
     final jalur = d.jalurKelulusan;
+    final diambil = d.totalSksDiambil;
+    final berjalan = d.sksBerjalan;
+    final sudahPenuh = diambil >= d.targetSks || d.sisaSks <= 0;
 
     return AppSurface(
       variant: AppSurfaceVariant.hero,
@@ -69,11 +73,14 @@ class _ProgressKelulusanCardState extends State<ProgressKelulusanCard> {
                   color: AppColors.primary,
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
-                child: Text(
-                  '${d.persentaseKelulusan.toStringAsFixed(1)}%',
-                  style: AppText.label.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '${pctTampil.toStringAsFixed(0)}% (${d.totalSksDiambil}/${d.targetSks})',
+                    style: AppText.label.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -94,19 +101,38 @@ class _ProgressKelulusanCardState extends State<ProgressKelulusanCard> {
           const SizedBox(height: AppSpacing.sm),
 
           // Stats — Wrap: turun baris sendiri di layar sempit (tidak overflow)
+          //
+          // Gate kelulusan memakai total SKS diambil (lulus + sedang
+          // ditempuh), bukan total SKS lulus — sama seperti backend.
           Wrap(
             spacing: AppSpacing.md,
             runSpacing: AppSpacing.xs,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(
-                '${d.totalSksLulus} / ${d.targetSks} SKS Lulus',
-                style: AppText.h3.copyWith(fontSize: 13),
-              ),
-              Text(
-                'Sisa ${d.sisaSks} SKS • ~${d.estimasiSisaSemester} Smt Lg',
-                style: AppText.label.copyWith(color: AppColors.textSecondary),
-              ),
+              if (sudahPenuh) ...[
+                Text(
+                  'SKS terpenuhi',
+                  style: AppText.h3.copyWith(
+                    fontSize: 13,
+                    color: AppColors.success,
+                  ),
+                ),
+                Text(
+                  berjalan > 0
+                      ? '${d.totalSksLulus} final • $berjalan berjalan'
+                      : '${d.totalSksLulus} final',
+                  style: AppText.label.copyWith(color: AppColors.textSecondary),
+                ),
+              ] else ...[
+                Text(
+                  '$diambil / ${d.targetSks} SKS Terkumpul',
+                  style: AppText.h3.copyWith(fontSize: 13),
+                ),
+                Text(
+                  'Sisa ${d.sisaSks} SKS belum diambil • ~${d.estimasiSisaSemester} Smt Lg',
+                  style: AppText.label.copyWith(color: AppColors.textSecondary),
+                ),
+              ],
             ],
           ),
 

@@ -379,7 +379,7 @@ class _DashboardPageState extends State<DashboardPage> {
           Expanded(
             child: AppStatTile(
               value: '${d.statistik.totalSks}',
-              label: 'SKS Lulus',
+              label: 'SKS Terkumpul',
               icon: CupertinoIcons.book_fill,
               accent: AppColors.info,
             ),

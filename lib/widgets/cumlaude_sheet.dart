@@ -141,8 +141,8 @@ class CumlaudeSheet extends StatelessWidget {
                                 accent: accent,
                               ),
                               AppStatTile(
-                                value: '${data.totalSksLulus} SKS',
-                                label: 'SKS Lulus',
+                                value: '${data.totalSksDiambil} SKS',
+                                label: 'SKS Terkumpul',
                                 accent: accent,
                               ),
                               AppStatTile(
@@ -151,6 +151,11 @@ class CumlaudeSheet extends StatelessWidget {
                                 accent: accent,
                               ),
                             ],
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            'Dasar penilaian cumlaude: ${data.totalSksLulus} SKS lulus final • ${data.sksBerjalan} SKS berjalan',
+                            style: AppText.label.copyWith(color: AppColors.textMuted),
                           ),
                         ],
                       ),

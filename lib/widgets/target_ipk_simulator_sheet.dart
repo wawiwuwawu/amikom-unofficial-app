@@ -261,8 +261,10 @@ class _TargetIpkSimulatorSheetState extends State<TargetIpkSimulatorSheet> {
                       isPossible ? 'DAPAT DICAPAI (ACHIEVABLE)' : 'TIDAK MEMUNGKINKAN (> 4.00)',
                       style: AppText.h3.copyWith(color: accent),
                     ),
+                    // Sisa SKS kalkulator ini basis nilai final - berbeda matematis
+                    // dari progress-kelulusan.sisaSks; jangan selaraskan.
                     Text(
-                      'IPK Saat Ini: ${d.ipkSaatIni.toStringAsFixed(2)} • Sisa SKS: ${d.sisaSks}',
+                      'IPK Saat Ini: ${d.ipkSaatIni.toStringAsFixed(2)} • Sisa SKS belum lulus: ${d.sisaSks}',
                       style: AppText.bodySm,
                     ),
                   ],

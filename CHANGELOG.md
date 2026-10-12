@@ -5,9 +5,11 @@ Semua perubahan penting dicatat di sini. Format mengikuti
 [Semantic Versioning](https://semver.org/lang/id/). Detail lengkap tiap
 rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-app/releases).
 
-## [Belum Dirilis]
+## [v1.11.0] - 2026-10-12
 
 ### Added
+- ✨ Kontrak "tiga besaran SKS": `total_sks_diambil` dari `progress-kelulusan`, `histori-ipk`, dan `cumlaude` — SKS lulus final (basis IPK), SKS berjalan, dan SKS terkumpul (gate kelulusan) kini terpisah jelas
+- 🧪 Test transkrip: render `ProgressKelulusanCard` (penuh/belum/clamp 100%/desync), sheet cumlaude & histori IPK, plus render 360dp tanpa overflow
 - ✨ Jadwal KRS: dukungan `komponen` (teori/praktek) dari agenda portal — baris berjadwal berpil "Praktikum"/"Kuliah Teori", seksi "Tanpa Praktikum" & "Tanpa Kelas" (dengan penjelasan), serta seksi "Ringkasan Mata Kuliah" (satu baris per mata kuliah + status) di tab "Cetak & Jadwal" KRS
 - ✨ Validasi otomatis absensi: alur inspeksi → konfirmasi → kirim (`POST /api/v1/absensi/auto-validasi`, mode `inspeksi`/`tulis`), hasil tampil inline (sukses / gagal / dilewati) tanpa menutup halaman
 - ✨ Dukungan penilaian asdos pada validasi praktikum: parse `asdoss[]`, key `asdospenilaian` `{indexAsdos}_{kritId}`, dan `asdos_npms` sesuai urutan
@@ -15,6 +17,9 @@ rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-
 - ♻️ Helper `api_client` (guard/unwrapList/mutationRoot/forceJsonMap/extensionFromHeaders) + tab "Cetak & Jadwal" KRS (`KrsJadwalTab`): daftar mata kuliah KRS per hari + unduh/bagikan KRS
 
 ### Changed
+- ♻️ Progress kelulusan memakai besaran baru **SKS Terkumpul**: gate `diambil` (lulus + berjalan), pill `100% (146/144)` dengan persen diklamp maksimal 100, cabang sisa 0 tampil "SKS terpenuhi" + "126 final • 20 berjalan", cabang sisa tampil "146 / 144 SKS Terkumpul" + "Sisa N SKS belum diambil"; jalur kelulusan (skripsi, technopreneur 140 SKS) otomatis mengikuti nilai baru backend
+- ♻️ Beranda, sheet histori IPK, dan sheet cumlaude menampilkan "SKS Terkumpul"; transkrip menampilkan tile "SKS Lulus Final" + kalimat jembatan "126 SKS final + 20 SKS berjalan = 146 SKS terkumpul" saat kedua angka tersedia
+- ♻️ Kalkulator target IPK memperjelas "Sisa SKS belum lulus" — beda basis matematis dari progress kelulusan, sengaja tidak disamakan
 - ♻️ Halaman Jadwal Perkuliahan: baris kuliah tanpa jam tidak lagi dirender di hari biasa (bising secara visual); bucket "Belum ada jadwal" (Skripsi) dipertahankan sebagai pengingat tapi praktikum yang belum berjam dibuang; chip "Semua (N)" kini menghitung baris yang benar-benar tampil; keadaan kosong memakai pesan jujur dan tetap menyediakan chip filter
 - ♻️ Jadwal KRS: dukungan `komponen` (teori/praktikum) — seksi "Tanpa Praktikum"/"Tanpa Kelas" + "Ringkasan Mata Kuliah", chip jam memakai `jam_mulai`
 
@@ -83,7 +88,8 @@ rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-
 - 🚀 Rilis pertama
 - 🔐 Login/logout, dashboard, berita kampus, KHS (pilih semester, tabel nilai, download PDF, share), pengumuman akademik
 
-[Belum Dirilis]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.9.0...HEAD
+[Belum Dirilis]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.11.0...HEAD
+[v1.11.0]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.10.0...v1.11.0
 [v1.9.0]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.8.0...v1.9.0
 [v1.8.0]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.7.0...v1.8.0
 [v1.7.0]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.6.0...v1.7.0
