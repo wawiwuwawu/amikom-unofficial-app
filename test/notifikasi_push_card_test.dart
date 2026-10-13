@@ -76,6 +76,22 @@ void main() {
   );
 
   testWidgets(
+    'nonaktif dengan token tersisa memperingati server bermasalah',
+    (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          const NotifikasiPushCard(
+            status: NotifikasiOptinStatus(enabled: false, tokenCount: 1),
+          ),
+        ),
+      );
+
+      expect(find.text('Nonaktif'), findsOneWidget);
+      expect(find.textContaining('server notifikasi sedang'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'render state aktif menampilkan pill Aktif, tombol Matikan',
     (tester) async {
       var dimatikan = false;

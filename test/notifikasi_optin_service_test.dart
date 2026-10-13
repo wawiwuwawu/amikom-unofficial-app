@@ -474,29 +474,44 @@ void main() {
     });
 
     test(
-      'markAsRead memakai kunci per-NIM dan memangkas maksimal 200 id terakhir',
+      'markAllAsRead menyimpan SEMUA id walau daftar > 200 (tak ada unread palsu)',
       () async {
         SharedPreferences.setMockInitialValues({});
-        ApiClient.instance.setUserInfo('21.11.0001', 'Mahasiswa Uji');
+        ApiClient.instance.setUserInfo('21.11.0002', 'Mahasiswa Uji');
 
-        final initial200 = List<String>.generate(200, (i) => 'id-${i + 1}');
-        await service.markAllAsRead(initial200);
-
-        for (var i = 201; i <= 205; i++) {
-          await service.markAsRead('id-$i');
-        }
+        // Daftar dari BE terbaru-di-atas: id-325 (terbaru) ... id-1 (terlama).
+        final ids = List<String>.generate(325, (i) => 'id-${325 - i}');
+        await service.markAllAsRead(ids);
 
         final prefs = await SharedPreferences.getInstance();
-        final stored = prefs.getStringList('read_notification_ids_21.11.0001');
+        final stored = prefs.getStringList('read_notification_ids_21.11.0002');
         expect(stored, isNotNull);
-        expect(stored!.length, equals(200));
-        expect(stored.first, equals('id-6'));
-        expect(stored.last, equals('id-205'));
+        expect(stored!.length, equals(325));
 
         final readSet = await service.getReadIds();
-        expect(readSet.length, equals(200));
-        expect(readSet.contains('id-1'), isFalse);
-        expect(readSet.contains('id-205'), isTrue);
+        expect(readSet.length, equals(325));
+        // Item terbaru TIDAK boleh hilang (regresi bug cap 200).
+        expect(readSet.contains('id-325'), isTrue);
+        expect(readSet.contains('id-1'), isTrue);
+      },
+    );
+
+    test(
+      'tandai-semua berulang tidak membuat item yang baru dibaca balik jadi Baru',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        ApiClient.instance.setUserInfo('21.11.0003', 'Mahasiswa Uji');
+
+        final ids = List<String>.generate(325, (i) => 'id-${325 - i}');
+        await service.markAllAsRead(ids);
+        // Baca satu item terbaru, lalu tekan "Tandai Dibaca" lagi.
+        await service.markAsRead('id-325');
+        await service.markAllAsRead(ids);
+
+        final readSet = await service.getReadIds();
+        expect(readSet.length, equals(325));
+        expect(readSet.contains('id-325'), isTrue);
+        expect(readSet.contains('id-1'), isTrue);
       },
     );
 

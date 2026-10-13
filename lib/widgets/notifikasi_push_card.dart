@@ -182,6 +182,29 @@ class NotifikasiPushCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
+          // Saran BE: enabled=false + token masih terdaftar berarti server
+          // push bermasalah (mis. FCM mati), bukan user belum pernah daftar.
+          if (status != null && status!.tokenCount > 0) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  CupertinoIcons.exclamationmark_triangle,
+                  size: 13,
+                  color: AppColors.warning,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    'Perangkat sudah terdaftar, tapi server notifikasi sedang '
+                    'bermasalah. Coba lagi nanti atau hubungi pengelola.',
+                    style: AppText.label.copyWith(color: AppColors.warning),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           FilledButton(
             onPressed: nonaktifTombol ? null : onAktifkan,

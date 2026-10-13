@@ -25,7 +25,8 @@ class NotifikasiListPage extends StatefulWidget {
   State<NotifikasiListPage> createState() => _NotifikasiListPageState();
 }
 
-class _NotifikasiListPageState extends State<NotifikasiListPage> {
+class _NotifikasiListPageState extends State<NotifikasiListPage>
+    with WidgetsBindingObserver {
   final _service = NotifikasiService();
   List<NotifikasiItem> _list = [];
   Set<String> _readIds = {};
@@ -43,13 +44,24 @@ class _NotifikasiListPageState extends State<NotifikasiListPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadData();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _countdownTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Status push bisa berubah di server saat app di background (mis. BE
+    // memperbaiki FCM) — muat ulang saat app dibuka kembali.
+    if (state == AppLifecycleState.resumed) {
+      _loadOptinStatus();
+    }
   }
 
   void _startRetryCountdown(int seconds) {

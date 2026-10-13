@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import '../models/notifikasi.dart';
@@ -7,7 +8,14 @@ import '../models/app_failure.dart';
 class NotifikasiService {
   final _dio = ApiClient.instance.dio;
   static const _storageKey = 'read_notification_ids';
-  static const _maxReadIds = 200;
+
+  /// Batas penyimpanan id yang sudah dibaca. Dulu 200, tapi itu BUG: bila
+  /// daftar notifikasi > 200 item, pemangkasan membuang mark item terbaru
+  /// sehingga item bolak-balik tampil "Baru" setelah "Tandai Dibaca"
+  /// (terverifikasi lewat repro: daftar 325 id → hanya 200 tersimpan).
+  /// 2000 masih murah untuk SharedPreferences (puluhan KB) dan di atas
+  /// volume daftar yang realistis.
+  static const _maxReadIds = 2000;
   static const _optinEndpoint = '/api/v1/notifikasi/optin';
   static const _deviceTokenEndpoint = '/api/v1/notifikasi/device-token';
   Future<List<NotifikasiItem>> getNotifikasi() =>
@@ -66,6 +74,11 @@ class NotifikasiService {
 
   Never _rethrowPushDioError(DioException e) {
     final statusCode = e.response?.statusCode;
+    // Diagnostik aman: method + path + status (TANPA token/header/body).
+    debugPrint(
+      'NotifikasiService: ${e.requestOptions.method} '
+      '${e.requestOptions.path} -> $statusCode',
+    );
     if (statusCode == 503) {
       throw const AppFailure(
         'Layanan notifikasi push sedang dinonaktifkan oleh server.',
