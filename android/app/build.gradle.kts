@@ -5,12 +5,21 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Firebase (google-services) hanya aktif ketika android/app/google-services.json
+// sudah tersedia — file itu tidak masuk git (milik developer). Sebelum file
+// ada, build tetap berjalan; Firebase.initializeApp() akan gagal secara aman.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
-    namespace = "com.example.app_amikom"
+    namespace = "com.wawu.amiapp"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // WAJIB untuk flutter_local_notifications v10+ (syarat README plugin).
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -21,13 +30,14 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.app_amikom"
+        applicationId = "com.wawu.amiapp"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        multiDexEnabled = true
     }
 
     buildTypes {
@@ -41,4 +51,8 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

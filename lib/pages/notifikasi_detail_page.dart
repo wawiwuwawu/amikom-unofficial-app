@@ -39,6 +39,7 @@ class _NotifikasiDetailPageState extends State<NotifikasiDetailPage> {
 
     try {
       final data = await _service.getNotifikasiDetail(widget.id);
+      NotifikasiService().markAsRead(widget.id).ignore();
       if (!mounted) return;
       setState(() {
         _detail = data;
@@ -77,9 +78,13 @@ class _NotifikasiDetailPageState extends State<NotifikasiDetailPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(userErrorMessage(e, 'Gagal membuka lampiran. Silakan coba lagi.'))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            userErrorMessage(e, 'Gagal membuka lampiran. Silakan coba lagi.'),
+          ),
+        ),
+      );
     }
   }
 

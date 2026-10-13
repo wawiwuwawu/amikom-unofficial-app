@@ -44,6 +44,10 @@ app.*.map.json
 # But keep template
 !.env.example
 
+# Firebase config (milik developer, JANGAN di-commit)
+android/app/google-services.json
+**/google-services.json
+
 # Android Studio will place build artifacts here
 /android/build/
 /android/app/debug

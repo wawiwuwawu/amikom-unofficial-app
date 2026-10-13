@@ -1,16 +1,25 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
 import '../models/notifikasi.dart';
 import '../services/notifikasi_service.dart';
 import '../services/api_client.dart';
+import '../services/push_service.dart';
+import '../services/push_token_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
+import '../widgets/notifikasi_push_card.dart';
 import 'notifikasi_detail_page.dart';
 
 class NotifikasiListPage extends StatefulWidget {
+  /// Sumber token FCM untuk perangkat ini.
+  final PushTokenProvider pushTokenProvider;
 
-  const NotifikasiListPage({super.key});
+  const NotifikasiListPage({
+    super.key,
+    this.pushTokenProvider = const FirebasePushTokenProvider(),
+  });
 
   @override
   State<NotifikasiListPage> createState() => _NotifikasiListPageState();
@@ -23,18 +32,59 @@ class _NotifikasiListPageState extends State<NotifikasiListPage> {
   bool _loading = true;
   String? _error;
 
+  NotifikasiOptinStatus? _optinStatus;
+  bool _optinLoading = true;
+  bool _optinBusy = false;
+  bool _optinTidakTersedia = false;
+  String? _optinError;
+  int _retryCountdown = 0;
+  Timer? _countdownTimer;
+
   @override
   void initState() {
     super.initState();
     _loadData();
   }
 
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startRetryCountdown(int seconds) {
+    _countdownTimer?.cancel();
+    if (mounted) {
+      setState(() => _retryCountdown = seconds);
+    } else {
+      _retryCountdown = seconds;
+    }
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_retryCountdown <= 1) {
+        timer.cancel();
+        setState(() => _retryCountdown = 0);
+      } else {
+        setState(() => _retryCountdown--);
+      }
+    });
+  }
+
   Future<void> _loadData() async {
     setState(() {
       _loading = true;
       _error = null;
+      _optinLoading = true;
+      _optinError = null;
     });
 
+    await Future.wait<void>([_loadNotifikasiList(), _loadOptinStatus()]);
+  }
+
+  Future<void> _loadNotifikasiList() async {
     try {
       final data = await _service.getNotifikasi();
       final readSet = await _service.getReadIds();
@@ -53,6 +103,163 @@ class _NotifikasiListPageState extends State<NotifikasiListPage> {
         });
       }
     }
+  }
+
+  Future<void> _loadOptinStatus() async {
+    if (mounted) {
+      setState(() {
+        _optinLoading = true;
+        _optinError = null;
+      });
+    }
+    try {
+      final status = await _service.getOptinStatus();
+      if (mounted) {
+        // Status segar membatalkan hitung mundur 429 sebelumnya, supaya tombol
+        // tidak tetap terkunci padahal permintaan sudah boleh lagi.
+        _countdownTimer?.cancel();
+        _countdownTimer = null;
+        setState(() {
+          _optinStatus = status;
+          _optinTidakTersedia = false;
+          _optinLoading = false;
+          _retryCountdown = 0;
+        });
+      }
+    } on NotifikasiRateLimited catch (e) {
+      if (!mounted) return;
+      _startRetryCountdown(e.retryAfterSeconds);
+      setState(() {
+        _optinError = userErrorMessage(e);
+        _optinLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final msg = userErrorMessage(e, 'Gagal memuat status notifikasi push');
+      final dimatikanServer = msg.contains('dinonaktifkan oleh server');
+      setState(() {
+        _optinTidakTersedia = dimatikanServer;
+        _optinError = dimatikanServer ? null : msg;
+        _optinLoading = false;
+      });
+    }
+  }
+
+  Future<void> _aktifkanPush() async {
+    if (_optinBusy || _retryCountdown > 0) return;
+    setState(() => _optinBusy = true);
+
+    try {
+      final diizinkan = await PushService.instance.mintaIzin();
+      if (!diizinkan) {
+        if (!mounted) return;
+        const pesan =
+            'Izin notifikasi ditolak. Aktifkan notifikasi untuk aplikasi ini '
+            'di Pengaturan > Notifikasi > Ini Amikom?.';
+        setState(() => _optinError = pesan);
+        AppSnack.show(context, pesan, backgroundColor: AppColors.warning);
+        return;
+      }
+
+      final token = await widget.pushTokenProvider.ambilToken();
+      if (token == null || token.trim().isEmpty) {
+        if (!mounted) return;
+        AppSnack.show(
+          context,
+          'Token notifikasi perangkat ini belum tersedia. Coba lagi sebentar lagi.',
+          backgroundColor: AppColors.warning,
+        );
+        return;
+      }
+
+      final status = await _service.daftarkanToken(token.trim());
+      if (!mounted) return;
+      _countdownTimer?.cancel();
+      _countdownTimer = null;
+      setState(() {
+        _optinStatus = status;
+        _optinTidakTersedia = false;
+        _optinError = null;
+        _retryCountdown = 0;
+      });
+      await showNotifikasiPushSheet(context);
+    } on NotifikasiRateLimited catch (e) {
+      if (!mounted) return;
+      _startRetryCountdown(e.retryAfterSeconds);
+      AppSnack.show(
+        context,
+        userErrorMessage(e),
+        backgroundColor: AppColors.warning,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final msg = userErrorMessage(e, 'Gagal mengaktifkan notifikasi push');
+      if (msg.contains('dinonaktifkan oleh server')) {
+        setState(() {
+          _optinTidakTersedia = true;
+          _optinError = null;
+        });
+        AppSnack.show(context, msg, backgroundColor: AppColors.warning);
+      } else {
+        AppSnack.show(context, msg, backgroundColor: AppColors.danger);
+      }
+    } finally {
+      if (mounted) setState(() => _optinBusy = false);
+    }
+  }
+
+  Future<void> _matikanPush() async {
+    if (_optinBusy || _retryCountdown > 0) return;
+    setState(() => _optinBusy = true);
+
+    try {
+      // Tanpa token lokal: body kosong = hapus SEMUA token milik NIM ini.
+      await _service.hapusToken('');
+      if (!mounted) return;
+      _countdownTimer?.cancel();
+      _countdownTimer = null;
+      setState(() {
+        _optinStatus = const NotifikasiOptinStatus(enabled: false);
+        _optinError = null;
+        _retryCountdown = 0;
+      });
+      AppSnack.show(
+        context,
+        'Notifikasi push dimatikan.',
+        backgroundColor: AppColors.primary,
+      );
+    } on NotifikasiRateLimited catch (e) {
+      if (!mounted) return;
+      _startRetryCountdown(e.retryAfterSeconds);
+      AppSnack.show(
+        context,
+        userErrorMessage(e),
+        backgroundColor: AppColors.warning,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      AppSnack.show(
+        context,
+        userErrorMessage(e, 'Gagal menonaktifkan notifikasi push'),
+        backgroundColor: AppColors.danger,
+      );
+    } finally {
+      if (mounted) setState(() => _optinBusy = false);
+    }
+  }
+
+  Widget _buildPushCard() {
+    return NotifikasiPushCard(
+      status: _optinStatus,
+      loading: _optinLoading,
+      busy: _optinBusy,
+      tidakTersedia: _optinTidakTersedia,
+      pesanGagal: _optinError,
+      retryAfterSeconds: _retryCountdown,
+      onAktifkan: _aktifkanPush,
+      onMatikan: _matikanPush,
+      onMuatUlang: _loadOptinStatus,
+    );
   }
 
   Future<void> _retryWithSilentLogin() async {
@@ -133,7 +340,10 @@ class _NotifikasiListPageState extends State<NotifikasiListPage> {
     if (_error != null) {
       return ListView(
         padding: AppSpacing.page,
+        physics: const AlwaysScrollableScrollPhysics(),
         children: [
+          _buildPushCard(),
+          const SizedBox(height: AppSpacing.lg),
           AppErrorState(message: _error!, onRetry: _retryWithSilentLogin),
         ],
       );
@@ -143,9 +353,10 @@ class _NotifikasiListPageState extends State<NotifikasiListPage> {
       return ListView(
         padding: AppSpacing.page,
         physics: const AlwaysScrollableScrollPhysics(),
-        children: const [
-          SizedBox(height: AppSpacing.xxl),
-          AppEmptyState(
+        children: [
+          _buildPushCard(),
+          const SizedBox(height: AppSpacing.xxl),
+          const AppEmptyState(
             title: 'Tidak ada notifikasi saat ini',
             message: 'Notifikasi dan pengumuman baru akan tampil di sini.',
             icon: CupertinoIcons.bell_slash,
@@ -158,9 +369,10 @@ class _NotifikasiListPageState extends State<NotifikasiListPage> {
       padding: AppSpacing.page,
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
+        _buildPushCard(),
         AppSection(
           title: 'Daftar Notifikasi',
-          topGap: 0,
+          topGap: AppSpacing.lg,
           trailing: _hasUnread
               ? AppPill('$_unreadCount belum dibaca', tone: AppPillTone.info)
               : null,

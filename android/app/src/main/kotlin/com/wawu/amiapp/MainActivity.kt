@@ -1,4 +1,4 @@
-package com.example.app_amikom
+package com.wawu.amiapp
 
 import io.flutter.embedding.android.FlutterActivity
 

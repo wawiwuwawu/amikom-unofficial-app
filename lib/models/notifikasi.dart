@@ -1,3 +1,4 @@
+import 'app_failure.dart';
 import 'pengumuman.dart'; // Reuse Lampiran model
 
 class NotifikasiItem {
@@ -44,7 +45,9 @@ class NotifikasiDetail {
       Map<String, dynamic>? candidate;
       if (dataVal is Map) {
         candidate = Map<String, dynamic>.from(dataVal);
-      } else if (dataVal is List && dataVal.isNotEmpty && dataVal.first is Map) {
+      } else if (dataVal is List &&
+          dataVal.isNotEmpty &&
+          dataVal.first is Map) {
         candidate = Map<String, dynamic>.from(dataVal.first);
       }
       if (candidate != null &&
@@ -129,7 +132,10 @@ class NotifikasiDetail {
     }
 
     final lampiranList = parseLampiran(
-      json['lampiran'] ?? json['LAMPIRAN'] ?? json['files'] ?? json['attachments'],
+      json['lampiran'] ??
+          json['LAMPIRAN'] ??
+          json['files'] ??
+          json['attachments'],
     );
 
     return NotifikasiDetail(
@@ -140,4 +146,39 @@ class NotifikasiDetail {
       lampiran: lampiranList,
     );
   }
+}
+
+/// Status notifikasi push perangkat milik mahasiswa yang memanggil.
+///
+/// [enabled] = server punya minimal satu token FCM untuk NIM ini, dan
+/// [tokenCount] = jumlah token yang terdaftar (dibatasi server).
+class NotifikasiOptinStatus {
+  final bool enabled;
+  final int tokenCount;
+
+  const NotifikasiOptinStatus({required this.enabled, this.tokenCount = 0});
+
+  factory NotifikasiOptinStatus.fromJson(Map<String, dynamic> json) {
+    int optInt(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString().trim() ?? '') ?? 0;
+    }
+
+    return NotifikasiOptinStatus(
+      enabled: json['enabled'] == true,
+      tokenCount: optInt(json['token_count']),
+    );
+  }
+}
+
+/// HTTP 429 pada endpoint push (optin & device-token); UI memakainya untuk
+/// hitung mundur.
+class NotifikasiRateLimited extends AppFailure {
+  final int retryAfterSeconds;
+
+  NotifikasiRateLimited(this.retryAfterSeconds)
+    : super(
+        'Terlalu banyak permintaan. Coba lagi dalam $retryAfterSeconds detik.',
+      );
 }

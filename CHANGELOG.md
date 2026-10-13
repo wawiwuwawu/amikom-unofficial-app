@@ -5,6 +5,17 @@ Semua perubahan penting dicatat di sini. Format mengikuti
 [Semantic Versioning](https://semver.org/lang/id/). Detail lengkap tiap
 rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-app/releases).
 
+## [Unreleased]
+
+### Added
+- ✨ Notifikasi push (Android) melalui **FCM (Firebase Cloud Messaging)**: kartu status di puncak halaman Notifikasi dengan tombol Aktifkan/Matikan, bottom sheet panduan sistem (izin notifikasi & optimasi baterai aplikasi ini), serta kontrak token perangkat (`GET /api/v1/notifikasi/optin` → `{enabled, token_count}`, `POST|DELETE /api/v1/notifikasi/device-token`)
+- 🔗 Deep link `amikomstudent://notifikasi/<id>`: ketukan pada notifikasi sistem membuka detail notifikasi langsung di aplikasi (cold start & app berjalan), tanpa dobel-buka dalam 2 detik
+- 🧪 Test: service push (kontrak `token_count`/503/429 `Retry-After`/404, kebijakan retry 401, identitas nim di secure storage, status baca per-NIM), kartu & sheet push (state memuat/gagal/aktif/tidak tersedia/hitung mundur), seam `PushTokenProvider`, dan deep link (ekstraksi id, dedupe, antrean pending)
+
+### Changed
+- ♻️ Status baca notifikasi disimpan per-NIM (`read_notification_ids_<nim>`, migrasi otomatis dari kunci lama) dan dipangkas maksimal 200 id; identitas nim kini ikut dipulihkan saat aplikasi dibuka kembali
+- ♻️ `setUserInfo` menyimpan nim/nama ke secure storage (best-effort) dan dibersihkan saat logout
+
 ## [v1.11.1] - 2026-10-12
 
 Rilis ini untuk menguji alur pembuatan APK otomatis — bukan menambah atau mengubah fitur. Yang dibuktikan: APK dari proses rilis otomatis memakai pengaturan server yang benar, dan catatan rilis bisa diambil sendiri dari CHANGELOG di tag yang sama. Fungsinya sama persis dengan v1.11.0; tidak ada perubahan apa pun di aplikasi.

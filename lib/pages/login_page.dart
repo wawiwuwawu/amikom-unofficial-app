@@ -75,7 +75,8 @@ class _LoginPageState extends State<LoginPage> {
     }
     final data = e.response?.data;
     if (data is Map) {
-      final retrySec = data['retry_after'] ?? data['retryAfter'] ?? data['retry_in'];
+      final retrySec =
+          data['retry_after'] ?? data['retryAfter'] ?? data['retry_in'];
       if (retrySec is int && retrySec > 0) return retrySec;
       if (retrySec != null) {
         final parsed = int.tryParse(retrySec.toString().trim());
@@ -84,11 +85,14 @@ class _LoginPageState extends State<LoginPage> {
     }
     return 60;
   }
+
   Future<void> _login() async {
     if (_retryCountdown > 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Silakan tunggu $_retryCountdown detik sebelum mencoba kembali.'),
+          content: Text(
+            'Silakan tunggu $_retryCountdown detik sebelum mencoba kembali.',
+          ),
           backgroundColor: AppColors.warning,
           behavior: SnackBarBehavior.floating,
         ),
@@ -105,16 +109,16 @@ class _LoginPageState extends State<LoginPage> {
       );
       return;
     }
-    
+
     setState(() => _loading = true);
     try {
       final res = await ApiClient.instance.login(
-        _nimController.text.trim(), 
-        _passwordController.text.trim()
+        _nimController.text.trim(),
+        _passwordController.text.trim(),
       );
-      
+
       await ApiClient.instance.setTokens(res.token, res.refreshToken);
-      ApiClient.instance.setUserInfo(res.nim, '');
+      await ApiClient.instance.setUserInfo(res.nim, '');
       try {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('disclaimer_accepted_v1', true);
@@ -168,9 +172,7 @@ class _LoginPageState extends State<LoginPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              userErrorMessage(e, 'Terjadi kesalahan saat login'),
-            ),
+            content: Text(userErrorMessage(e, 'Terjadi kesalahan saat login')),
             backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
@@ -220,33 +222,44 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       // Logo pada bulatan brand
                       Center(
-                        child: Container(
-                          padding: const EdgeInsets.all(AppSpacing.xl),
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            CupertinoIcons.book_fill,
-                            size: 52,
-                            color: Colors.white,
-                          ),
-                        ).animate().scale(delay: 200.ms, duration: 600.ms, curve: Curves.easeOutBack),
+                        child:
+                            Container(
+                              padding: const EdgeInsets.all(AppSpacing.xl),
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                CupertinoIcons.book_fill,
+                                size: 52,
+                                color: Colors.white,
+                              ),
+                            ).animate().scale(
+                              delay: 200.ms,
+                              duration: 600.ms,
+                              curve: Curves.easeOutBack,
+                            ),
                       ),
 
                       const SizedBox(height: AppSpacing.xl),
 
                       Text(
-                        'Ini Amikom?',
-                        textAlign: TextAlign.center,
-                        style: AppText.display.copyWith(color: AppColors.primary),
-                      ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2, end: 0),
+                            'Ini Amikom?',
+                            textAlign: TextAlign.center,
+                            style: AppText.display.copyWith(
+                              color: AppColors.primary,
+                            ),
+                          )
+                          .animate()
+                          .fadeIn(delay: 300.ms)
+                          .slideY(begin: 0.2, end: 0),
 
                       const SizedBox(height: AppSpacing.sm),
 
-                      const Center(
-                        child: AppPill('Unofficial App'),
-                      ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2, end: 0),
+                      const Center(child: AppPill('Unofficial App'))
+                          .animate()
+                          .fadeIn(delay: 400.ms)
+                          .slideY(begin: 0.2, end: 0),
 
                       const SizedBox(height: AppSpacing.xxl),
 
@@ -260,7 +273,9 @@ class _LoginPageState extends State<LoginPage> {
                               TextFormField(
                                 controller: _nimController,
                                 textInputAction: TextInputAction.next,
-                                style: AppText.body.copyWith(fontWeight: FontWeight.w600),
+                                style: AppText.body.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
                                 decoration: const InputDecoration(
                                   labelText: 'NIM',
                                   prefixIcon: Icon(
@@ -268,14 +283,17 @@ class _LoginPageState extends State<LoginPage> {
                                     color: AppColors.primary,
                                   ),
                                 ),
-                                validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
+                                validator: (v) =>
+                                    v!.isEmpty ? 'Wajib diisi' : null,
                               ),
                               const SizedBox(height: AppSpacing.lg),
                               TextFormField(
                                 controller: _passwordController,
                                 obscureText: _obscureText,
                                 textInputAction: TextInputAction.done,
-                                style: AppText.body.copyWith(fontWeight: FontWeight.w600),
+                                style: AppText.body.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
                                 decoration: InputDecoration(
                                   labelText: 'Password',
                                   prefixIcon: const Icon(
@@ -284,13 +302,18 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                   suffixIcon: IconButton(
                                     icon: Icon(
-                                      _obscureText ? CupertinoIcons.eye_slash_fill : CupertinoIcons.eye_fill,
+                                      _obscureText
+                                          ? CupertinoIcons.eye_slash_fill
+                                          : CupertinoIcons.eye_fill,
                                       color: AppColors.primary,
                                     ),
-                                    onPressed: () => setState(() => _obscureText = !_obscureText),
+                                    onPressed: () => setState(
+                                      () => _obscureText = !_obscureText,
+                                    ),
                                   ),
                                 ),
-                                validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
+                                validator: (v) =>
+                                    v!.isEmpty ? 'Wajib diisi' : null,
                               ),
                               const SizedBox(height: AppSpacing.lg),
                               Row(
@@ -303,17 +326,23 @@ class _LoginPageState extends State<LoginPage> {
                                       value: _agreedToDisclaimer,
                                       activeColor: AppColors.primary,
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadius.sm,
+                                        ),
                                       ),
                                       onChanged: (val) {
-                                        setState(() => _agreedToDisclaimer = val ?? false);
+                                        setState(
+                                          () => _agreedToDisclaimer =
+                                              val ?? false,
+                                        );
                                       },
                                     ),
                                   ),
                                   const SizedBox(width: AppSpacing.sm),
                                   Expanded(
                                     child: Wrap(
-                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
                                       children: [
                                         Text(
                                           'Saya menyetujui ',
@@ -322,13 +351,17 @@ class _LoginPageState extends State<LoginPage> {
                                           ),
                                         ),
                                         GestureDetector(
-                                          onTap: () => Navigator.pushNamed(context, '/penafian'),
+                                          onTap: () => Navigator.pushNamed(
+                                            context,
+                                            '/penafian',
+                                          ),
                                           child: Text(
                                             'Penafian & Ketentuan',
                                             style: AppText.bodySm.copyWith(
                                               color: AppColors.primary,
                                               fontWeight: FontWeight.w700,
-                                              decoration: TextDecoration.underline,
+                                              decoration:
+                                                  TextDecoration.underline,
                                             ),
                                           ),
                                         ),
@@ -341,7 +374,9 @@ class _LoginPageState extends State<LoginPage> {
                               SizedBox(
                                 height: 52,
                                 child: FilledButton(
-                                  onPressed: (_loading || _retryCountdown > 0) ? null : _login,
+                                  onPressed: (_loading || _retryCountdown > 0)
+                                      ? null
+                                      : _login,
                                   child: _loading
                                       ? const SizedBox(
                                           width: 20,
@@ -356,7 +391,9 @@ class _LoginPageState extends State<LoginPage> {
                                               ? 'Coba lagi dalam $_retryCountdown detik'
                                               : 'Login',
                                           style: AppText.button.copyWith(
-                                            fontSize: _retryCountdown > 0 ? 14 : 15,
+                                            fontSize: _retryCountdown > 0
+                                                ? 14
+                                                : 15,
                                           ),
                                         ),
                                 ),

@@ -4,6 +4,9 @@ import 'package:flutter/cupertino.dart';
 import '../config/menu_catalog.dart';
 import '../services/api_client.dart';
 import '../services/notifikasi_service.dart';
+import '../services/deep_link_service.dart';
+import '../services/push_service.dart';
+import '../services/navigation_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
 import 'absensi_page.dart';
@@ -11,6 +14,7 @@ import 'dashboard_page.dart';
 import 'jadwal_page.dart';
 import 'nilai/nilai_page.dart';
 import 'notifikasi_list_page.dart';
+import 'notifikasi_detail_page.dart';
 
 /// Kerangka utama aplikasi (hasil redesign navigasi).
 ///
@@ -51,10 +55,20 @@ class _MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     _checkUnreadNotif();
+    DeepLinkService.instance.listen((id) => _bukaNotifikasiDariLink(id));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final id = DeepLinkService.instance.consumePendingId();
+      if (id != null) {
+        _bukaNotifikasiDariLink(id);
+      }
+      // Ketukan notifikasi FCM yang datang sebelum UI siap (cold start).
+      PushService.instance.terapkanPendingTerbuka();
+    });
   }
 
   @override
   void dispose() {
+    DeepLinkService.instance.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -89,8 +103,18 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future<void> _openNotifikasi() async {
-    await _openPage(
-      NotifikasiListPage(),
+    await _openPage(NotifikasiListPage());
+    _checkUnreadNotif();
+  }
+
+  Future<void> _bukaNotifikasiDariLink(String id) async {
+    if (id.isEmpty || !mounted) return;
+    final navigator =
+        NavigationService.instance.navigatorKey.currentState ??
+        Navigator.maybeOf(context);
+    if (navigator == null) return;
+    await navigator.push(
+      MaterialPageRoute(builder: (_) => NotifikasiDetailPage(id: id)),
     );
     _checkUnreadNotif();
   }
@@ -215,6 +239,13 @@ class _MainPageState extends State<MainPage> {
                       ),
                     ),
                     onTap: () async {
+                      // Hapus token FCM perangkat ini dari server sebelum sesi
+                      // dibersihkan (butuh token auth yang sah).
+                      try {
+                        await PushService.instance.bersihkanSaatLogout();
+                      } catch (_) {
+                        // Logout tetap lanjut walau push gagal dibersihkan.
+                      }
                       await ApiClient.instance.fullLogout();
                       if (!mounted) return;
                       Navigator.pushReplacementNamed(context, '/login');
@@ -300,11 +331,7 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  Widget _drawerSection(
-    String title,
-    IconData icon,
-    List<MenuEntry> entries,
-  ) {
+  Widget _drawerSection(String title, IconData icon, List<MenuEntry> entries) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -320,10 +347,7 @@ class _MainPageState extends State<MainPage> {
               Icon(icon, size: 13, color: AppColors.textMuted),
               const SizedBox(width: AppSpacing.sm),
               Flexible(
-                child: Text(
-                  title.toUpperCase(),
-                  style: AppText.overline,
-                ),
+                child: Text(title.toUpperCase(), style: AppText.overline),
               ),
             ],
           ),
@@ -333,7 +357,10 @@ class _MainPageState extends State<MainPage> {
             dense: true,
             visualDensity: VisualDensity.compact,
             leading: Icon(entry.icon, size: 19, color: AppColors.primarySoft),
-            title: Text(entry.title, style: AppText.h3.copyWith(fontSize: 13.5)),
+            title: Text(
+              entry.title,
+              style: AppText.h3.copyWith(fontSize: 13.5),
+            ),
             trailing: entry.title == 'Notifikasi' && _unreadNotifCount > 0
                 ? AppPill('$_unreadNotifCount', tone: AppPillTone.danger)
                 : const Icon(
@@ -401,9 +428,7 @@ class _MainPageState extends State<MainPage> {
                 children: [
                   Text(group.key.hint, style: AppText.bodySm),
                   const SizedBox(height: AppSpacing.md),
-                  AppListGroup.from([
-                    for (final e in group.value) _menuRow(e),
-                  ]),
+                  AppListGroup.from([for (final e in group.value) _menuRow(e)]),
                 ],
               ),
             ),
@@ -519,9 +544,7 @@ class _MainPageState extends State<MainPage> {
             shape: const CircleBorder(),
             child: InkWell(
               customBorder: const CircleBorder(),
-              onTap: () => _openPage(
-                AbsensiPage(),
-              ),
+              onTap: () => _openPage(AbsensiPage()),
               child: const SizedBox(
                 width: 46,
                 height: 46,

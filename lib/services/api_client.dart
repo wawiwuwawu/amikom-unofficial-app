@@ -18,6 +18,12 @@ const _maxRetries = 2;
 int _getRetryCount(RequestOptions opts) =>
     opts.extra['retryCount'] as int? ?? 0;
 
+/// Method aman (GET/HEAD) serta POST/DELETE idempoten pada
+/// `/api/v1/notifikasi/device-token` boleh memperbarui sesi dan mencoba ulang
+/// saat 401 tanpa langsung force logout.
+bool _canRenewAndRetry(RequestOptions opts) =>
+    ApiClient.canRenewAndRetry(opts.method, opts.uri.path);
+
 class ApiClient {
   static ApiClient? _instance;
   late final Dio dio;
@@ -38,12 +44,12 @@ class ApiClient {
   }
 
   BaseOptions _baseOptions(Duration receiveTimeout) => BaseOptions(
-        baseUrl: dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000',
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: receiveTimeout,
-        sendTimeout: const Duration(seconds: 10),
-        headers: {'Content-Type': 'application/json'},
-      );
+    baseUrl: dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000',
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: receiveTimeout,
+    sendTimeout: const Duration(seconds: 10),
+    headers: {'Content-Type': 'application/json'},
+  );
 
   ApiClient._() {
     dio = Dio(_baseOptions(const Duration(seconds: 60)));
@@ -51,131 +57,151 @@ class ApiClient {
     (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient =
         _createHttpClient;
 
-    dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) {
-        if (_token != null) {
-          options.headers['Authorization'] = 'Bearer $_token';
-        }
-        handler.next(options);
-      },
-      onResponse: (response, handler) async {
-        if (_token != null && _refreshToken != null) {
-          final data = response.data;
-          if (data is Map<String, dynamic>) {
-            final msg = (data['message'] ?? '').toString().toLowerCase();
-            final path = response.requestOptions.path;
-            final method = response.requestOptions.method.toUpperCase();
-            final isSafeMethod = method == 'GET' || method == 'HEAD';
-            if (isSafeMethod &&
-                !path.contains('/auth/') &&
-                (msg.contains('unauthorized') ||
-                    msg.contains('sesi berakhir'))) {
-              final retryCount = _getRetryCount(response.requestOptions);
-              if (retryCount >= _maxRetries) {
-                await _forceLogout();
-                handler.reject(DioException(
-                  requestOptions: response.requestOptions,
-                  response: response,
-                  type: DioExceptionType.badResponse,
-                  message: 'Sesi berakhir. Silakan login ulang.',
-                ));
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (_token != null) {
+            options.headers['Authorization'] = 'Bearer $_token';
+          }
+          handler.next(options);
+        },
+        onResponse: (response, handler) async {
+          if (_token != null && _refreshToken != null) {
+            final data = response.data;
+            if (data is Map<String, dynamic>) {
+              final msg = (data['message'] ?? '').toString().toLowerCase();
+              final path = response.requestOptions.path;
+              final isSafeMethod = _canRenewAndRetry(response.requestOptions);
+              if (isSafeMethod &&
+                  !path.contains('/auth/') &&
+                  (msg.contains('unauthorized') ||
+                      msg.contains('sesi berakhir'))) {
+                final retryCount = _getRetryCount(response.requestOptions);
+                if (retryCount >= _maxRetries) {
+                  await _forceLogout();
+                  handler.reject(
+                    DioException(
+                      requestOptions: response.requestOptions,
+                      response: response,
+                      type: DioExceptionType.badResponse,
+                      message: 'Sesi berakhir. Silakan login ulang.',
+                    ),
+                  );
+                  return;
+                }
+
+                response.requestOptions.extra['retryCount'] = retryCount + 1;
+                await _renewAndRetry(
+                  response.requestOptions,
+                  response,
+                  handler.resolve,
+                  handler.reject,
+                );
                 return;
               }
+            }
+          }
+          handler.next(response);
+        },
+        onError: (error, handler) async {
+          // Pemetaan status/tipe ke pesan ramah dikelola terpusat oleh
+          // ApiClient.handleError — interceptor hanya meneruskan error.
+          final statusCode = error.response?.statusCode;
+          final resData = error.response?.data;
+          final serverMsg =
+              (resData is Map<String, dynamic>
+                      ? (resData['message'] ?? '')
+                      : (resData?.toString() ?? ''))
+                  .toString()
+                  .toLowerCase();
 
-              response.requestOptions.extra['retryCount'] = retryCount + 1;
+          // 500 Upstream portal session expired detection
+          if (statusCode == 500 &&
+              !error.requestOptions.path.contains('/auth/') &&
+              (serverMsg.contains('sesi') || serverMsg.contains('session'))) {
+            final method = error.requestOptions.method.toUpperCase();
+            final isSafeMethod = method == 'GET' || method == 'HEAD';
+            final retryCount = _getRetryCount(error.requestOptions);
+
+            if (isSafeMethod &&
+                retryCount < _maxRetries &&
+                _token != null &&
+                _refreshToken != null) {
+              error.requestOptions.extra['retryCount'] = retryCount + 1;
+              final renewed = await _renewSessionWithLock();
+              if (renewed) {
+                error.requestOptions.headers['Authorization'] =
+                    'Bearer $_token';
+                try {
+                  final retryResponse = await dio.fetch(error.requestOptions);
+                  handler.resolve(retryResponse);
+                  return;
+                } catch (_) {}
+              }
+            }
+
+            await _forceLogout();
+            handler.reject(
+              DioException(
+                requestOptions: error.requestOptions,
+                response: error.response,
+                type: DioExceptionType.badResponse,
+                message: 'Sesi berakhir. Silakan login ulang.',
+              ),
+            );
+            return;
+          }
+
+          if (statusCode == 401) {
+            final isSafeMethod = _canRenewAndRetry(error.requestOptions);
+            final retryCount = _getRetryCount(error.requestOptions);
+
+            if (isSafeMethod &&
+                retryCount < _maxRetries &&
+                _token != null &&
+                _refreshToken != null) {
               await _renewAndRetry(
-                response.requestOptions,
-                response,
+                error.requestOptions,
+                error.response,
                 handler.resolve,
                 handler.reject,
               );
               return;
             }
-          }
-        }
-        handler.next(response);
-      },
-      onError: (error, handler) async {
-        // Pemetaan status/tipe ke pesan ramah dikelola terpusat oleh
-        // ApiClient.handleError — interceptor hanya meneruskan error.
-        final statusCode = error.response?.statusCode;
-        final resData = error.response?.data;
-        final serverMsg = (resData is Map<String, dynamic>
-                ? (resData['message'] ?? '')
-                : (resData?.toString() ?? ''))
-            .toString()
-            .toLowerCase();
 
-        // 500 Upstream portal session expired detection
-        if (statusCode == 500 &&
-            !error.requestOptions.path.contains('/auth/') &&
-            (serverMsg.contains('sesi') || serverMsg.contains('session'))) {
-          final method = error.requestOptions.method.toUpperCase();
-          final isSafeMethod = method == 'GET' || method == 'HEAD';
-          final retryCount = _getRetryCount(error.requestOptions);
-
-          if (isSafeMethod &&
-              retryCount < _maxRetries &&
-              _token != null &&
-              _refreshToken != null) {
-            error.requestOptions.extra['retryCount'] = retryCount + 1;
-            final renewed = await _renewSessionWithLock();
-            if (renewed) {
-              error.requestOptions.headers['Authorization'] = 'Bearer $_token';
-              try {
-                final retryResponse = await dio.fetch(error.requestOptions);
-                handler.resolve(retryResponse);
-                return;
-              } catch (_) {}
-            }
-          }
-
-          await _forceLogout();
-          handler.reject(DioException(
-            requestOptions: error.requestOptions,
-            response: error.response,
-            type: DioExceptionType.badResponse,
-            message: 'Sesi berakhir. Silakan login ulang.',
-          ));
-          return;
-        }
-
-        if (statusCode == 401) {
-          final method = error.requestOptions.method.toUpperCase();
-          final isSafeMethod = method == 'GET' || method == 'HEAD';
-          final retryCount = _getRetryCount(error.requestOptions);
-
-          if (isSafeMethod &&
-              retryCount < _maxRetries &&
-              _token != null &&
-              _refreshToken != null) {
-            await _renewAndRetry(
-              error.requestOptions,
-              error.response,
-              handler.resolve,
-              handler.reject,
+            await _forceLogout();
+            handler.reject(
+              DioException(
+                requestOptions: error.requestOptions,
+                response: error.response,
+                type: DioExceptionType.badResponse,
+                message: 'Sesi berakhir. Silakan login ulang.',
+              ),
             );
             return;
           }
 
-          await _forceLogout();
-          handler.reject(DioException(
-            requestOptions: error.requestOptions,
-            response: error.response,
-            type: DioExceptionType.badResponse,
-            message: 'Sesi berakhir. Silakan login ulang.',
-          ));
-          return;
-        }
-
-        handler.next(error);
-      },
-    ));
+          handler.next(error);
+        },
+      ),
+    );
   }
 
   static ApiClient get instance {
     _instance ??= ApiClient._();
     return _instance!;
+  }
+
+  /// Kebijakan retry saat 401: method aman (GET/HEAD) dan mutasi IDEMPOTEN pada
+  /// `/api/v1/notifikasi/device-token` boleh memperbarui sesi lalu mencoba
+  /// ulang — pendaftaran/pencabutan token FCM aman diulang.
+  /// Mutasi lain sengaja TIDAK diulang supaya aksi non-idempoten (mis. bayar
+  /// tagihan) tidak berjalan dua kali; jalur itu tetap memaksa login ulang.
+  static bool canRenewAndRetry(String method, String path) {
+    final normalized = method.toUpperCase();
+    if (normalized == 'GET' || normalized == 'HEAD') return true;
+    return (normalized == 'POST' || normalized == 'DELETE') &&
+        path == '/api/v1/notifikasi/device-token';
   }
 
   // ─── Session Restore ─────────────────────────────────
@@ -186,6 +212,12 @@ class ApiClient {
       _token = token;
       _refreshToken = refreshToken;
     }
+    // Identitas ikut dipulihkan: penyimpanan lokal yang berkunci NIM (mis. tanda
+    // baca notifikasi) butuh ini setelah cold start, bukan hanya saat login.
+    final nim = await _secureStorage.read(key: 'nim');
+    final nama = await _secureStorage.read(key: 'nama');
+    if (nim != null && nim.trim().isNotEmpty) _nim = nim;
+    if (nama != null && nama.isNotEmpty) _nama = nama;
   }
 
   String? get token => _token;
@@ -193,9 +225,17 @@ class ApiClient {
   String? get nim => _nim;
   String? get nama => _nama;
 
-  void setUserInfo(String nim, String nama) {
+  /// Menyimpan identitas pengguna (dipanggil setelah login berhasil). Penulisan
+  /// ke secure storage best-effort: kegagalan menyimpan identitas tidak boleh
+  /// menggagalkan login — efeknya hanya penyimpanan lokal berkunci NIM yang
+  /// tidak tertulis.
+  Future<void> setUserInfo(String nim, String nama) async {
     _nim = nim;
     _nama = nama;
+    try {
+      await _secureStorage.write(key: 'nim', value: nim);
+      await _secureStorage.write(key: 'nama', value: nama);
+    } catch (_) {}
   }
 
   Future<void> setTokens(String token, String refreshToken) async {
@@ -278,12 +318,14 @@ class ApiClient {
     final renewed = await _renewSessionWithLock();
     if (!renewed) {
       await _forceLogout();
-      reject(DioException(
-        requestOptions: opts,
-        response: originResponse,
-        type: DioExceptionType.badResponse,
-        message: 'Sesi berakhir. Silakan login ulang.',
-      ));
+      reject(
+        DioException(
+          requestOptions: opts,
+          response: originResponse,
+          type: DioExceptionType.badResponse,
+          message: 'Sesi berakhir. Silakan login ulang.',
+        ),
+      );
       return;
     }
 
@@ -313,15 +355,20 @@ class ApiClient {
   // ─── Force Logout ────────────────────────────────────
   Future<void> _forceLogout() async {
     await clearTokens();
-    NavigationService.instance.navigatorKey.currentState
-        ?.pushReplacementNamed('/login');
+    NavigationService.instance.navigatorKey.currentState?.pushReplacementNamed(
+      '/login',
+    );
   }
 
   Future<void> clearTokens() async {
     _token = null;
     _refreshToken = null;
+    _nim = null;
+    _nama = null;
     await _secureStorage.delete(key: 'token');
     await _secureStorage.delete(key: 'refreshToken');
+    await _secureStorage.delete(key: 'nim');
+    await _secureStorage.delete(key: 'nama');
   }
 
   /// Full logout: clear tokens (password tidak pernah disimpan)
@@ -403,10 +450,7 @@ class ApiClient {
 
   /// Satu guard untuk seluruh service: jalankan [body], petakan SEMUA galat
   /// (bukan hanya DioException) ke AppFailure ramah lewat [handleError].
-  static Future<T> guard<T>(
-    Future<T> Function() body,
-    String fallback,
-  ) async {
+  static Future<T> guard<T>(Future<T> Function() body, String fallback) async {
     try {
       return await body();
     } catch (e) {
@@ -418,12 +462,9 @@ class ApiClient {
   static List<T> unwrapList<T>(
     dynamic data,
     T Function(Map<String, dynamic>) parse,
-  ) =>
-      data is List
-          ? data
-              .map((e) => parse(Map<String, dynamic>.from(e as Map)))
-              .toList()
-          : const [];
+  ) => data is List
+      ? data.map((e) => parse(Map<String, dynamic>.from(e as Map))).toList()
+      : const [];
 
   /// Hasil mutasi beserta metadata root bila portal menyertakannya.
   static Map<String, dynamic> mutationRoot(dynamic responseData) {
@@ -457,9 +498,11 @@ class ApiClient {
     String fallback = '.pdf',
   }) {
     final contentDisposition = headers.value('content-disposition');
-    if (contentDisposition != null && contentDisposition.contains('filename=')) {
-      final match =
-          RegExp(r'filename="?([^";]+)"?').firstMatch(contentDisposition);
+    if (contentDisposition != null &&
+        contentDisposition.contains('filename=')) {
+      final match = RegExp(
+        r'filename="?([^";]+)"?',
+      ).firstMatch(contentDisposition);
       final fname = match?.group(1);
       if (fname != null && fname.contains('.')) {
         return '.${fname.split('.').last}';
@@ -473,7 +516,10 @@ class ApiClient {
   // Mengembalikan [AppFailure] yang pesannya SELALU ramah-pengguna. Non-
   // DioException tidak lagi memakai `e.toString()` (sumber kebocoran pesan
   // teknis seperti "FormatException: ..." atau "type 'Null' is not a subtype ...").
-  static AppFailure handleError(dynamic e, [String fallback = 'Terjadi kesalahan']) {
+  static AppFailure handleError(
+    dynamic e, [
+    String fallback = 'Terjadi kesalahan',
+  ]) {
     // Sudah pernah dipetakan (mis. dari unwrapData/unwrapRoot) — pertahankan.
     if (e is AppFailure) return e;
 
@@ -488,7 +534,10 @@ class ApiClient {
       }
 
       if (statusCode == 400) {
-        return AppFailure.fromServer(serverMsg, fallback: 'Permintaan tidak valid');
+        return AppFailure.fromServer(
+          serverMsg,
+          fallback: 'Permintaan tidak valid',
+        );
       }
 
       if (statusCode == 401) {
@@ -503,7 +552,9 @@ class ApiClient {
       }
 
       if (statusCode == 429) {
-        return AppFailure('Terlalu banyak permintaan. Silakan tunggu sebentar.');
+        return AppFailure(
+          'Terlalu banyak permintaan. Silakan tunggu sebentar.',
+        );
       }
 
       if (statusCode == 500) {
