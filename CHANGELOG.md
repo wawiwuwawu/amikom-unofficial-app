@@ -10,18 +10,20 @@ rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-
 ### Added
 - ✨ Notifikasi push (Android) melalui **FCM (Firebase Cloud Messaging)**: kartu status di puncak halaman Notifikasi dengan tombol Aktifkan/Matikan, bottom sheet panduan sistem (izin notifikasi & optimasi baterai aplikasi ini), serta kontrak token perangkat (`GET /api/v1/notifikasi/optin` → `{enabled, token_count}`, `POST|DELETE /api/v1/notifikasi/device-token`)
 - 🔗 Deep link `amikomstudent://notifikasi/<id>`: ketukan pada notifikasi sistem membuka detail notifikasi langsung di aplikasi (cold start & app berjalan), tanpa dobel-buka dalam 2 detik
+- ✨ Ketukan push dengan url https (siaran) kini dibuka di browser eksternal; tautan `amikomstudent://notifikasi/<id>` tetap membuka detail notifikasi di aplikasi
+- 🧪 Test push: ketukan siaran (url https) dibedakan dari notifikasi privat (`amikomstudent`), https + `notif_id` jatuh ke siaran, dedupe 2 detik berlaku terpisah untuk siaran, dan id notifikasi tray siaran memakai hash url (tak tabrakan dengan notifikasi privat)
+- 🩺 Kartu push memperingati "server notifikasi sedang bermasalah" bila nonaktif tapi token masih terdaftar (`enabled:false` + `token_count>0` — sesuai kontrak BE: bedakan "belum daftar" dari "server mati")
+- 🔄 Status push dimuat ulang otomatis saat aplikasi dibuka kembali dari background (tak lagi menampilkan state basi setelah server diperbaiki)
 - 🧪 Test: service push (kontrak `token_count`/503/429 `Retry-After`/404, kebijakan retry 401, identitas nim di secure storage, status baca per-NIM), kartu & sheet push (state memuat/gagal/aktif/tidak tersedia/hitung mundur), seam `PushTokenProvider`, dan deep link (ekstraksi id, dedupe, antrean pending)
 
 ### Changed
 - ♻️ Status baca notifikasi disimpan per-NIM (`read_notification_ids_<nim>`, migrasi otomatis dari kunci lama) dan dipangkas maksimal 2000 id; identitas nim kini ikut dipulihkan saat aplikasi dibuka kembali
 - ♻️ `setUserInfo` menyimpan nim/nama ke secure storage (best-effort) dan dibersihkan saat logout
+- ♻️ Data push berisi url https sekaligus `notif_id` kini diperlakukan sebagai siaran dan dibuka di browser; sebelumnya `notif_id` diutamakan sehingga ketukan membuka detail notifikasi di aplikasi
 
 ### Fixed
 - 🐛 "Tandai Dibaca" tidak berefek & item yang baru dibaca balik jadi "Baru" saat daftar notifikasi > 200: batas penyimpanan id dibaca dinaikkan 200 → 2000 (yang terbuang sebelumnya justru id terbaru), plus test regresi (daftar 325 id, tandai-semua berulang)
-
-### Added
-- 🩺 Kartu push memperingati "server notifikasi sedang bermasalah" bila nonaktif tapi token masih terdaftar (`enabled:false` + `token_count>0` — sesuai kontrak BE: bedakan "belum daftar" dari "server mati")
-- 🔄 Status push dimuat ulang otomatis saat aplikasi dibuka kembali dari background (tak lagi menampilkan state basi setelah server diperbaiki)
+- 🐛 Id notifikasi tray untuk siaran (url https) memakai hash url, bukan `notif_id` mentah — mencegah siaran dan notifikasi privat dengan id numerik sama saling menimpa di panel notifikasi
 
 ## [v1.11.1] - 2026-10-12
 

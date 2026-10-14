@@ -3,6 +3,7 @@ import 'dart:async' show unawaited;
 import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:flutter/material.dart' show MaterialPageRoute;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/notifikasi.dart' show NotifikasiRateLimited;
 import '../pages/notifikasi_detail_page.dart';
@@ -11,10 +12,44 @@ import 'navigation_service.dart';
 import 'notifikasi_service.dart';
 import 'push_token_provider.dart';
 
+/// Jenis ketukan push yang bisa ditangani: notifikasi pribadi (detail in-app)
+/// atau siaran/pengumuman (dibuka di browser eksternal).
+enum JenisKetukan { notifikasiPribadi, siaranWeb }
+
+/// Hasil pemetaan ketukan push: [TujuanKetukan.notifikasi] membawa [notifId]
+/// untuk detail in-app, [TujuanKetukan.siaranWeb] membawa [urlWeb] yang dibuka
+/// di browser. Persis salah satu dari [notifId] / [urlWeb] yang terisi sesuai
+/// [jenis]. Persamaan berbasis nilai agar bisa langsung di-`expect` di test.
+class TujuanKetukan {
+  final JenisKetukan jenis;
+  final String? notifId; // hanya privat
+  final Uri? urlWeb; // hanya siaran
+
+  const TujuanKetukan.notifikasi(String this.notifId)
+    : jenis = JenisKetukan.notifikasiPribadi,
+      urlWeb = null;
+
+  const TujuanKetukan.siaranWeb(this.urlWeb)
+    : jenis = JenisKetukan.siaranWeb,
+      notifId = null;
+
+  @override
+  bool operator ==(Object other) =>
+      other is TujuanKetukan &&
+      other.jenis == jenis &&
+      other.notifId == notifId &&
+      other.urlWeb == urlWeb;
+
+  @override
+  int get hashCode => Object.hash(jenis, notifId, urlWeb);
+}
+
 /// Lapisan push FCM: membuat channel Android, menampilkan notifikasi lokal
 /// untuk pesan foreground, dan mengarahkan ketukan notifikasi ke detail notif
-/// lewat skema deep link yang SUDAH ada. Tidak menciptakan routing baru; akses
-/// Firebase terpusat pada [MessagingGateway]/[FcmGatewayFirebase].
+/// (skema `amikomstudent`, lewat deep link yang SUDAH ada) atau ke browser
+/// eksternal untuk siaran/pengumuman (skema `http`/`https`, lewat url_launcher).
+/// Tidak menciptakan routing baru; akses Firebase terpusat pada
+/// [MessagingGateway]/[FcmGatewayFirebase].
 class PushService {
   PushService._();
 
@@ -22,6 +57,10 @@ class PushService {
 
   static const _channelId = 'notifikasi_kampus';
   static const _channelName = 'Notifikasi Kampus';
+
+  /// Jendela dedupe ketukan siaran: url sama di dalam jendela ini dianggap
+  /// ketukan ganda (selaras dengan jendela dedupe milik [DeepLinkService]).
+  static const _dedupeSiaranWindow = Duration(seconds: 2);
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
 
@@ -34,6 +73,12 @@ class PushService {
 
   /// Ketukan notifikasi yang datang sebelum UI siap (cold start).
   static String? _pendingOpenId;
+
+  /// Dedupe LOKAL ketukan siaran (browser): url + waktu terakhir dibuka.
+  /// Jaringan ini terpisah dari dedupe privat milik [DeepLinkService] supaya
+  /// siaran dan notifikasi privat tak saling menelan.
+  String? _siaranTerakhir;
+  DateTime? _siaranTerakhirAt;
 
   /// Menyiapkan channel Android, plugin notifikasi lokal, dan subscription FCM.
   Future<void> init({MessagingGateway? gateway}) async {
@@ -83,36 +128,67 @@ class PushService {
     }
   }
 
-  /// Mengekstrak ID notifikasi dari [data]: coba `data['url']` lewat parser
-  /// deep link yang SUDAH ada, lalu fallback `data['notif_id']`. Null bila tak
-  /// ada.
-  static String? idDariData(Map<String, dynamic> data) {
+  /// Memetakan [data] ketukan menjadi [TujuanKetukan]: `url` amikomstudent →
+  /// notifikasi privat (lewat [DeepLinkService.extractNotifId]), `url`
+  /// http/https → siaran web (TIDAK jatuh ke `notif_id` — kontrak BE baru),
+  /// tanpa url → fallback `notif_id` (string/angka, di-trim). Null bila tak ada
+  /// ketukan yang dikenal.
+  static TujuanKetukan? tujuanDariData(Map<String, dynamic> data) {
     final rawUrl = data['url'];
     if (rawUrl is String && rawUrl.trim().isNotEmpty) {
       final uri = Uri.tryParse(rawUrl);
       if (uri != null) {
-        final fromUrl = DeepLinkService.extractNotifId(uri);
-        if (fromUrl.isNotEmpty) return fromUrl;
+        if (uri.scheme == 'amikomstudent') {
+          final fromUrl = DeepLinkService.extractNotifId(uri);
+          if (fromUrl.isNotEmpty) return TujuanKetukan.notifikasi(fromUrl);
+        } else if (uri.scheme == 'http' || uri.scheme == 'https') {
+          return TujuanKetukan.siaranWeb(uri);
+        }
       }
     }
     final rawId = data['notif_id'];
     if (rawId != null) {
       final id = rawId.toString().trim();
-      if (id.isNotEmpty) return id;
+      if (id.isNotEmpty) return TujuanKetukan.notifikasi(id);
     }
     return null;
   }
 
-  /// Menyelesaikan id notifikasi lalu menerapkan dedupe jendela ±2 detik lewat
-  /// [DeepLinkService.instance]. Mengembalikan id yang boleh dibuka, atau null
-  /// bila tak valid / duplikat. Tidak melakukan navigasi — bisa diuji langsung.
+  /// Menyelesaikan [tujuanDariData] lalu menerapkan dedupe: privat lewat
+  /// [DeepLinkService.instance] (jendela ±2 detik, jaringan yang SUDAH ada),
+  /// siaran lewat dedupe LOKAL berjendela [_dedupeSiaranWindow]. Mengembalikan
+  /// tujuan yang boleh dijalankan, atau null bila tak valid / duplikat. Tidak
+  /// membuka apa pun — bisa diuji langsung.
   @visibleForTesting
-  String? resolveOpenedId(Map<String, dynamic> data) {
-    final id = idDariData(data);
-    if (id == null) return null;
-    final uri = Uri.tryParse('amikomstudent://notifikasi/$id');
-    if (uri == null) return null;
-    return DeepLinkService.instance.handleUri(uri);
+  TujuanKetukan? resolveTujuan(Map<String, dynamic> data) {
+    final tujuan = tujuanDariData(data);
+    if (tujuan == null) return null;
+    switch (tujuan.jenis) {
+      case JenisKetukan.notifikasiPribadi:
+        final uri = Uri.tryParse('amikomstudent://notifikasi/${tujuan.notifId}');
+        if (uri == null) return null;
+        final id = DeepLinkService.instance.handleUri(uri);
+        return id == null ? null : TujuanKetukan.notifikasi(id);
+      case JenisKetukan.siaranWeb:
+        return _bukanDuplikatSiaran(tujuan.urlWeb!) ? tujuan : null;
+    }
+  }
+
+  /// Dedupe LOKAL ketukan siaran: url sama dalam [_dedupeSiaranWindow] dianggap
+  /// ketukan ganda (dua siaran berbeda beruntun tetap lolos). Dipisah dari
+  /// dedupe privat [DeepLinkService] agar dua jalur tak saling menelan.
+  bool _bukanDuplikatSiaran(Uri url) {
+    final kunci = url.toString();
+    final terakhirAt = _siaranTerakhirAt;
+    final sekarang = DateTime.now();
+    if (terakhirAt != null &&
+        _siaranTerakhir == kunci &&
+        sekarang.difference(terakhirAt) < _dedupeSiaranWindow) {
+      return false;
+    }
+    _siaranTerakhir = kunci;
+    _siaranTerakhirAt = sekarang;
+    return true;
   }
 
   /// Mendaftarkan [token] ke server dan menyimpannya sebagai `_lastToken`.
@@ -172,16 +248,22 @@ class PushService {
   }
 
   void _handleOpened(Map<String, dynamic> data) {
-    final id = resolveOpenedId(data);
-    if (id != null) _openNotifikasi(id);
+    final tujuan = resolveTujuan(data);
+    if (tujuan == null) return;
+    switch (tujuan.jenis) {
+      case JenisKetukan.notifikasiPribadi:
+        _openNotifikasi(tujuan.notifId!);
+      case JenisKetukan.siaranWeb:
+        unawaited(_bukaWeb(tujuan.urlWeb!));
+    }
   }
 
+  /// Ketukan notifikasi lokal (foreground). Payload adalah `data['url']` asli;
+  /// dibungkus jadi map lalu diperlakukan persis seperti ketukan push lain
+  /// supaya dedupe privat maupun siaran seragam.
   void _handleTap(String? payload) {
     if (payload == null || payload.isEmpty) return;
-    final uri = Uri.tryParse(payload);
-    if (uri == null) return;
-    final id = DeepLinkService.instance.handleUri(uri);
-    if (id != null) _openNotifikasi(id);
+    _handleOpened({'url': payload});
   }
 
   Future<void> _bukaDariInitial(MessagingGateway gateway) async {
@@ -205,6 +287,24 @@ class PushService {
     );
   }
 
+  /// Membuka tautan siaran/pengumuman di browser EKSTERNAL. Tidak pernah
+  /// melempar: kegagalan (device tanpa browser, dll.) hanya dilog — ketukan
+  /// bisa datang dari background, konteks UI belum tentu aman. Tak butuh
+  /// antrean pending: buka browser tak butuh navigator aplikasi.
+  Future<void> _bukaWeb(Uri url) async {
+    try {
+      final berhasil = await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!berhasil) {
+        debugPrint('PushService: gagal membuka tautan siaran');
+      }
+    } catch (e) {
+      debugPrint('PushService: gagal membuka tautan siaran (${e.runtimeType})');
+    }
+  }
+
   /// Menjalankan ketukan notifikasi yang ditunda saat cold start (dipanggil
   /// MainPage setelah frame pertama, saat navigator sudah tersedia).
   Future<void> terapkanPendingTerbuka() async {
@@ -214,17 +314,27 @@ class PushService {
     _openNotifikasi(id);
   }
 
-  /// Id tampil notifikasi yang stabil: `notif_id` bila ada (numerik apa adanya,
-  /// selain itu hash), jika tidak hash dari url/judul. Dimasker ke 32-bit
-  /// tak-negatif agar aman untuk id notifikasi Android.
-  int _displayId(Map<String, dynamic> data) {
+  /// Id tampil notifikasi yang stabil. **Siaran (url http/https) selalu memakai
+  /// hash url** — walaupun BE juga mengirim `notif_id` untuk siaran, id mentah
+  /// itu berbagi namespace dengan notifikasi privat dan bisa saling replace di
+  /// tray Android. Privat tetap `notif_id` (numerik apa adanya, selain itu
+  /// hash). Dimasker ke 32-bit tak-negatif agar aman untuk id notifikasi
+  /// Android.
+  @visibleForTesting
+  static int displayIdDari(Map<String, dynamic> data) {
     const mask = 0x7fffffff;
+    final url = data['url'];
+    if (url is String && url.isNotEmpty) {
+      final scheme = Uri.tryParse(url)?.scheme ?? '';
+      if (scheme == 'http' || scheme == 'https') {
+        return url.hashCode & mask;
+      }
+    }
     final rawId = data['notif_id'];
     if (rawId != null) {
       final asInt = int.tryParse(rawId.toString().trim());
       return (asInt ?? rawId.toString().hashCode) & mask;
     }
-    final url = data['url'];
     final key = (url is String && url.isNotEmpty)
         ? url
         : (data['title']?.toString() ?? '');
@@ -241,7 +351,7 @@ class PushService {
     final payload = rawUrl is String ? rawUrl : null;
     try {
       await _plugin.show(
-        id: _displayId(data),
+        id: displayIdDari(data),
         title: title,
         body: body,
         notificationDetails: NotificationDetails(
