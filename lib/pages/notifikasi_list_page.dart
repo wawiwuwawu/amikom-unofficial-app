@@ -48,17 +48,24 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Status push bisa berubah di server saat app di background (mis. BE
-    // memperbaiki FCM) — muat ulang saat app dibuka kembali.
+    // memperbaiki FCM, atau user mengizinkan notifikasi di Pengaturan
+    // sistem) — muat ulang saat app dibuka kembali.
     if (state == AppLifecycleState.resumed) {
-      _loadOptinStatus();
-      // Pemulihan tanpa tombol: bila status masih Nonaktif (mis. user baru
-      // mengizinkan notifikasi di Pengaturan sistem), coba aktivasi lagi —
-      // guard sesi di PushService menahan maksimum satu kali per launch.
-      final status = _optinStatus;
-      if (status != null && !status.enabled && !_optinTidakTersedia) {
-        unawaited(PushService.instance.aktifkanJikaBelumPernah());
-      }
+      unawaited(_pulihkanPushSaatResume());
     }
+  }
+
+  /// Memuat ulang status push saat resume; bila server masih Nonaktif, coba
+  /// aktivasi lagi (guard sesi dilewati dengan paksa) lalu muat ulang sekali
+  /// lagi supaya kartu langsung berubah menjadi Aktif begitu registrasi
+  /// berhasil. Tanpa panggilan balik setelah aktivasi, kartu bisa tetap
+  /// menampilkan snapshot lama seumur hidup halaman.
+  Future<void> _pulihkanPushSaatResume() async {
+    await _loadOptinStatus();
+    final status = _optinStatus;
+    if (status == null || status.enabled || _optinTidakTersedia) return;
+    await PushService.instance.aktifkanJikaBelumPernah(paksa: true);
+    await _loadOptinStatus();
   }
 
   Future<void> _loadData() async {
@@ -141,17 +148,34 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
     await showNotifikasiPushSheet(context);
   }
 
-  Widget _buildPushCard() {
-    return NotifikasiPushCard(
-      status: _optinStatus,
-      loading: _optinLoading,
-      perangkatGagal:
-          _optinStatus != null &&
-          !_optinStatus!.enabled &&
-          PushService.tokenGagalDiPerangkat,
+ /// Tombol "Muat Ulang" pada kartu Nonaktif karena server bermasalah:
+ /// muat ulang status DAN coba aktivasi ulang (server mungkin sudah
+ /// diperbaiki). Aktivasi dipaksa melewati guard sesi supaya percobaan
+ /// ulang benar-benar terjadi, bukan sekadar baca status lama.
+ Future<void> _muatUlangPush() async {
+   setState(() => _optinLoading = true);
+   try {
+     await PushService.instance.aktifkanJikaBelumPernah(paksa: true);
+   } finally {
+     await _loadOptinStatus();
+   }
+ }
+
+ Widget _buildPushCard() {
+ return NotifikasiPushCard(
+ status: _optinStatus,
+ loading: _optinLoading,
+ perangkatGagal:
+ _optinStatus != null &&
+ !_optinStatus!.enabled &&
+ PushService.tokenGagalDiPerangkat,
+ serverGagal:
+ _optinStatus != null &&
+ !_optinStatus!.enabled &&
+ PushService.serverGagalTerakhir,
+ onMuatUlang: _muatUlangPush,
       tidakTersedia: _optinTidakTersedia,
       pesanGagal: _optinError,
-      onMuatUlang: _loadOptinStatus,
     );
   }
 

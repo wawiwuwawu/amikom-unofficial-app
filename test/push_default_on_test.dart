@@ -254,6 +254,74 @@ void main() {
       },
     );
 
+    test(
+      'paksa=true melewati guard sesi (resume recovery) — aktivasi dicoba lagi',
+      () async {
+        await PushService.instance.aktifkanJikaBelumPernah(gateway: gateway);
+        expect(gateway.panggilanToken, 1);
+
+        // Tanpa paksa: guard sesi menahan (perilaku normal).
+        await PushService.instance.aktifkanJikaBelumPernah(gateway: gateway);
+        expect(gateway.panggilanToken, 1);
+
+        // Dengan paksa: dipakai halaman notifikasi saat resume.
+        await PushService.instance.aktifkanJikaBelumPernah(
+          gateway: gateway,
+          paksa: true,
+        );
+        expect(gateway.panggilanToken, 2);
+      },
+    );
+
+    test(
+      'registrasi ditolak server (503): serverGagalTerakhir ditandai; '
+      'sukses berikutnya membersihkannya',
+      () async {
+        // GET optin tetap normal (server hidup); hanya registrasi token
+        // yang ditolak — persis kondisi nyata di HP user (logcat:
+        // POST /device-token -> 503 sementara GET optin 200).
+        adapter = _FakeAdapter((options) {
+          if (options.path.contains('/device-token')) {
+            return const _MockReply(
+              statusCode: 503,
+              body: {'status': 'error', 'message': 'belum dikonfigurasi'},
+            );
+          }
+          return const _MockReply(
+            body: {
+              'status': 'success',
+              'data': {'enabled': false, 'token_count': 0},
+            },
+          );
+        });
+        ApiClient.instance.dio.httpClientAdapter = adapter;
+        await PushService.instance.aktifkanJikaBelumPernah(gateway: gateway);
+        expect(
+          PushService.serverGagalTerakhir,
+          isTrue,
+          reason: 'kartu Nonaktif harus memakai pesan server, bukan panduan '
+              'Pengaturan (regresi: user izinkan semua tapi tetap disuruh '
+              'buka Pengaturan)',
+        );
+
+        // Server diperbaiki: registrasi sukses -> flag bersih.
+        adapter = _FakeAdapter((options) => const _MockReply(
+              body: {
+                'status': 'success',
+                'data': {'enabled': true, 'token_count': 1},
+                'success': true,
+                'message': 'ok',
+              },
+            ));
+        ApiClient.instance.dio.httpClientAdapter = adapter;
+        await PushService.instance.aktifkanJikaBelumPernah(
+          gateway: gateway,
+          paksa: true,
+        );
+        expect(PushService.serverGagalTerakhir, isFalse);
+      },
+    );
+
     test('gagal server (503 FCM mati): tidak melempar, tidak menandai izin ditolak', () async {
       adapter = _FakeAdapter((_) => const _MockReply(
             statusCode: 503,

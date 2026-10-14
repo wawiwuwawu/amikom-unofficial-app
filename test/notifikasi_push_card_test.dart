@@ -107,6 +107,35 @@ void main() {
   );
 
   testWidgets(
+    'nonaktif karena server menolak registrasi: pesan server + Muat Ulang, '
+    'tanpa panduan Pengaturan',
+    (tester) async {
+      var dimuatUlang = 0;
+      await tester.pumpWidget(
+        wrap(
+          NotifikasiPushCard(
+            status: const NotifikasiOptinStatus(enabled: false, tokenCount: 0),
+            serverGagal: true,
+            onMuatUlang: () => dimuatUlang += 1,
+          ),
+        ),
+      );
+
+      expect(find.text('Nonaktif'), findsOneWidget);
+      expect(find.textContaining('server pengelola sedang'), findsOneWidget);
+      expect(find.textContaining('izin di HP sudah cukup'), findsOneWidget);
+      expect(
+        find.textContaining('buka Pengaturan > Notifikasi'),
+        findsNothing,
+        reason: 'server 503 tak bisa diperbaiki lewat setelan HP',
+      );
+
+      await tester.tap(find.text('Muat Ulang'));
+      expect(dimuatUlang, 1);
+    },
+  );
+
+  testWidgets(
     'nonaktif dengan token tersisa memperingati server bermasalah',
     (tester) async {
       await tester.pumpWidget(

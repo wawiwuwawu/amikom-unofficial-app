@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../models/app_failure.dart' show AppFailure;
 import '../models/notifikasi.dart' show NotifikasiRateLimited;
 import '../pages/notifikasi_detail_page.dart';
 import 'deep_link_service.dart';
@@ -98,8 +99,18 @@ class PushService {
   /// user ke Pengaturan sistem ketika tak ada setelan yang bisa menolong.
   static bool _tokenGagalDiPerangkat = false;
 
+  /// Percobaan registrasi token terakhir GAGAL karena SERVER (mis. adapter
+  /// push 503 — FCM belum dikonfigurasi). Beda dari [_tokenGagalDiPerangkat]:
+  /// pengguna tak bisa berbuat apa-apa di perangkat; kartu status memakai pesan
+  /// server, bukan panduan Pengaturan. Dibersihkan saat registrasi sukses dan
+  /// saat sesi login baru ([mulaiSesiBaru]).
+  static bool _serverGagalTerakhir = false;
+
   /// Lihat [_tokenGagalDiPerangkat] — hanya untuk dibaca lapisan UI.
   static bool get tokenGagalDiPerangkat => _tokenGagalDiPerangkat;
+
+  /// Lihat [_serverGagalTerakhir] — hanya untuk dibaca lapisan UI.
+  static bool get serverGagalTerakhir => _serverGagalTerakhir;
 
   /// Dedupe LOKAL ketukan siaran (browser): url + waktu terakhir dibuka.
   /// Jaringan ini terpisah dari dedupe privat milik [DeepLinkService] supaya
@@ -228,13 +239,19 @@ class PushService {
       // Pendaftaran berhasil: jangan kunci flag penolakan izin yang ditulis
       // [aktifkanJikaBelumPernah] — izin bisa sudah diberikan ulang di sistem.
       _tokenGagalDiPerangkat = false;
+      _serverGagalTerakhir = false;
       final prefs = await SharedPreferences.getInstance();
       if (prefs.getBool(_kIzinDitolak) ?? false) {
         await prefs.setBool(_kIzinDitolak, false);
       }
     } on NotifikasiRateLimited {
       // Sudah dicoba server baru-baru ini — diamkan agar tidak membanjiri.
+      _serverGagalTerakhir = false;
     } catch (e) {
+      // Kegagalan SERVER (mis. 503 adapter FCM belum siap) ditandai agar kartu
+      // status tak salah memandu ke Pengaturan perangkat. Kegagalan perangkat
+      // sudah ditandai terpisah oleh [_tokenGagalDiPerangkat].
+      if (e is AppFailure || e is DioException) _serverGagalTerakhir = true;
       debugPrint('PushService: gagal mendaftarkan token (${e.runtimeType})');
     }
   }
@@ -296,8 +313,17 @@ class PushService {
   /// sama (mis. setelah login) langsung dilewati.
   ///
   /// [gateway] hanya untuk pengujian; produksi memakai gateway dari [init].
-  Future<void> aktifkanJikaBelumPernah({MessagingGateway? gateway}) async {
-    if (_aktivasiSudahDicoba) return;
+  ///
+  /// [paksa] mengabaikan guard sesi — dipakai halaman notifikasi saat app
+  /// dilanjutkan (resume) dan status masih Nonaktif (mis. server baru saja
+  /// diperbaiki). Tanpa ini, guard sekali-per-proses membuat recovery tidak
+  /// pernah berjalan pada launch yang sama: kartu bisa tetap "Nonaktif"
+  /// seumur hidup app meski user sudah mengizinkan notifikasi.
+  Future<void> aktifkanJikaBelumPernah({
+    MessagingGateway? gateway,
+    bool paksa = false,
+  }) async {
+    if (_aktivasiSudahDicoba && !paksa) return;
     _aktivasiSudahDicoba = true;
     final aktif = gateway ?? _gateway ?? const FcmGatewayFirebase();
     final prefs = await SharedPreferences.getInstance();
@@ -356,6 +382,7 @@ class PushService {
   /// sampai aplikasi di-restart.
   void mulaiSesiBaru() {
     _aktivasiSudahDicoba = false;
+    _serverGagalTerakhir = false;
   }
 
   // ── Panduan sistem (sheet) ───────────────────────────────────────────────

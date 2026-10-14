@@ -21,20 +21,27 @@ class NotifikasiPushCard extends StatelessWidget {
   final bool tidakTersedia;
   final String? pesanGagal;
 
-  /// Aktivasi gagal karena perangkat/build (gateway FCM tak siap), bukan
-  /// karena izin sistem — kartu tak boleh memandu ke Pengaturan sistem.
-  final bool perangkatGagal;
-  final VoidCallback? onMuatUlang;
+ /// Aktivasi gagal karena perangkat/build (gateway FCM tak siap), bukan
+ /// karena izin sistem - kartu tak boleh memandu ke Pengaturan sistem.
+ final bool perangkatGagal;
 
-  const NotifikasiPushCard({
-    super.key,
-    this.status,
-    this.loading = false,
-    this.tidakTersedia = false,
-    this.pesanGagal,
-    this.perangkatGagal = false,
-    this.onMuatUlang,
-  });
+ /// Registrasi token ditolak SERVER (mis. adapter 503 - FCM belum
+ /// dikonfigurasi): pengaturan di HP tak bisa menolong, jadi pesan yang
+ /// tepat adalah "server bermasalah" + aksi Muat Ulang, bukan panduan
+ /// Pengaturan.
+ final bool serverGagal;
+ final VoidCallback? onMuatUlang;
+
+ const NotifikasiPushCard({
+ super.key,
+ this.status,
+ this.loading = false,
+ this.tidakTersedia = false,
+ this.pesanGagal,
+ this.perangkatGagal = false,
+ this.serverGagal = false,
+ this.onMuatUlang,
+ });
 
   @override
   Widget build(BuildContext context) {
@@ -172,6 +179,38 @@ class NotifikasiPushCard extends StatelessWidget {
                     'perbarui aplikasi atau hubungi pengelola.',
                     style: AppText.label.copyWith(color: AppColors.warning),
                   ),
+                ),
+              ],
+            )
+          else if (serverGagal)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      CupertinoIcons.exclamationmark_triangle,
+                      size: 13,
+                      color: AppColors.warning,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: Text(
+                        'Notifikasi belum aktif karena server pengelola sedang '
+                        'bermasalah — izin di HP sudah cukup. Tekan Muat Ulang '
+                        'untuk mencoba lagi setelah server diperbaiki.',
+                        style: AppText.label.copyWith(color: AppColors.warning),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                OutlinedButton.icon(
+                  onPressed: onMuatUlang,
+                  icon: const Icon(CupertinoIcons.refresh, size: 16),
+                  label: const Text('Muat Ulang'),
                 ),
               ],
             )
