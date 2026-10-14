@@ -1,8 +1,10 @@
 import 'dart:async' show unawaited;
 
+import 'package:dio/dio.dart' show DioException;
 import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:flutter/material.dart' show MaterialPageRoute;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/notifikasi.dart' show NotifikasiRateLimited;
@@ -62,6 +64,22 @@ class PushService {
   /// ketukan ganda (selaras dengan jendela dedupe milik [DeepLinkService]).
   static const _dedupeSiaranWindow = Duration(seconds: 2);
 
+  /// Kunci SharedPreferences: izin notifikasi pernah DITOLAK oleh user. Ditulis
+  /// sekali oleh [aktifkanJikaBelumPernah] supaya dialog izin tidak muncul di
+  /// setiap aplikasi dibuka; dihapus begitu token berhasil didaftarkan (user
+  /// boleh berubah pikiran, mis. mengizinkan dari Pengaturan sistem).
+  static const _kIzinDitolak = 'push_izin_pernah_ditolak';
+
+  /// Kunci SharedPreferences: sheet panduan sistem ([showNotifikasiPushSheet])
+  /// sudah pernah ditampilkan kepada user — cukup sekali, dipakai halaman
+  /// notifikasi saat status push sudah Aktif.
+  static const _kSheetDitampilkan = 'push_sheet_ditampilkan';
+
+  /// Guard sesi: aktivasi otomatis hanya dicoba SEKALI per launch aplikasi,
+  /// supaya pemanggil dari login + halaman utama tak meminta izin dua kali
+  /// maupun mendaftarkan token ganda di launch yang sama.
+  static bool _aktivasiSudahDicoba = false;
+
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
 
   MessagingGateway? _gateway;
@@ -73,6 +91,15 @@ class PushService {
 
   /// Ketukan notifikasi yang datang sebelum UI siap (cold start).
   static String? _pendingOpenId;
+
+  /// `true` bila aktivasi terakhir gagal karena PERANGKAT/build (gateway FCM
+  /// tak siap — mis. `google-services.json` hilang / Play Services mati),
+  /// bukan karena server atau izin. Dipakai kartu push supaya tidak memandu
+  /// user ke Pengaturan sistem ketika tak ada setelan yang bisa menolong.
+  static bool _tokenGagalDiPerangkat = false;
+
+  /// Lihat [_tokenGagalDiPerangkat] — hanya untuk dibaca lapisan UI.
+  static bool get tokenGagalDiPerangkat => _tokenGagalDiPerangkat;
 
   /// Dedupe LOKAL ketukan siaran (browser): url + waktu terakhir dibuka.
   /// Jaringan ini terpisah dari dedupe privat milik [DeepLinkService] supaya
@@ -117,10 +144,10 @@ class PushService {
     unawaited(_bukaDariInitial(activeGateway));
   }
 
-  /// Meminta izin notifikasi. `true` bila diizinkan. Tidak melempar ke UI.
-  Future<bool> mintaIzin() async {
+  /// Meminta izin notifikasi lewat [gateway]. `true` bila diizinkan. Tidak
+  /// melempar ke UI: error gateway dilog dan diperlakukan sebagai penolakan.
+  Future<bool> _mintaIzin(MessagingGateway gateway) async {
     try {
-      final gateway = _gateway ?? const FcmGatewayFirebase();
       return await gateway.mintaIzin();
     } catch (e) {
       debugPrint('PushService: permintaan izin gagal (${e.runtimeType})');
@@ -198,6 +225,13 @@ class PushService {
     _lastToken = token;
     try {
       await NotifikasiService().daftarkanToken(token);
+      // Pendaftaran berhasil: jangan kunci flag penolakan izin yang ditulis
+      // [aktifkanJikaBelumPernah] — izin bisa sudah diberikan ulang di sistem.
+      _tokenGagalDiPerangkat = false;
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_kIzinDitolak) ?? false) {
+        await prefs.setBool(_kIzinDitolak, false);
+      }
     } on NotifikasiRateLimited {
       // Sudah dicoba server baru-baru ini — diamkan agar tidak membanjiri.
     } catch (e) {
@@ -218,24 +252,138 @@ class PushService {
     }
   }
 
-  /// Bila NIM ini sudah opt-in (punya minimal satu token), ambil token FCM lalu
-  /// daftarkan. Dipanggil saat startup untuk memulihkan setelah reinstall.
-  /// Tidak melempar.
-  Future<void> daftarkanUlangJikaAktif() async {
+  /// Default-on untuk user BARU: dipanggil sekali tepat setelah login sukses.
+  /// Izin notifikasi diminta sekali; bila diterima token langsung didaftarkan
+  /// tanpa perlu user menekan tombol. Tidak melempar — kegagalan izin atau FCM
+  /// tidak boleh mengganggu alur login.
+  ///
+  /// Guard sesi [_aktivasiSudahDicoba] membuat pemanggilan kedua di launch yang
+  /// sama (mis. dari halaman utama) langsung dilewati.
+  ///
+  /// [gateway] hanya untuk pengujian; produksi memakai gateway dari [init].
+  Future<void> aktifkanSetelahLogin({MessagingGateway? gateway}) async {
+    if (_aktivasiSudahDicoba) return;
+    _aktivasiSudahDicoba = true;
+    final aktif = gateway ?? _gateway ?? const FcmGatewayFirebase();
+    try {
+      final diizinkan = await _mintaIzin(aktif);
+      if (!diizinkan) return; // panduan ke Pengaturan sistem ada di kartu
+      final token = await aktif.getToken();
+      if (token == null || token.isEmpty) {
+        _tokenGagalDiPerangkat = true;
+        return;
+      }
+      await daftarkanToken(token);
+    } catch (e) {
+      // DioException = kegagalan SERVER (bukan perangkat); sisanya
+      // (gateway/Firebase) dicatat agar kartu tak memandu ke setelan sistem.
+      if (e is! DioException) _tokenGagalDiPerangkat = true;
+      debugPrint('Push: aktivasi setelah login dilewati (${e.runtimeType})');
+    }
+  }
+
+  /// Default-on untuk user LAMA yang sudah pernah login tapi belum punya token
+  /// (mis. masuk sebelum fitur push ada). Dipanggil SETELAH frame pertama dari
+  /// [MainPage], supaya dialog izin tidak muncul di atas splash saat cold start.
+  ///
+  /// Bila NIM sudah aktif (reinstall/ganti perangkat), cukup daftar ulang token
+  /// terbaru. Bila belum, izin diminta SEKALI — penolakan dicatat di
+  /// SharedPreferences agar dialog tidak muncul tiap aplikasi dibuka; bila izin
+  /// ditolak permanen, kartu di halaman notifikasi memandu user ke Pengaturan
+  /// sistem (tak ada tombol Aktifkan di aplikasi).
+  ///
+  /// Guard sesi [_aktivasiSudahDicoba] membuat pemanggilan kedua di launch yang
+  /// sama (mis. setelah login) langsung dilewati.
+  ///
+  /// [gateway] hanya untuk pengujian; produksi memakai gateway dari [init].
+  Future<void> aktifkanJikaBelumPernah({MessagingGateway? gateway}) async {
+    if (_aktivasiSudahDicoba) return;
+    _aktivasiSudahDicoba = true;
+    final aktif = gateway ?? _gateway ?? const FcmGatewayFirebase();
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_kIzinDitolak) ?? false) {
+      // Flag penolakan TIDAK boleh jadi jalan buntu: bila user sudah
+      // mengizinkan notifikasi lewat Pengaturan sistem (kartu memandu ke
+      // sana), probe izin menemukannya — lanjutkan agar token terdaftar dan
+      // flag dibersihkan oleh [daftarkanToken].
+      if (!await _probeIzin(aktif)) return;
+      await prefs.setBool(_kIzinDitolak, false);
+    }
     try {
       final status = await NotifikasiService().getOptinStatus();
-      if (!status.enabled) return;
-      // Push sudah aktif sebelumnya (mis. setelah reinstall): pastikan izin
-      // notifikasi Android 13+ tetap ada agar pesan tak hilang diam-diam.
-      await mintaIzin();
-      final gateway = _gateway ?? const FcmGatewayFirebase();
-      final token = await gateway.getToken();
-      if (token != null && token.isNotEmpty) {
-        await daftarkanToken(token);
+      if (status.enabled) {
+        // Push sudah aktif: pastikan izin Android 13+ masih ada (probe tanpa
+        // dialog; kalau ternyata hilang, minta sekali), lalu segarkan token
+        // (FCM bisa merotasi token).
+        if (!await _probeIzin(aktif)) await _mintaIzin(aktif);
+        final token = await aktif.getToken();
+        if (token != null && token.isNotEmpty) await daftarkanToken(token);
+        return;
       }
+      final diizinkan = await _probeIzin(aktif) || await _mintaIzin(aktif);
+      if (!diizinkan) {
+        await prefs.setBool(_kIzinDitolak, true);
+        return;
+      }
+      final token = await aktif.getToken();
+      if (token == null || token.isEmpty) {
+        _tokenGagalDiPerangkat = true;
+        return;
+      }
+      await daftarkanToken(token);
     } catch (e) {
-      debugPrint('PushService: daftar-ulang token dilewati (${e.runtimeType})');
+      // 401 (sesi belum pulih) maupun gateway belum siap: coba lagi di launch
+      // berikutnya — tidak pernah mengganggu alur masuk aplikasi.
+      if (e is! DioException) _tokenGagalDiPerangkat = true;
+      debugPrint('Push: aktivasi default dilewati (${e.runtimeType})');
     }
+  }
+
+  /// Probe izin TANPA dialog. Kegagalan probe (mis. gateway belum siap)
+  /// dianggap "belum diizinkan" supaya alur tak melempar.
+  Future<bool> _probeIzin(MessagingGateway gateway) async {
+    try {
+      return await gateway.izinSudahDiberikan();
+    } catch (e) {
+      debugPrint('PushService: probe izin gagal (${e.runtimeType})');
+      return false;
+    }
+  }
+
+  /// Menandai percobaan aktivasi untuk sesi login BARU (logout → login dalam
+  /// proses yang sama). Tanpa ini, guard sekali-per-proses akan memblokir
+  /// pendaftaran token setelah user login ulang, dan push mati diam-diam
+  /// sampai aplikasi di-restart.
+  void mulaiSesiBaru() {
+    _aktivasiSudahDicoba = false;
+  }
+
+  // ── Panduan sistem (sheet) ───────────────────────────────────────────────
+
+  /// Sheet panduan sistem (izin notifikasi + pengecualian optimasi baterai)
+  /// sudah pernah ditampilkan? Dipakai halaman notifikasi supaya panduan
+  /// muncul sekali saja, tepat setelah push otomatis terdaftar aktif.
+  static Future<bool> sheetSudahDitampilkan() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kSheetDitampilkan) ?? false;
+  }
+
+  /// Menandai sheet panduan sudah ditampilkan. Kegagalan prefs didiamkan —
+  /// panduan akan muncul lagi di lain waktu, bukan alasan untuk melempar.
+  static Future<void> tandaiSheetDitampilkan() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kSheetDitampilkan, true);
+    } catch (e) {
+      debugPrint('Push: gagal menyimpan status sheet (${e.runtimeType})');
+    }
+  }
+
+  /// Mereset guard sesi [_aktivasiSudahDicoba]. Hanya untuk pengujian: setiap
+  /// test butuh percobaan aktivasi baru karena guard-nya statis per proses.
+  @visibleForTesting
+  static void resetAktivasiUntukTest() {
+    _aktivasiSudahDicoba = false;
   }
 
   // ── Internal ──────────────────────────────────────────────────────────────

@@ -26,11 +26,11 @@ void main() {
   ) async {
     await tester.pumpWidget(wrap(const NotifikasiPushCard(loading: true)));
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(AppLoading), findsOneWidget);
     expect(find.text('Memuat status notifikasi push…'), findsOneWidget);
   });
 
-  testWidgets('render state gagal menampilkan pesan dan tombol Coba Lagi', (
+  testWidgets('render state gagal menampilkan pesan dan tombol Muat Ulang', (
     tester,
   ) async {
     var dicobaUlang = false;
@@ -45,33 +45,64 @@ void main() {
     );
 
     expect(find.text('Gagal memuat status notifikasi push'), findsOneWidget);
-    expect(find.text('Coba Lagi'), findsOneWidget);
+    expect(find.text('Muat Ulang'), findsOneWidget);
 
-    await tester.tap(find.text('Coba Lagi'));
+    await tester.tap(find.text('Muat Ulang'));
     await tester.pump();
     expect(dicobaUlang, isTrue);
   });
 
   testWidgets(
-    'render state nonaktif menampilkan pill Nonaktif dan tombol aktifkan',
+    'render state aktif menampilkan pill Aktif & jumlah perangkat (baca saja)',
     (tester) async {
-      var diaktifkan = false;
-
       await tester.pumpWidget(
         wrap(
-          NotifikasiPushCard(
-            status: const NotifikasiOptinStatus(enabled: false),
-            onAktifkan: () => diaktifkan = true,
+          const NotifikasiPushCard(
+            status: NotifikasiOptinStatus(enabled: true, tokenCount: 2),
+          ),
+        ),
+      );
+
+      expect(find.text('Aktif'), findsOneWidget);
+      expect(
+        find.text('Notifikasi kampus aktif di perangkat ini.'),
+        findsOneWidget,
+      );
+      expect(find.text('Android · Terhubung · 2 perangkat'), findsOneWidget);
+      // Status-only: tak ada tombol Aktifkan/Matikan sama sekali.
+      expect(find.byType(FilledButton), findsNothing);
+      expect(find.byType(OutlinedButton), findsNothing);
+      expect(find.text('Matikan'), findsNothing);
+      expect(find.text('Aktifkan Notifikasi Push'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'render state nonaktif memandu ke Pengaturan sistem, tanpa tombol aplikasi',
+    (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          const NotifikasiPushCard(
+            status: NotifikasiOptinStatus(enabled: false),
           ),
         ),
       );
 
       expect(find.text('Nonaktif'), findsOneWidget);
-      expect(find.text('Aktifkan Notifikasi Push'), findsOneWidget);
-
-      await tester.tap(find.text('Aktifkan Notifikasi Push'));
-      await tester.pump();
-      expect(diaktifkan, isTrue);
+      expect(
+        find.textContaining('dinyalakan otomatis'),
+        findsOneWidget,
+        reason: 'default-on: notifikasi dinyalakan app sendiri',
+      );
+      expect(
+        find.textContaining('Pengaturan > Notifikasi > Ini Amikom?'),
+        findsOneWidget,
+        reason: 'panduan izin lewat Pengaturan sistem, bukan tombol in-app',
+      );
+      // Tak ada tombol aktivasi di kartu.
+      expect(find.byType(FilledButton), findsNothing);
+      expect(find.byType(OutlinedButton), findsNothing);
+      expect(find.text('Aktifkan Notifikasi Push'), findsNothing);
     },
   );
 
@@ -92,68 +123,41 @@ void main() {
   );
 
   testWidgets(
-    'render state aktif menampilkan pill Aktif, tombol Matikan',
+    'nonaktif karena perangkat/gateway gagal tampil pesan khusus, '
+    'bukan panduan Pengaturan',
     (tester) async {
-      var dimatikan = false;
-
       await tester.pumpWidget(
         wrap(
-          NotifikasiPushCard(
-            status: const NotifikasiOptinStatus(enabled: true, tokenCount: 2),
-            onMatikan: () => dimatikan = true,
+          const NotifikasiPushCard(
+            status: NotifikasiOptinStatus(enabled: false, tokenCount: 0),
+            perangkatGagal: true,
           ),
         ),
       );
 
-      expect(find.text('Aktif'), findsOneWidget);
-      expect(find.text('Matikan'), findsOneWidget);
+      expect(find.text('Nonaktif'), findsOneWidget);
       expect(
-        find.text('Android · Terhubung · 2 perangkat'),
+        find.textContaining('tidak bisa dinyalakan di perangkat ini'),
         findsOneWidget,
-        reason: 'status aktif menampilkan platform & jumlah token terdaftar',
       );
-
-      await tester.tap(find.text('Matikan'));
-      await tester.pump();
-      expect(dimatikan, isTrue);
+      expect(
+        find.textContaining('buka Pengaturan > Notifikasi'),
+        findsNothing,
+        reason: 'kegagalan gateway tak bisa diperbaiki lewat setelan sistem',
+      );
     },
   );
 
   testWidgets(
-    'render state aktif terkunci 429 menonaktifkan Matikan dan menampilkan hitungan mundur',
+    'render state tidak tersedia (503) menampilkan frasa persis & Muat Ulang',
     (tester) async {
-      var dimatikan = false;
-
-      await tester.pumpWidget(
-        wrap(
-          NotifikasiPushCard(
-            status: const NotifikasiOptinStatus(enabled: true, tokenCount: 1),
-            retryAfterSeconds: 30,
-            onMatikan: () => dimatikan = true,
-          ),
-        ),
-      );
-
-      expect(find.text('Coba lagi dalam 30s'), findsOneWidget);
-      final btn = tester.widget<OutlinedButton>(find.byType(OutlinedButton));
-      expect(btn.onPressed, isNull);
-
-      await tester.tap(find.text('Coba lagi dalam 30s'));
-      await tester.pump();
-      expect(dimatikan, isFalse);
-    },
-  );
-
-  testWidgets(
-    'render state tidak tersedia (503) menampilkan pill warning dan tombol disabled',
-    (tester) async {
-      var diaktifkan = false;
+      var dimuatUlang = false;
 
       await tester.pumpWidget(
         wrap(
           NotifikasiPushCard(
             tidakTersedia: true,
-            onAktifkan: () => diaktifkan = true,
+            onMuatUlang: () => dimuatUlang = true,
           ),
         ),
       );
@@ -163,65 +167,14 @@ void main() {
         find.text('Layanan notifikasi push sedang dinonaktifkan oleh server.'),
         findsOneWidget,
       );
+      expect(find.text('Muat Ulang'), findsOneWidget);
 
       final surface = tester.widget<AppSurface>(find.byType(AppSurface));
       expect(surface.variant, AppSurfaceVariant.warning);
 
-      final btn = tester.widget<FilledButton>(find.byType(FilledButton));
-      expect(btn.onPressed, isNull);
-
-      await tester.tap(find.text('Aktifkan Notifikasi Push'));
+      await tester.tap(find.text('Muat Ulang'));
       await tester.pump();
-      expect(diaktifkan, isFalse);
-    },
-  );
-
-  testWidgets('tombol disabled dan menampilkan spinner saat busy', (
-    tester,
-  ) async {
-    var diaktifkan = false;
-
-    await tester.pumpWidget(
-      wrap(
-        NotifikasiPushCard(
-          status: const NotifikasiOptinStatus(enabled: false),
-          busy: true,
-          onAktifkan: () => diaktifkan = true,
-        ),
-      ),
-    );
-
-    final btn = tester.widget<FilledButton>(find.byType(FilledButton));
-    expect(btn.onPressed, isNull);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-
-    await tester.tap(find.text('Aktifkan Notifikasi Push'));
-    await tester.pump();
-    expect(diaktifkan, isFalse);
-  });
-
-  testWidgets(
-    'hitung mundur rate limit 429 menampilkan Coba lagi dalam Ns dan tombol disabled',
-    (tester) async {
-      var diaktifkan = false;
-
-      await tester.pumpWidget(
-        wrap(
-          NotifikasiPushCard(
-            status: const NotifikasiOptinStatus(enabled: false),
-            retryAfterSeconds: 45,
-            onAktifkan: () => diaktifkan = true,
-          ),
-        ),
-      );
-
-      expect(find.text('Coba lagi dalam 45s'), findsOneWidget);
-      final btn = tester.widget<FilledButton>(find.byType(FilledButton));
-      expect(btn.onPressed, isNull);
-
-      await tester.tap(find.text('Coba lagi dalam 45s'));
-      await tester.pump();
-      expect(diaktifkan, isFalse);
+      expect(dimuatUlang, isTrue);
     },
   );
 

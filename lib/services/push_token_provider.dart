@@ -1,23 +1,12 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 
-import '../models/app_failure.dart';
-
-/// Sumber token FCM (Firebase Cloud Messaging) untuk perangkat ini.
+/// Kontrak injeksi ke Firebase Cloud Messaging (FCM).
 ///
-/// Seam (titik suntik) agar lapisan UI tidak bergantung langsung ke Firebase:
-/// [NotifikasiListPage] menerima sebuah [PushTokenProvider], sementara
-/// implementasi produksi dibuat terpisah di [FirebasePushTokenProvider].
-abstract class PushTokenProvider {
-  /// Mengambil token FCM perangkat ini, atau `null` bila belum tersedia.
-  Future<String?> ambilToken();
-}
-
-/// Kontrak injeksi ke Firebase Cloud Messaging.
-///
-/// Dipisah dari [PushTokenProvider] agar properti internal
-/// `FirebaseMessaging.instance` tidak pernah disentuh langsung oleh provider
-/// maupun [PushService] — sehingga perilaku push bisa diuji tanpa Firebase.
+/// Dipisahkan agar properti internal `FirebaseMessaging.instance` tidak pernah
+/// disentuh langsung oleh [PushService] maupun lapisan UI — sehingga perilaku
+/// push (izin, token, pesan masuk) bisa diuji tanpa Firebase. File ini kini
+/// hanya berisi gateway FCM; registrasi token ke server dikerjakan
+/// [PushService] lewat gateway ini.
 abstract class MessagingGateway {
   Future<String?> getToken();
 
@@ -37,30 +26,10 @@ abstract class MessagingGateway {
 
   /// Meminta izin notifikasi. Mengembalikan `true` bila diizinkan.
   Future<bool> mintaIzin();
-}
 
-/// Implementasi produksi [PushTokenProvider] yang meminta token FCM.
-///
-/// `const`-constructible tanpa argumen sehingga bisa dipakai sebagai nilai
-/// default parameter UI. Firebase hanya tersentuh saat [ambilToken] dipanggil,
-/// bukan saat konstruksi.
-class FirebasePushTokenProvider implements PushTokenProvider {
-  const FirebasePushTokenProvider({this.gateway = const FcmGatewayFirebase()});
-
-  final MessagingGateway gateway;
-
-  @override
-  Future<String?> ambilToken() async {
-    try {
-      return await gateway.getToken();
-    } catch (e) {
-      // Log ringan TANPA nilai token; hanya tipe error yang aman dicatat.
-      debugPrint('PushTokenProvider: gagal mengambil token (${e.runtimeType})');
-      throw const AppFailure(
-        'Gagal mengakses token FCM. Periksa koneksi lalu coba lagi.',
-      );
-    }
-  }
+  /// Memeriksa izin notifikasi TANPA memunculkan dialog. `true` bila izin
+  /// sudah diberikan (termasuk yang diaktifkan user lewat Pengaturan sistem).
+  Future<bool> izinSudahDiberikan();
 }
 
 /// Pembungkus [FirebaseMessaging] yang memenuhi kontrak [MessagingGateway].
@@ -95,6 +64,13 @@ class FcmGatewayFirebase implements MessagingGateway {
       badge: true,
       sound: true,
     );
+    return settings.authorizationStatus == AuthorizationStatus.authorized;
+  }
+
+  @override
+  Future<bool> izinSudahDiberikan() async {
+    final settings = await FirebaseMessaging.instance
+        .getNotificationSettings();
     return settings.authorizationStatus == AuthorizationStatus.authorized;
   }
 }

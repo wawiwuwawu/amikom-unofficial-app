@@ -30,13 +30,11 @@ Future<void> main() async {
   }
 
   // Push FCM: channel + listener background/foreground. Sebelum
-  // google-services.json tersedia, inisialisasi gagal dengan aman — tombol
-  // Aktifkan yang akan melaporkan kegagalan, bukan crash.
+  // google-services.json tersedia, inisialisasi gagal dengan aman — push
+  // otomatis akan dicoba lagi saat aplikasi dibuka berikutnya, bukan crash.
   try {
     await Firebase.initializeApp();
     await PushService.instance.init();
-    // Daftarkan ulang token bila push sudah aktif (mis. setelah reinstall).
-    unawaited(PushService.instance.daftarkanUlangJikaAktif());
   } catch (e) {
     debugPrint('Push FCM belum aktif: $e');
   }

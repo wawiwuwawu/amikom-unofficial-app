@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import '../services/api_client.dart';
+import '../services/push_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
 
@@ -128,6 +129,9 @@ class _LoginPageState extends State<LoginPage> {
       _retryCountdown = 0;
 
       if (!mounted) return;
+      // Notifikasi push default-on: minta izin sekali lalu daftarkan token.
+      // Tidak menghalangi navigasi — kegagalan FCM tak boleh mengganggu login.
+      unawaited(PushService.instance.aktifkanSetelahLogin());
       Navigator.pushReplacementNamed(context, '/main');
     } on DioException catch (e) {
       if (!mounted) return;

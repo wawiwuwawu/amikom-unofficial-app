@@ -7,29 +7,32 @@ import 'app_kit.dart';
 
 /// Kartu status notifikasi push (FCM) di puncak halaman notifikasi.
 ///
-/// Seluruh state & aksi disuntikkan dari luar agar kartu bebas dari ketergantungan
+/// Status bersifat BACA-SAJA: notifikasi dinyalakan otomatis oleh aplikasi
+/// (izin diminta sendiri setelah login maupun saat aplikasi dibuka kembali),
+/// jadi user tidak perlu menyalakannya lewat tombol di kartu ini. Bila push
+/// belum aktif — misalnya izin notifikasi ditolak — kartu memandu ke
+/// pengaturan sistem perangkat, bukan menawarkan aksi dalam aplikasi.
+///
+/// Seluruh state disuntikkan dari luar agar kartu bebas dari ketergantungan
 /// jaringan langsung dan mudah diuji secara terisolasi.
 class NotifikasiPushCard extends StatelessWidget {
   final NotifikasiOptinStatus? status;
   final bool loading;
-  final bool busy;
   final bool tidakTersedia;
   final String? pesanGagal;
-  final int retryAfterSeconds;
-  final VoidCallback? onAktifkan;
-  final VoidCallback? onMatikan;
+
+  /// Aktivasi gagal karena perangkat/build (gateway FCM tak siap), bukan
+  /// karena izin sistem — kartu tak boleh memandu ke Pengaturan sistem.
+  final bool perangkatGagal;
   final VoidCallback? onMuatUlang;
 
   const NotifikasiPushCard({
     super.key,
     this.status,
     this.loading = false,
-    this.busy = false,
     this.tidakTersedia = false,
     this.pesanGagal,
-    this.retryAfterSeconds = 0,
-    this.onAktifkan,
-    this.onMatikan,
+    this.perangkatGagal = false,
     this.onMuatUlang,
   });
 
@@ -58,25 +61,8 @@ class NotifikasiPushCard extends StatelessWidget {
   }
 
   Widget _buildMemuat() {
-    return AppSurface(
-      child: Row(
-        children: [
-          const SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(strokeWidth: 2.2),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(
-              'Memuat status notifikasi push…',
-              style: AppText.bodySm,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
+    return const AppSurface(
+      child: AppLoading(message: 'Memuat status notifikasi push…'),
     );
   }
 
@@ -107,13 +93,9 @@ class NotifikasiPushCard extends StatelessWidget {
           Text(pesanGagal!, style: AppText.bodySm),
           const SizedBox(height: AppSpacing.md),
           OutlinedButton.icon(
-            onPressed: (busy || retryAfterSeconds > 0) ? null : onMuatUlang,
+            onPressed: onMuatUlang,
             icon: const Icon(CupertinoIcons.refresh, size: 16),
-            label: Text(
-              retryAfterSeconds > 0
-                  ? 'Coba lagi dalam ${retryAfterSeconds}s'
-                  : 'Coba Lagi',
-            ),
+            label: const Text('Muat Ulang'),
           ),
         ],
       ),
@@ -145,9 +127,10 @@ class NotifikasiPushCard extends StatelessWidget {
             style: AppText.bodySm,
           ),
           const SizedBox(height: AppSpacing.md),
-          const FilledButton(
-            onPressed: null,
-            child: Text('Aktifkan Notifikasi Push'),
+          OutlinedButton.icon(
+            onPressed: onMuatUlang,
+            icon: const Icon(CupertinoIcons.refresh, size: 16),
+            label: const Text('Muat Ulang'),
           ),
         ],
       ),
@@ -155,9 +138,6 @@ class NotifikasiPushCard extends StatelessWidget {
   }
 
   Widget _buildNonaktif() {
-    final terkunciRateLimit = retryAfterSeconds > 0;
-    final nonaktifTombol = busy || terkunciRateLimit;
-
     return AppSurface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,12 +156,32 @@ class NotifikasiPushCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Terima kabar terbaru dari kampus langsung di ponsel Anda.',
-            style: AppText.bodySm,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          if (perangkatGagal)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  CupertinoIcons.exclamationmark_triangle,
+                  size: 13,
+                  color: AppColors.warning,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    'Notifikasi tidak bisa dinyalakan di perangkat ini — '
+                    'perbarui aplikasi atau hubungi pengelola.',
+                    style: AppText.label.copyWith(color: AppColors.warning),
+                  ),
+                ),
+              ],
+            )
+          else
+            Text(
+              'Notifikasi kampus dinyalakan otomatis oleh aplikasi. Bila belum '
+              'aktif, buka Pengaturan > Notifikasi > Ini Amikom? lalu izinkan '
+              'notifikasi untuk aplikasi ini.',
+              style: AppText.bodySm,
+            ),
           // Saran BE: enabled=false + token masih terdaftar berarti server
           // push bermasalah (mis. FCM mati), bukan user belum pernah daftar.
           if (status != null && status!.tokenCount > 0) ...[
@@ -205,23 +205,12 @@ class NotifikasiPushCard extends StatelessWidget {
               ],
             ),
           ],
-          const SizedBox(height: AppSpacing.md),
-          FilledButton(
-            onPressed: nonaktifTombol ? null : onAktifkan,
-            child: _buildLabelTombolAksi(
-              labelDefault: 'Aktifkan Notifikasi Push',
-              terkunciRateLimit: terkunciRateLimit,
-            ),
-          ),
         ],
       ),
     );
   }
 
   Widget _buildAktif() {
-    final terkunciRateLimit = retryAfterSeconds > 0;
-    final nonaktifMatikan = busy || terkunciRateLimit;
-
     return AppSurface(
       variant: AppSurfaceVariant.hero,
       child: Column(
@@ -264,41 +253,9 @@ class NotifikasiPushCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          OutlinedButton(
-            onPressed: nonaktifMatikan ? null : onMatikan,
-            child: _buildLabelTombolAksi(
-              labelDefault: 'Matikan',
-              terkunciRateLimit: terkunciRateLimit,
-            ),
-          ),
         ],
       ),
     );
-  }
-
-  Widget _buildLabelTombolAksi({
-    required String labelDefault,
-    required bool terkunciRateLimit,
-  }) {
-    if (terkunciRateLimit) {
-      return Text('Coba lagi dalam ${retryAfterSeconds}s');
-    }
-    if (busy) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Text(labelDefault),
-        ],
-      );
-    }
-    return Text(labelDefault);
   }
 }
 
@@ -350,10 +307,10 @@ class NotifikasiPushSheet extends StatelessWidget {
                   _buildLangkah(
                     nomor: 1,
                     teks:
-                        'Izinkan notifikasi untuk aplikasi ini. Pada Android 13 ke '
-                        'atas, izin diminta saat Anda menekan Aktifkan; bila '
-                        'sebelumnya ditolak, buka Pengaturan > Notifikasi > '
-                        'Ini Amikom?.',
+                        'Izinkan notifikasi untuk aplikasi ini. Izin diminta '
+                        'otomatis oleh aplikasi; bila sebelumnya ditolak, buka '
+                        'Pengaturan > Notifikasi > Ini Amikom? lalu izinkan '
+                        'notifikasi.',
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _buildLangkah(

@@ -1,4 +1,5 @@
-import 'dart:async';
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -6,20 +7,13 @@ import '../models/notifikasi.dart';
 import '../services/notifikasi_service.dart';
 import '../services/api_client.dart';
 import '../services/push_service.dart';
-import '../services/push_token_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
 import '../widgets/notifikasi_push_card.dart';
 import 'notifikasi_detail_page.dart';
 
 class NotifikasiListPage extends StatefulWidget {
-  /// Sumber token FCM untuk perangkat ini.
-  final PushTokenProvider pushTokenProvider;
-
-  const NotifikasiListPage({
-    super.key,
-    this.pushTokenProvider = const FirebasePushTokenProvider(),
-  });
+  const NotifikasiListPage({super.key});
 
   @override
   State<NotifikasiListPage> createState() => _NotifikasiListPageState();
@@ -35,11 +29,8 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
 
   NotifikasiOptinStatus? _optinStatus;
   bool _optinLoading = true;
-  bool _optinBusy = false;
   bool _optinTidakTersedia = false;
   String? _optinError;
-  int _retryCountdown = 0;
-  Timer? _countdownTimer;
 
   @override
   void initState() {
@@ -51,7 +42,6 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _countdownTimer?.cancel();
     super.dispose();
   }
 
@@ -61,28 +51,14 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
     // memperbaiki FCM) — muat ulang saat app dibuka kembali.
     if (state == AppLifecycleState.resumed) {
       _loadOptinStatus();
-    }
-  }
-
-  void _startRetryCountdown(int seconds) {
-    _countdownTimer?.cancel();
-    if (mounted) {
-      setState(() => _retryCountdown = seconds);
-    } else {
-      _retryCountdown = seconds;
-    }
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
+      // Pemulihan tanpa tombol: bila status masih Nonaktif (mis. user baru
+      // mengizinkan notifikasi di Pengaturan sistem), coba aktivasi lagi —
+      // guard sesi di PushService menahan maksimum satu kali per launch.
+      final status = _optinStatus;
+      if (status != null && !status.enabled && !_optinTidakTersedia) {
+        unawaited(PushService.instance.aktifkanJikaBelumPernah());
       }
-      if (_retryCountdown <= 1) {
-        timer.cancel();
-        setState(() => _retryCountdown = 0);
-      } else {
-        setState(() => _retryCountdown--);
-      }
-    });
+    }
   }
 
   Future<void> _loadData() async {
@@ -126,25 +102,15 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
     }
     try {
       final status = await _service.getOptinStatus();
-      if (mounted) {
-        // Status segar membatalkan hitung mundur 429 sebelumnya, supaya tombol
-        // tidak tetap terkunci padahal permintaan sudah boleh lagi.
-        _countdownTimer?.cancel();
-        _countdownTimer = null;
-        setState(() {
-          _optinStatus = status;
-          _optinTidakTersedia = false;
-          _optinLoading = false;
-          _retryCountdown = 0;
-        });
-      }
-    } on NotifikasiRateLimited catch (e) {
       if (!mounted) return;
-      _startRetryCountdown(e.retryAfterSeconds);
       setState(() {
-        _optinError = userErrorMessage(e);
+        _optinStatus = status;
+        _optinTidakTersedia = false;
         _optinLoading = false;
       });
+      // Aktivasi berjalan otomatis (izin diminta app sendiri), jadi panduan
+      // cukup tampil SEKALI saat status sudah Aktif — bukan tombol in-app.
+      await _tampilkanSheetBilaPerlu(status);
     } catch (e) {
       if (!mounted) return;
       final msg = userErrorMessage(e, 'Gagal memuat status notifikasi push');
@@ -157,119 +123,34 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
     }
   }
 
-  Future<void> _aktifkanPush() async {
-    if (_optinBusy || _retryCountdown > 0) return;
-    setState(() => _optinBusy = true);
-
+  /// Menampilkan panduan sistem (izin notifikasi + pengecualian optimasi
+  /// baterai) sekali saja, tepat setelah push otomatis terdaftar aktif.
+  /// Status "sudah pernah ditampilkan" disimpan oleh [PushService].
+  Future<void> _tampilkanSheetBilaPerlu(NotifikasiOptinStatus status) async {
+    if (!status.enabled) return;
+    var sudahDitampilkan = true;
     try {
-      final diizinkan = await PushService.instance.mintaIzin();
-      if (!diizinkan) {
-        if (!mounted) return;
-        const pesan =
-            'Izin notifikasi ditolak. Aktifkan notifikasi untuk aplikasi ini '
-            'di Pengaturan > Notifikasi > Ini Amikom?.';
-        setState(() => _optinError = pesan);
-        AppSnack.show(context, pesan, backgroundColor: AppColors.warning);
-        return;
-      }
-
-      final token = await widget.pushTokenProvider.ambilToken();
-      if (token == null || token.trim().isEmpty) {
-        if (!mounted) return;
-        AppSnack.show(
-          context,
-          'Token notifikasi perangkat ini belum tersedia. Coba lagi sebentar lagi.',
-          backgroundColor: AppColors.warning,
-        );
-        return;
-      }
-
-      final status = await _service.daftarkanToken(token.trim());
-      if (!mounted) return;
-      _countdownTimer?.cancel();
-      _countdownTimer = null;
-      setState(() {
-        _optinStatus = status;
-        _optinTidakTersedia = false;
-        _optinError = null;
-        _retryCountdown = 0;
-      });
-      await showNotifikasiPushSheet(context);
-    } on NotifikasiRateLimited catch (e) {
-      if (!mounted) return;
-      _startRetryCountdown(e.retryAfterSeconds);
-      AppSnack.show(
-        context,
-        userErrorMessage(e),
-        backgroundColor: AppColors.warning,
-      );
+      sudahDitampilkan = await PushService.sheetSudahDitampilkan();
+      if (sudahDitampilkan) return;
+      await PushService.tandaiSheetDitampilkan();
     } catch (e) {
-      if (!mounted) return;
-      final msg = userErrorMessage(e, 'Gagal mengaktifkan notifikasi push');
-      if (msg.contains('dinonaktifkan oleh server')) {
-        setState(() {
-          _optinTidakTersedia = true;
-          _optinError = null;
-        });
-        AppSnack.show(context, msg, backgroundColor: AppColors.warning);
-      } else {
-        AppSnack.show(context, msg, backgroundColor: AppColors.danger);
-      }
-    } finally {
-      if (mounted) setState(() => _optinBusy = false);
+      debugPrint('Push: status sheet panduan gagal dibaca (${e.runtimeType})');
+      return;
     }
-  }
-
-  Future<void> _matikanPush() async {
-    if (_optinBusy || _retryCountdown > 0) return;
-    setState(() => _optinBusy = true);
-
-    try {
-      // Tanpa token lokal: body kosong = hapus SEMUA token milik NIM ini.
-      await _service.hapusToken('');
-      if (!mounted) return;
-      _countdownTimer?.cancel();
-      _countdownTimer = null;
-      setState(() {
-        _optinStatus = const NotifikasiOptinStatus(enabled: false);
-        _optinError = null;
-        _retryCountdown = 0;
-      });
-      AppSnack.show(
-        context,
-        'Notifikasi push dimatikan.',
-        backgroundColor: AppColors.primary,
-      );
-    } on NotifikasiRateLimited catch (e) {
-      if (!mounted) return;
-      _startRetryCountdown(e.retryAfterSeconds);
-      AppSnack.show(
-        context,
-        userErrorMessage(e),
-        backgroundColor: AppColors.warning,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      AppSnack.show(
-        context,
-        userErrorMessage(e, 'Gagal menonaktifkan notifikasi push'),
-        backgroundColor: AppColors.danger,
-      );
-    } finally {
-      if (mounted) setState(() => _optinBusy = false);
-    }
+    if (!mounted) return;
+    await showNotifikasiPushSheet(context);
   }
 
   Widget _buildPushCard() {
     return NotifikasiPushCard(
       status: _optinStatus,
       loading: _optinLoading,
-      busy: _optinBusy,
+      perangkatGagal:
+          _optinStatus != null &&
+          !_optinStatus!.enabled &&
+          PushService.tokenGagalDiPerangkat,
       tidakTersedia: _optinTidakTersedia,
       pesanGagal: _optinError,
-      retryAfterSeconds: _retryCountdown,
-      onAktifkan: _aktifkanPush,
-      onMatikan: _matikanPush,
       onMuatUlang: _loadOptinStatus,
     );
   }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -63,6 +65,11 @@ class _MainPageState extends State<MainPage> {
       }
       // Ketukan notifikasi FCM yang datang sebelum UI siap (cold start).
       PushService.instance.terapkanPendingTerbuka();
+      // Notifikasi push default-on: daftarkan token perangkat ini bila NIM
+      // belum punya (user lama) atau segarkan bila sudah aktif (reinstall).
+      // Sengaja SETELAH frame pertama supaya dialog izin tidak muncul di atas
+      // splash saat cold start.
+      unawaited(PushService.instance.aktifkanJikaBelumPernah());
     });
   }
 
@@ -243,6 +250,9 @@ class _MainPageState extends State<MainPage> {
                       // dibersihkan (butuh token auth yang sah).
                       try {
                         await PushService.instance.bersihkanSaatLogout();
+                        // Sesi login baru: izinkan aktivasi push sekali lagi
+                        // (guard per-proses akan memblokir seumur hidup app).
+                        PushService.instance.mulaiSesiBaru();
                       } catch (_) {
                         // Logout tetap lanjut walau push gagal dibersihkan.
                       }
