@@ -17,6 +17,7 @@ rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-
 - ✨ Panduan sekali-tampil (izin notifikasi & optimasi baterai aplikasi) muncul otomatis setelah push aktif, dan penolakan izin dicatat di perangkat agar dialog tidak muncul berulang
 - 🧪 Test: service push (kontrak `token_count`/503/429 `Retry-After`/404, kebijakan retry 401, identitas nim di secure storage, status baca per-NIM), aktivasi default-on (guard sesi, izin ditolak, sheet sekali), dan deep link (ekstraksi id, dedupe, antrean pending)
 - 🩺 Pendaftaran token ditolak server (mis. adapter 503 — FCM belum dikonfigurasi) tak lagi memandu user ke "Pengaturan > Notifikasi" (pembetulan tak bisa membuka server); kartu Nonaktif kini menampilkan pesan kegagalan server + tombol "Muat Ulang" untuk mencoba lagi setelah server diperbaiki, dan aktivasi dipaksa ulang (melewati guard sesi) saat aplikasi dibuka kembali dari background
+- 🔔 Konfigurasi meta-data `com.google.firebase.messaging.default_notification_channel_id` (`notifikasi_kampus`) di `AndroidManifest.xml` agar notifikasi background Android 8+ selalu terpetakan ke channel resmi aplikasi
 
 ### Changed
 - ♻️ Status baca notifikasi disimpan per-NIM (`read_notification_ids_<nim>`, migrasi otomatis dari kunci lama) dan dipangkas maksimal 2000 id; identitas nim kini ikut dipulihkan saat aplikasi dibuka kembali
