@@ -7,6 +7,8 @@ rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-
 
 ## [Unreleased]
 
+## [v1.12.0] - 2026-10-15
+
 ### Added
 - ✨ Notifikasi push (Android) melalui **FCM (Firebase Cloud Messaging)**: kartu status di puncak halaman Notifikasi (default-on, tanpa tombol Aktifkan/Matikan), bottom sheet panduan sekali-tampil (izin notifikasi & optimasi baterai aplikasi ini), serta kontrak token perangkat (`GET /api/v1/notifikasi/optin` → `{enabled, token_count}`, `POST|DELETE /api/v1/notifikasi/device-token`)
 - 🔗 Deep link `amikomstudent://notifikasi/<id>`: ketukan pada notifikasi sistem membuka detail notifikasi langsung di aplikasi (cold start & app berjalan), tanpa dobel-buka dalam 2 detik
@@ -124,7 +126,8 @@ Rilis ini untuk menguji alur pembuatan APK otomatis — bukan menambah atau meng
 - 🚀 Rilis pertama
 - 🔐 Login/logout, dashboard, berita kampus, KHS (pilih semester, tabel nilai, download PDF, share), pengumuman akademik
 
-[Belum Dirilis]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.11.1...HEAD
+[Belum Dirilis]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.12.0...HEAD
+[v1.12.0]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.11.1...v1.12.0
 [v1.11.1]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.11.0...v1.11.1
 [v1.11.0]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.10.0...v1.11.0
 [v1.9.0]: https://github.com/wawiwuwawu/amikom-unofficial-app/compare/v1.8.0...v1.9.0
