@@ -8,6 +8,7 @@ import '../services/api_client.dart';
 import '../services/notifikasi_service.dart';
 import '../services/deep_link_service.dart';
 import '../services/pengingat_jadwal_service.dart';
+import '../services/periode_ujian_service.dart';
 import '../services/push_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
@@ -257,6 +258,9 @@ class _MainPageState extends State<MainPage> {
                       } catch (_) {
                         // Logout tetap lanjut walau pengingat gagal dibersihkan.
                       }
+                      // Hapus memoize periode ujian milik NIM ini agar tidak
+                      // menggerbangi agenda mahasiswa lain setelah login ulang.
+                      PeriodeUjianService.instance.bersihkanSaatLogout();
                       await ApiClient.instance.fullLogout();
                       if (!mounted) return;
                       Navigator.pushReplacementNamed(context, '/login');

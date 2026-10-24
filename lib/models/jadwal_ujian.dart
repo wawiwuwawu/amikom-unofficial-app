@@ -25,7 +25,11 @@ class JadwalUjian {
     return JadwalUjian(
       kode: json['KODE']?.toString().trim() ?? '',
       mkl: json['MKL']?.toString().trim() ?? '',
-      tanggal: json['TANGGAL']?.toString().trim() ?? '',
+      // Portal memakai dua key untuk tanggal yang sama: `TANGGAL` pada UTS dan
+      // `TGL_UJIAN` pada UAS (akan diseragamkan BE — lihat pesan-be.md).
+      // Alias key sederhana, bukan fallback berlapis.
+      tanggal:
+          (json['TANGGAL'] ?? json['TGL_UJIAN'])?.toString().trim() ?? '',
       hari: json['HARI']?.toString().trim() ?? '',
       ruang: json['RUANG']?.toString().trim() ?? '',
       jamMulai: json['JAM_MULAI']?.toString().trim() ?? '',

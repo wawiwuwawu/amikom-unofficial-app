@@ -6,6 +6,7 @@ import '../models/agenda_terpadu.dart';
 import '../models/sp.dart';
 import '../services/api_client.dart';
 import '../services/akademik_service.dart';
+import '../services/periode_ujian_service.dart';
 import '../services/sp_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/waktu.dart';
@@ -41,6 +42,11 @@ class _DashboardPageState extends State<DashboardPage> {
   Dashboard? _data;
   AgendaTerpaduData? _agendaData;
   SpRekomendasiData? _spRekomendasiData;
+
+  /// Periode ujian terdekat (tanggal, 'UTS'/'UAS') — null bila tidak ada
+  /// ujian mendatang / fetch gagal (fail-open dari [PeriodeUjianService]).
+  (DateTime, String)? _periodeUjian;
+
   bool _loading = true;
   String? _error;
 
@@ -97,6 +103,13 @@ class _DashboardPageState extends State<DashboardPage> {
       );
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+    // Periode ujian menyusul non-blocking: endpoint jadwal-ujian memakai dio
+    // yang sama (receiveTimeout 60 detik) dan tidak boleh memperlambat
+    // beranda. Selama belum tiba, gerbang fail-open (ujian tampil).
+    final periode = await PeriodeUjianService.instance.tanggalUjianTerdekat();
+    if (mounted) {
+      setState(() => _periodeUjian = periode);
     }
   }
 
@@ -228,7 +241,12 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildJadwalHariIni() {
     final todayName = namaHariDariWeekday(DateTime.now().weekday);
-    final items = _agendaData?.agenda[todayName] ?? [];
+    // Gerbang tampil ujian (tanpa banner, fail-open): baris ujian di luar
+    // jendela [PeriodeUjianService.ambangHariUjian] disembunyikan agar
+    // "Jadwal Hari Ini" tidak menampilkan ujian sebulan sebelum terbit.
+    final items = (_agendaData?.agenda[todayName] ?? const <AgendaItem>[])
+        .where(_ujianTampil)
+        .toList();
     final ongoing = _ongoingItem(items);
 
     return AppSection(
@@ -266,6 +284,16 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
     );
+  }
+
+  /// Gerbang ujian "Jadwal Hari Ini": non-ujian selalu tampil; ujian tampil
+  /// bila periode null (fail-open) atau tanggal ujian dalam jendela.
+  bool _ujianTampil(AgendaItem item) {
+    final tipe = item.tipe.trim().toLowerCase();
+    if (tipe != 'uts' && tipe != 'uas') return true;
+    final now = DateTime.now();
+    final hariIni = DateTime(now.year, now.month, now.day);
+    return PeriodeUjianService.dalamJendela(_periodeUjian, hariIni);
   }
 
   AgendaItem? _ongoingItem(List<AgendaItem> items) {

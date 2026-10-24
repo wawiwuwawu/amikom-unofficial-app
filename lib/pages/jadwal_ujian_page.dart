@@ -141,9 +141,6 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
           : 'Ujian Akhir Semester',
       scrollable: false,
       padding: EdgeInsets.zero,
-      floatingActionButton: _jadwalList.isNotEmpty && !_isLoading
-          ? _buildCetakKartu()
-          : null,
       body: Column(
         children: [
           Padding(
@@ -223,47 +220,64 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
     return RefreshIndicator(
       onRefresh: _loadData,
       color: AppColors.primary,
-      child: _jadwalList.isEmpty ? _buildEmptyState() : _buildList(),
+      child: _buildList(),
     );
   }
 
   Widget _buildEmptyState() {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-        const AppEmptyState(
-          title: 'Belum Waktunya Ujian Nih!',
-          message: 'Saat ini tidak ada jadwal ujian yang tersedia. '
-              'Gunakan waktumu sebaik mungkin untuk belajar dan beristirahat.',
-          icon: CupertinoIcons.sparkles,
-        ),
-      ],
+    return const AppEmptyState(
+      title: 'Belum Waktunya Ujian Nih!',
+      message: 'Saat ini tidak ada jadwal ujian yang tersedia. '
+          'Gunakan waktumu sebaik mungkin untuk belajar dan beristirahat.',
+      icon: CupertinoIcons.sparkles,
     );
   }
 
   Widget _buildList() {
     return ListView(
-      padding: EdgeInsets.only(
-        left: AppSpacing.lg,
-        right: AppSpacing.lg,
-        top: AppSpacing.sm,
-        bottom:
-            MediaQuery.of(context).padding.bottom +
-            200, // padding extra for FAB and Nav
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.lg,
+        AppSpacing.xxl,
       ),
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
         AppSection(
           topGap: AppSpacing.md,
           title: 'Daftar ujian ${_jenisUjian.toUpperCase()}',
-          trailing: Text(
-            '${_jadwalList.length} mata kuliah',
-            style: AppText.label.copyWith(fontWeight: FontWeight.w400),
+          trailing: _buildTrailingAksi(),
+          child: _jadwalList.isEmpty
+              ? _buildEmptyState()
+              : AppListGroup.from([
+                  for (final jadwal in _jadwalList) _buildJadwalRow(jadwal),
+                ]),
+        ),
+      ],
+    );
+  }
+
+  /// Trailing seksi: hitungan + tombol cetak kartu (pola AppSection.trailing
+  /// ala skripsi_page) — menggantikan FAB yang mengambang di atas bar nav.
+  /// Daftar kosong → tombol disabled.
+  Widget _buildTrailingAksi() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '${_jadwalList.length} mata kuliah',
+          style: AppText.label.copyWith(fontWeight: FontWeight.w400),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        FilledButton.tonalIcon(
+          onPressed:
+              (_isDownloading || _jadwalList.isEmpty) ? null : _downloadKartu,
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 36),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           ),
-          child: AppListGroup.from([
-            for (final jadwal in _jadwalList) _buildJadwalRow(jadwal),
-          ]),
+          icon: const Icon(CupertinoIcons.printer_fill, size: 16),
+          label: Text(_isDownloading ? 'Mengunduh…' : 'Cetak Kartu'),
         ),
       ],
     );
@@ -311,26 +325,6 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
           CupertinoIcons.calendar_badge_plus,
           size: 20,
           color: AppColors.primary,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCetakKartu() {
-    return Padding(
-      // Ekstra padding yang lebih tinggi (FAB + bottom nav).
-      padding: const EdgeInsets.only(bottom: 140.0),
-      child: FloatingActionButton.extended(
-        onPressed: _isDownloading ? null : _downloadKartu,
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: Icon(
-          _isDownloading ? CupertinoIcons.hourglass : CupertinoIcons.printer_fill,
-          color: Colors.white,
-        ),
-        label: Text(
-          _isDownloading ? 'Mengunduh...' : 'Cetak Kartu Ujian',
-          style: AppText.button.copyWith(color: Colors.white),
         ),
       ),
     );

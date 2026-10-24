@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/agenda_terpadu.dart';
+import '../models/jadwal_ujian.dart';
 import '../utils/format.dart' show dayValue, formatDateApi;
 import '../utils/waktu.dart';
 import 'akademik_service.dart';
@@ -303,8 +304,29 @@ class PengingatJadwalService {
     }
     if (agenda == null) return;
 
+    // Kejadian ujian kini dibangun dari jadwal-ujian (UTS + UAS), bukan lagi
+    // regex tanggal pada field `detail` agenda. Fetch paralel; gagal → list
+    // kosong (fail-open: tanpa reminder ujian pada siklus ini, sisa jadwal
+    // tetap jalan) — konsisten dengan fail-open agenda.
+    final ujian = <(JadwalUjian, String)>[];
+    try {
+      final hasil = await Future.wait([
+        AkademikService().getJadwalUjian('uts'),
+        AkademikService().getJadwalUjian('uas'),
+      ]);
+      for (final baris in hasil[0]) {
+        ujian.add((baris, 'uts'));
+      }
+      for (final baris in hasil[1]) {
+        ujian.add((baris, 'uas'));
+      }
+    } catch (e) {
+      debugPrint('PengingatJadwal: fetch jadwal-ujian gagal (${e.runtimeType})');
+    }
+
     final kejadian = hitungKejadian(
       agenda: agenda,
+      ujianBerjadwal: ujian,
       sekarang: tz.TZDateTime.now(tz.local),
       tanggalLibur: tanggalLibur,
     );
@@ -381,17 +403,22 @@ class PengingatJadwalService {
 
   // ── Komputasi kejadian ────────────────────────────────────────────────────
 
-  /// Hitung daftar kejadian untuk [jendelaHari] hari ke depan dari [agenda]:
+  /// Hitung daftar kejadian untuk [jendelaHari] hari ke depan:
   ///  * kuliah/asisten → setiap kemunculan hari-nya dalam jendela (mis. Senin
   ///    muncul 2x), diambil dari bucket hari yang cocok;
-  ///  * ujian (uts/uas) → hanya bila tanggal konkret terdeteksi dari field
-  ///    `detail` (parser defensif; bila tidak ketemu → dilewati tanpa error);
+  ///  * ujian → dibangun dari [ujianBerjadwal] (baris jadwal-ujian + tipe
+  ///    'uts'/'uas', ditemparalel-fetch dari perbaruiPengingat): MKL = judul,
+  ///    TANGGAL/TGL_UJIAN = tanggal, JAM_MULAI = jam, RUANG = ruang;
+  ///  * baris ujian dari agenda (tipe uts/uas) TIDAK lagi menghasilkan
+  ///    kejadian — tanggalnya tidak bisa dibaca dari field `detail`;
   ///  * tanggal libur ([tanggalLibur], 'yyyy-MM-dd') dilewati;
   ///  * kejadian hari ini yang waktunya sudah lewat dilewati;
-  ///  * item tanpa jam tidak menghasilkan kejadian.
+  ///  * item tanpa jam dan baris ujian ber-tanggal tak terbaca dilewati.
   @visibleForTesting
   static List<KejadianPengingat> hitungKejadian({
     required AgendaTerpaduData agenda,
+    List<(JadwalUjian, String)> ujianBerjadwal =
+        const <(JadwalUjian, String)>[],
     required DateTime sekarang,
     required Set<String> tanggalLibur,
   }) {
@@ -438,12 +465,8 @@ class PengingatJadwalService {
       for (final item in entry.value) {
         final tipe = item.tipe.trim().toLowerCase();
         if (tipe == 'uts' || tipe == 'uas') {
-          // Ujian: tanggal konkret dari field `detail` — satu kejadian pada
-          // tanggal itu (jalur sementara sampai BE menyediakan field tanggal).
-          final tgl = tanggalDariTeks(item.detail);
-          if (tgl == null) continue;
-          if (tgl.isBefore(hariIni) || tgl.isAfter(akhirJendela)) continue;
-          tambah(item, tgl);
+          // Ujian dari agenda dilewati: kejadian ujian kini bersumber dari
+          // jadwal-ujian ([ujianBerjadwal]), bukan field `detail` agenda.
           continue;
         }
         // Kuliah/asisten: setiap kemunculan hari dalam jendela.
@@ -454,6 +477,32 @@ class PengingatJadwalService {
           tambah(item, t);
         }
       }
+    }
+
+    // Ujian dari jadwal-ujian: satu kejadian per baris, aturan sama seperti
+    // kelas (jendela 14 hari, skip libur, skip yang sudah lewat, skip mulai
+    // <30 menit).
+    for (final (baris, tipe) in ujianBerjadwal) {
+      final tgl = tanggalDariDdMmYyyy(baris.tanggal);
+      if (tgl == null) continue; // tanggal tak terbaca → dilewati tanpa error
+      if (tgl.isBefore(hariIni) || tgl.isAfter(akhirJendela)) continue;
+      final jamMulai = baris.jamMulai.trim();
+      if (jamMulai.isEmpty || jamMulai == '-') continue;
+      final start = timeToMinutes(jamMulai);
+      if (start < 30) continue; // sama seperti kelas (termasuk tak terbaca = 0)
+      if (tanggalLibur.contains(formatDateApi(tgl))) continue;
+      // Sama seperti jalur kelas: ujian hari ini yang jamnya sudah lewat tidak
+      // boleh dijadwalkan — alarm exact akan menembak segera di masa lampau.
+      if (tgl.isAtSameMomentAs(hariIni) && start <= nowMins) continue;
+      final mk = baris.mkl.trim();
+      final k = KejadianPengingat(
+        tipe: tipe,
+        judul: mk.isEmpty ? 'Ujian' : 'Ujian $mk',
+        tanggal: tgl,
+        jamMulaiMins: start,
+        ruang: baris.ruang,
+      );
+      hasil[idPengingatDariKunci(k.kunciKanonik)] = k;
     }
 
     final daftar = hasil.values.toList()
@@ -485,94 +534,6 @@ class PengingatJadwalService {
       return mk.isEmpty ? label : '$mk · $label';
     }
     return mk;
-  }
-
-  /// Parser tanggal defensif untuk field `detail` ujian: mendukung
-  /// "dd MMMM yyyy" (bulan Indonesia), "dd-MM-yyyy", "dd/MM/yyyy",
-  /// "dd.MM.yyyy". Null bila tidak ada tanggal yang bisa dibaca.
-  @visibleForTesting
-  static DateTime? tanggalDariTeks(String teks) {
-    if (teks.trim().isEmpty) return null;
-
-    // 1) "dd MMMM yyyy" — nama bulan Indonesia (panjang maupun singkatan).
-    final polaBulan = RegExp(
-      r'(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})',
-    );
-    for (final m in polaBulan.allMatches(teks)) {
-      final bulan = _bulanIndo(m.group(2)!);
-      if (bulan == null) continue;
-      final d = int.tryParse(m.group(1)!);
-      final y = int.tryParse(m.group(3)!);
-      if (d == null || y == null) continue;
-      return _tanggalValid(y, bulan, d);
-    }
-
-    // 2) numerik dd-MM-yyyy / dd/MM/yyyy / dd.MM.yyyy.
-    final polaAngka = RegExp(r'(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})');
-    for (final m in polaAngka.allMatches(teks)) {
-      final d = int.tryParse(m.group(1)!);
-      final mo = int.tryParse(m.group(2)!);
-      final y = int.tryParse(m.group(3)!);
-      if (d == null || mo == null || y == null) continue;
-      final hasil = _tanggalValid(y, mo, d);
-      if (hasil != null) return hasil;
-    }
-
-    // 3) "yyyy-MM-dd" / "yyyy/MM/dd" (kalau portal memakai format ISO).
-    final polaIso = RegExp(r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})');
-    for (final m in polaIso.allMatches(teks)) {
-      final y = int.tryParse(m.group(1)!);
-      final mo = int.tryParse(m.group(2)!);
-      final d = int.tryParse(m.group(3)!);
-      if (y == null || mo == null || d == null) continue;
-      final hasil = _tanggalValid(y, mo, d);
-      if (hasil != null) return hasil;
-    }
-
-    return null;
-  }
-
-  static DateTime? _tanggalValid(int y, int m, int d) {
-    if (m < 1 || m > 12) return null;
-    if (d < 1 || d > 31) return null;
-    try {
-      final t = DateTime(y, m, d);
-      if (t.year != y || t.month != m || t.day != d) return null;
-      return t;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static int? _bulanIndo(String nama) {
-    switch (nama.trim().toLowerCase()) {
-      case 'januari' || 'jan':
-        return 1;
-      case 'februari' || 'feb' || 'pebruari' || 'peb':
-        return 2;
-      case 'maret' || 'mar':
-        return 3;
-      case 'april' || 'apr':
-        return 4;
-      case 'mei':
-        return 5;
-      case 'juni' || 'jun':
-        return 6;
-      case 'juli' || 'jul':
-        return 7;
-      case 'agustus' || 'agu' || 'ags' || 'agt':
-        return 8;
-      case 'september' || 'sep':
-        return 9;
-      case 'oktober' || 'okt':
-        return 10;
-      case 'november' || 'nov':
-        return 11;
-      case 'desember' || 'des':
-        return 12;
-      default:
-        return null;
-    }
   }
 
   // ── Libur (ICS Google Calendar, fire-and-forget) ──────────────────────────

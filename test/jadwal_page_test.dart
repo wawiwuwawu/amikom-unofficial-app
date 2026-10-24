@@ -15,7 +15,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:app_amikom/pages/jadwal_page.dart';
 import 'package:app_amikom/services/api_client.dart';
+import 'package:app_amikom/services/periode_ujian_service.dart';
 import 'package:app_amikom/theme/app_theme.dart';
+import 'package:app_amikom/utils/waktu.dart';
 
 class _FakeAdapter implements HttpClientAdapter {
   final Map<String, dynamic> payload;
@@ -62,6 +64,96 @@ class _FailingAdapter implements HttpClientAdapter {
 
   @override
   void close({bool force = false}) {}
+}
+
+/// Adapter gabungan untuk gerbang ujian: agenda terpadu + jadwal-ujian
+/// (uts/uas). [uts]/[uas] null berarti fetch jadwal-ujian gagal (fail-open).
+class _UjianAdapter implements HttpClientAdapter {
+  _UjianAdapter(this.days, {this.uts, this.uas});
+
+  final Map<String, List<Map<String, dynamic>>> days;
+  List<Map<String, dynamic>>? uts;
+  List<Map<String, dynamic>>? uas;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.path.contains('/api/v1/akademik/jadwal-ujian')) {
+      final rows = options.queryParameters['jenis'] == 'uas' ? uas : uts;
+      if (rows == null) {
+        throw DioException(
+          requestOptions: options,
+          type: DioExceptionType.connectionError,
+        );
+      }
+      return ResponseBody.fromString(
+        jsonEncode({'status': 'success', 'data': rows}),
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      );
+    }
+    if (!options.path.contains('/api/v1/agenda/terpadu')) {
+      throw DioException(
+        requestOptions: options,
+        type: DioExceptionType.connectionError,
+      );
+    }
+    final total = days.values.fold<int>(0, (sum, l) => sum + l.length);
+    return ResponseBody.fromString(
+      jsonEncode({'status': 'success', 'data': _payload(days, total: total)}),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+DateTime _hariIniUjian() {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, now.day);
+}
+
+String _ddmmyyyy(DateTime t) {
+  final d = t.day.toString().padLeft(2, '0');
+  final m = t.month.toString().padLeft(2, '0');
+  return '$d-$m-${t.year}';
+}
+
+Map<String, dynamic> _barisUjian(String tanggal) => {
+      'KODE': 'TIF123',
+      'MKL': 'Ujian Akhir Semester',
+      'TANGGAL': tanggal,
+      'HARI': 'Senin',
+      'RUANG': 'AULA',
+      'JAM_MULAI': '08:00',
+      'JAM_SELESEI': '10:00',
+      'NOKURSI': 3,
+    };
+
+/// Pump JadwalPage dengan agenda + jadwal-ujian. Reset memoize periode dulu
+/// supaya hasil test sebelumnya (sukses maupun gagal) tidak bocor ke sini.
+Future<void> pumpJadwalDenganUjian(
+  WidgetTester tester, {
+  required Map<String, List<Map<String, dynamic>>> hari,
+  List<Map<String, dynamic>>? uts,
+  List<Map<String, dynamic>>? uas,
+}) async {
+  PeriodeUjianService.instance.resetUntukTest();
+  ApiClient.instance.dio.httpClientAdapter =
+      _UjianAdapter(hari, uts: uts, uas: uas);
+  await tester.pumpWidget(
+    MaterialApp(theme: AppTheme.light(), home: const JadwalPage()),
+  );
+  await tester.pumpAndSettle(const Duration(milliseconds: 100));
 }
 
 Map<String, dynamic> _payload(
@@ -533,5 +625,84 @@ void main() {
     expect(find.text('Praktikum Terjadwal'), findsOneWidget);
     // Teori tanpa jam → pertahankan sebagai pengingat Skripsi.
     expect(find.text('Skripsi'), findsOneWidget);
+  });
+
+  // ── Gerbang tampil ujian (ambang 7 hari, fail-open) ─────────────────────────
+
+  testWidgets('ujian di luar jendela disembunyikan + banner tampil + chip '
+      'menghitung baris yang tampil', (tester) async {
+    final jauh = _hariIniUjian().add(const Duration(days: 30));
+    await pumpJadwalDenganUjian(
+      tester,
+      hari: {"Senin": [_kuliahTeoriBerjadwal, _ujianBerjadwal]},
+      uts: [_barisUjian(_ddmmyyyy(jauh))],
+      uas: [],
+    );
+
+    expect(tester.takeException(), isNull);
+    // Baris ujian disembunyikan dari bucket hari.
+    expect(find.text('Ujian Akhir Semester'), findsNothing);
+    // Kuliah tetap tampil.
+    expect(find.text('Pemrograman Mobile'), findsOneWidget);
+    // Banner periode menjelaskan kenapa ujian tak terlihat + tanggalnya.
+    expect(find.textContaining('Jadwal ujian terbit'), findsOneWidget);
+    expect(find.textContaining(formatTanggalIndo(jauh)), findsOneWidget);
+    // Chip & hitungan seksi hanya menghitung baris yang tampil (bukan 2).
+    expect(find.text('Semua (1)'), findsOneWidget);
+    expect(find.text('1 kegiatan'), findsOneWidget);
+  });
+
+  testWidgets('ujian dalam jendela 7 hari tampil normal tanpa banner',
+      (tester) async {
+    final dekat = _hariIniUjian().add(const Duration(days: 3));
+    await pumpJadwalDenganUjian(
+      tester,
+      hari: {"Senin": [_kuliahTeoriBerjadwal, _ujianBerjadwal]},
+      uts: [_barisUjian(_ddmmyyyy(dekat))],
+      uas: [],
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Ujian Akhir Semester'), findsOneWidget);
+    expect(find.textContaining('Jadwal ujian terbit'), findsNothing);
+    expect(find.text('Semua (2)'), findsOneWidget);
+    expect(find.text('2 kegiatan'), findsOneWidget);
+  });
+
+  testWidgets('periode gagal (fail-open) → ujian tampil seperti semula '
+      'tanpa banner', (tester) async {
+    await pumpJadwalDenganUjian(
+      tester,
+      hari: {"Senin": [_kuliahTeoriBerjadwal, _ujianBerjadwal]},
+      uts: null, // fetch jadwal-ujian gagal
+      uas: null,
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Ujian Akhir Semester'), findsOneWidget);
+    expect(find.textContaining('Jadwal ujian terbit'), findsNothing);
+    expect(find.text('Semua (2)'), findsOneWidget);
+  });
+
+  testWidgets('tab filter Ujian menampilkan ujian apa adanya walau di luar '
+      'jendela (user sengaja memilih melihat ujian)', (tester) async {
+    final jauh = _hariIniUjian().add(const Duration(days: 30));
+    await pumpJadwalDenganUjian(
+      tester,
+      hari: {"Senin": [_kuliahTeoriBerjadwal, _ujianBerjadwal]},
+      uts: [_barisUjian(_ddmmyyyy(jauh))],
+      uas: [],
+    );
+
+    // Di tampilan campuran ujian disembunyikan...
+    expect(find.text('Ujian Akhir Semester'), findsNothing);
+
+    // ...tetapi tab Ujian tetap bisa dibuka dan menampilkan ujian.
+    await tester.tap(find.text('Ujian 🔴'));
+    await tester.pumpAndSettle(const Duration(milliseconds: 100));
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Ujian Akhir Semester'), findsOneWidget);
+    expect(find.textContaining('Jadwal ujian terbit'), findsNothing);
   });
 }

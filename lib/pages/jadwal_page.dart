@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../services/akademik_service.dart';
+import '../services/periode_ujian_service.dart';
 import '../models/agenda_terpadu.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
 import '../utils/waktu.dart';
 import '../widgets/app_kit.dart';
+import 'jadwal_ujian_page.dart';
 
 /// Jadwal perkuliahan (agenda terpadu) — fitur yang dibuka hampir tiap hari,
 /// jadi disajikan sebagai DAFTAR PER HARI yang bisa dipindai sekejap:
@@ -27,6 +29,10 @@ class _JadwalPageState extends State<JadwalPage> {
   String? _error;
   AgendaTerpaduData? _agendaData;
 
+  /// Periode ujian terdekat (tanggal, 'UTS'/'UAS') — null bila tidak ada
+  /// ujian mendatang / fetch gagal (fail-open dari [PeriodeUjianService]).
+  (DateTime, String)? _periodeUjian;
+
   String _filterTipe = 'semua'; // 'semua', 'kuliah', 'asisten', 'ujian'
 
   @override
@@ -38,11 +44,13 @@ class _JadwalPageState extends State<JadwalPage> {
   Future<void> _load() async {
     if (!mounted) return;
     setState(() => _loading = true);
+    // Agenda dimuat dulu — halaman TIDAK boleh menunggu fetch periode ujian
+    // (dio yang sama, receiveTimeout 60 detik).
     try {
-      final res = await _akademikService.getAgendaTerpadu();
+      final agenda = await _akademikService.getAgendaTerpadu();
       if (mounted) {
         setState(() {
-          _agendaData = res;
+          _agendaData = agenda;
           _error = null;
         });
       }
@@ -53,9 +61,58 @@ class _JadwalPageState extends State<JadwalPage> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+    // Periode ujian menyusul secara non-blocking: selama belum tiba, gerbang
+    // fail-open (ujian tampil); setState kedua menyaring begitu periode ada.
+    final periode = await PeriodeUjianService.instance.tanggalUjianTerdekat();
+    if (mounted) {
+      setState(() => _periodeUjian = periode);
+    }
   }
 
   bool _adaJam(AgendaItem i) => jamChip(i) != '-';
+
+  /// Gerbang tampil ujian: baris ujian (tipe uts/uas) pada tampilan campuran /
+  /// hari biasa hanya dirender bila tanggal ujian terdekat ada dan berada
+  /// dalam [PeriodeUjianService.ambangHariUjian] hari ke depan (sementara
+  /// sebulan sebelum ujian terbit, dulu membuat agenda bising sebulan penuh).
+  ///
+  /// Tab filter 'ujian' SENGAJA dikecualikan: user yang memilih tab Ujian
+  /// bertindak sengaja melihat ujian, jadi di sana ujian tampil apa adanya.
+  ///
+  /// Fail-open: periode null (fetch gagal / tidak ada baris ber-tanggal) →
+  /// ujian tampil seperti semula.
+  bool _lolosGerbangUjian(AgendaItem item) {
+    if (_filterTipe == 'ujian') return true;
+    final tipe = item.tipe.trim().toLowerCase();
+    if (tipe != 'uts' && tipe != 'uas') return true;
+    return PeriodeUjianService.dalamJendela(_periodeUjian, _hariIni);
+  }
+
+  DateTime get _hariIni {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  /// Ada baris ujian di agenda yang disembunyikan oleh gerbang? Hanya baris
+  /// yang memang layak dirender (lolos aturan bucket hari) yang dihitung —
+  /// ujian tanpa jam yang memang terbuang tidak boleh memunculkan banner.
+  bool _adaUjianTersembunyi(AgendaTerpaduData data) {
+    if (_filterTipe == 'ujian') return false;
+    final periode = _periodeUjian;
+    if (periode == null) return false; // fail-open: tidak ada yang disembunyikan
+    for (final entry in data.agenda.entries) {
+      for (final item in entry.value) {
+        final tipe = item.tipe.trim().toLowerCase();
+        final ujian = tipe == 'uts' || tipe == 'uas';
+        if (ujian &&
+            _lolosAturanHari(entry.key, item) &&
+            !PeriodeUjianService.dalamJendela(periode, _hariIni)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 
   /// Baris lolos filter tipe yang sedang aktif.
   bool _sesuaiTipe(AgendaItem item) {
@@ -74,7 +131,7 @@ class _JadwalPageState extends State<JadwalPage> {
   /// Aturan tampil per bucket: hari biasa wajib berjam (sisanya jadi bising),
   /// "Tanpa Jadwal" tetap pengingat Skripsi tapi buang praktikum yang belum
   /// berjam, dan "Lainnya" dibiarkan utuh.
-  bool _tampil(String day, AgendaItem i) {
+  bool _lolosAturanHari(String day, AgendaItem i) {
     final key = day.trim().toLowerCase();
     if (key == 'tanpa jadwal') {
       // Baris yang memang sudah berjam jangan sampai hilang karena bucket.
@@ -84,6 +141,12 @@ class _JadwalPageState extends State<JadwalPage> {
     if (key == 'lainnya') return true;
     return _adaJam(i);
   }
+
+  /// Gerbang ujian diterapkan SEBELUM aturan bucket & perhitungan chip, agar
+  /// chip "Semua (N)" dan trailing hitungan hanya menghitung baris yang
+  /// benar-benar tampil.
+  bool _tampil(String day, AgendaItem i) =>
+      _lolosGerbangUjian(i) && _lolosAturanHari(day, i);
 
   /// Jumlah baris yang benar-benar tampil setelah aturan di atas — dipakai
   /// chip "Semua (N)" supaya tidak mengumumkan lebih dari yang ada di layar.
@@ -143,6 +206,7 @@ class _JadwalPageState extends State<JadwalPage> {
             : 'Tidak ada jadwal untuk filter ini. Pilih "Semua" untuk '
                 'melihat seluruh agenda.',
         total: jumlahTampil,
+        tampilkanBannerUjian: _adaUjianTersembunyi(data),
       );
     }
 
@@ -162,13 +226,17 @@ class _JadwalPageState extends State<JadwalPage> {
         ),
         children: [
           _filterRow(total: jumlahTampil),
+          if (_adaUjianTersembunyi(data)) ...[
+            const SizedBox(height: AppSpacing.md),
+            _bannerPeriodeUjian(),
+          ],
           for (final day in sortedDays) _daySection(day, data.agenda[day]!),
         ],
       ),
     );
   }
 
-  Widget _emptyAgendaState({String? message, int? total}) {
+  Widget _emptyAgendaState({String? message, int? total, bool tampilkanBannerUjian = false}) {
     return RefreshIndicator(
       onRefresh: _load,
       color: AppColors.primary,
@@ -180,6 +248,13 @@ class _JadwalPageState extends State<JadwalPage> {
         children: [
           if (total != null) ...[
             _filterRow(total: total),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          // Bila agenda "kosong" karena SEMUA barisnya ujian yang digerbang,
+          // banner tetap wajib tampil — empty state "belum punya jam" saja
+          // akan menyesatkan user.
+          if (tampilkanBannerUjian) ...[
+            _bannerPeriodeUjian(),
             const SizedBox(height: AppSpacing.sm),
           ],
           SizedBox(height: MediaQuery.of(context).size.height * 0.15),
@@ -240,6 +315,51 @@ class _JadwalPageState extends State<JadwalPage> {
       onSelected: (val) {
         if (val) setState(() => _filterTipe = value);
       },
+    );
+  }
+
+  // ── Banner periode ujian (diketuk → halaman Jadwal Ujian) ──────────────────
+
+  /// Banner info ujian yang masih di luar jendela tampil. Gaya mengikuti
+  /// banner rekomendasi SP di dashboard (AppSurface + ikon + teks token),
+  /// tetap satu baris yang bisa diketuk (AppSurface.onTap = InkWell).
+  Widget _bannerPeriodeUjian() {
+    final periode = _periodeUjian;
+    final (tgl, jenis) = periode!;
+    return AppSurface(
+      variant: AppSurfaceVariant.hero,
+      radius: AppRadius.md,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      onTap: () => _pushJadwalUjian(),
+      child: Row(
+        children: [
+          const Icon(
+            CupertinoIcons.calendar,
+            size: 20,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              'Jadwal ujian terbit — dimulai ${formatTanggalIndo(tgl)} '
+              '($jenis), akan tampil di sini seminggu sebelumnya.',
+              style: AppText.bodySm,
+            ),
+          ),
+          const Icon(
+            CupertinoIcons.chevron_forward,
+            size: 16,
+            color: AppColors.primary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _pushJadwalUjian() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const JadwalUjianPage()),
     );
   }
 
