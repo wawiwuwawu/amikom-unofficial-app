@@ -7,8 +7,8 @@ import '../config/menu_catalog.dart';
 import '../services/api_client.dart';
 import '../services/notifikasi_service.dart';
 import '../services/deep_link_service.dart';
+import '../services/pengingat_jadwal_service.dart';
 import '../services/push_service.dart';
-import '../services/navigation_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
 import 'absensi_page.dart';
@@ -16,7 +16,6 @@ import 'dashboard_page.dart';
 import 'jadwal_page.dart';
 import 'nilai/nilai_page.dart';
 import 'notifikasi_list_page.dart';
-import 'notifikasi_detail_page.dart';
 
 /// Kerangka utama aplikasi (hasil redesign navigasi).
 ///
@@ -57,11 +56,15 @@ class _MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     _checkUnreadNotif();
-    DeepLinkService.instance.listen((id) => _bukaNotifikasiDariLink(id));
+    // Keputusan user: SEMUA ketukan notifikasi (push maupun deep link) membuka
+    // halaman daftar notifikasi sebagai pintasan. Dedupe id + guard list
+    // terpusat ada di PushService supaya satu ketukan yang datang lewat dua
+    // mekanisme (deep link app_links + pesan FCM) tidak membuka dua halaman.
+    DeepLinkService.instance.listen((id) => PushService.instance.bukaListDariKetukan());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final id = DeepLinkService.instance.consumePendingId();
       if (id != null) {
-        _bukaNotifikasiDariLink(id);
+        PushService.instance.bukaListDariKetukan();
       }
       // Ketukan notifikasi FCM yang datang sebelum UI siap (cold start).
       PushService.instance.terapkanPendingTerbuka();
@@ -70,6 +73,9 @@ class _MainPageState extends State<MainPage> {
       // Sengaja SETELAH frame pertama supaya dialog izin tidak muncul di atas
       // splash saat cold start.
       unawaited(PushService.instance.aktifkanJikaBelumPernah());
+      // Pengingat jadwal default-on: susun ulang alarm 30-menit sebelum kelas
+      // (14 hari ke depan). Gagal diam-diam — bukan fungsi kritis.
+      unawaited(PengingatJadwalService.instance.perbaruiPengingat());
     });
   }
 
@@ -111,18 +117,6 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _openNotifikasi() async {
     await _openPage(NotifikasiListPage());
-    _checkUnreadNotif();
-  }
-
-  Future<void> _bukaNotifikasiDariLink(String id) async {
-    if (id.isEmpty || !mounted) return;
-    final navigator =
-        NavigationService.instance.navigatorKey.currentState ??
-        Navigator.maybeOf(context);
-    if (navigator == null) return;
-    await navigator.push(
-      MaterialPageRoute(builder: (_) => NotifikasiDetailPage(id: id)),
-    );
     _checkUnreadNotif();
   }
 
@@ -255,6 +249,13 @@ class _MainPageState extends State<MainPage> {
                         PushService.instance.mulaiSesiBaru();
                       } catch (_) {
                         // Logout tetap lanjut walau push gagal dibersihkan.
+                      }
+                      // Batalkan semua pengingat jadwal + hapus cache lokal
+                      // (agenda/hash/registry/libur) milik NIM ini.
+                      try {
+                        await PengingatJadwalService.instance.bersihkanSaatLogout();
+                      } catch (_) {
+                        // Logout tetap lanjut walau pengingat gagal dibersihkan.
                       }
                       await ApiClient.instance.fullLogout();
                       if (!mounted) return;

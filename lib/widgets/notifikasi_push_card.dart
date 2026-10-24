@@ -364,10 +364,17 @@ class NotifikasiPushSheet extends StatelessWidget {
                     nomor: 3,
                     teks:
                         'Selesai. Notifikasi kampus akan masuk otomatis — ketuk '
-                        'notifikasi untuk membuka detail pengumuman.',
+                        'notifikasi untuk membuka daftar notifikasi.',
                   ),
                 ],
               ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'Pengingat jadwal juga aktif otomatis tanpa pengaturan: aplikasi '
+              'mengingatkan 30 menit sebelum kelas atau ujian dimulai, selama '
+              'izin notifikasi di atas diizinkan.',
+              style: AppText.bodySm,
             ),
           ],
         ),

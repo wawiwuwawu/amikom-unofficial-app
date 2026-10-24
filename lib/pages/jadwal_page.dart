@@ -4,6 +4,7 @@ import '../services/akademik_service.dart';
 import '../models/agenda_terpadu.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
+import '../utils/waktu.dart';
 import '../widgets/app_kit.dart';
 
 /// Jadwal perkuliahan (agenda terpadu) — fitur yang dibuka hampir tiap hari,
@@ -54,17 +55,7 @@ class _JadwalPageState extends State<JadwalPage> {
     }
   }
 
-  /// Chip jam: utamakan `jam_mulai` (marker kosong portal adalah '-', bukan
-  /// string kosong), jatuh ke `jam` warisan. Satu sumber untuk predikat
-  /// "berjam" supaya tak ada divergensi antara aturan tampil dan tampilan.
-  String _jamChip(AgendaItem i) {
-    final m = i.jamMulai.trim();
-    if (m.isNotEmpty && m != '-') return m;
-    final j = i.jam.trim();
-    return j.isEmpty || j == '-' ? '-' : j;
-  }
-
-  bool _adaJam(AgendaItem i) => _jamChip(i) != '-';
+  bool _adaJam(AgendaItem i) => jamChip(i) != '-';
 
   /// Baris lolos filter tipe yang sedang aktif.
   bool _sesuaiTipe(AgendaItem item) {
@@ -311,7 +302,7 @@ class _JadwalPageState extends State<JadwalPage> {
         ),
         decoration: AppDeco.softPrimary(radius: AppRadius.sm),
         child: Text(
-          _jamChip(item),
+          jamChip(item),
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,

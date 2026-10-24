@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 import 'services/api_client.dart';
 import 'services/deep_link_service.dart';
+import 'services/pengingat_jadwal_service.dart';
 import 'services/push_service.dart';
 import 'theme/app_theme.dart';
 import 'pages/login_page.dart';
@@ -15,6 +18,18 @@ import 'services/navigation_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Zona waktu untuk notifikasi terjadwal (pengingat jadwal). WAJIB terpisah
+  // dari blok Firebase: bila inisialisasi Firebase gagal, pengingat jadwal
+  // tidak boleh ikut mati. Gagal zona waktu di-skip aman — waktu lokal
+  // (DateTime) tetap jadi dasar komputasi.
+  try {
+    tz.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Asia/Jakarta'));
+  } catch (e) {
+    debugPrint('Zona waktu tidak terpasang, pakai default: $e');
+  }
+
   try {
     await dotenv.load(fileName: '.env');
   } catch (_) {
@@ -37,6 +52,14 @@ Future<void> main() async {
     await PushService.instance.init();
   } catch (e) {
     debugPrint('Push FCM belum aktif: $e');
+  }
+
+  // Channel pengingat jadwal — TERPISAH dari blok Firebase supaya pengingat
+  // tidak mati hanya karena inisialisasi push gagal.
+  try {
+    await PengingatJadwalService.instance.init();
+  } catch (e) {
+    debugPrint('Pengingat jadwal belum aktif: $e');
   }
 
   await DeepLinkService.instance.initFromInitialLink();

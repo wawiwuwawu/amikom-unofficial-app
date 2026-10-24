@@ -5,53 +5,42 @@ import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:flutter/material.dart' show MaterialPageRoute;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../models/app_failure.dart' show AppFailure;
 import '../models/notifikasi.dart' show NotifikasiRateLimited;
-import '../pages/notifikasi_detail_page.dart';
+import '../pages/notifikasi_list_page.dart';
 import 'deep_link_service.dart';
 import 'navigation_service.dart';
 import 'notifikasi_service.dart';
 import 'push_token_provider.dart';
 
-/// Jenis ketukan push yang bisa ditangani: notifikasi pribadi (detail in-app)
-/// atau siaran/pengumuman (dibuka di browser eksternal).
-enum JenisKetukan { notifikasiPribadi, siaranWeb }
+/// Aksi ketukan push yang bisa dijalankan setelah UI siap.
+///
+/// Keputusan user: SEMUA ketukan (push pribadi, siaran http/https, foreground,
+/// background, maupun cold start) membuka halaman DAFTAR notifikasi sebagai
+/// pintasan — perilaku "buka detail spesifik" dan "buka browser eksternal"
+/// dihapus. Detail tetap bisa diakses user dari halaman daftar.
+sealed class AksiTerbuka {
+  const AksiTerbuka();
+}
 
-/// Hasil pemetaan ketukan push: [TujuanKetukan.notifikasi] membawa [notifId]
-/// untuk detail in-app, [TujuanKetukan.siaranWeb] membawa [urlWeb] yang dibuka
-/// di browser. Persis salah satu dari [notifId] / [urlWeb] yang terisi sesuai
-/// [jenis]. Persamaan berbasis nilai agar bisa langsung di-`expect` di test.
-class TujuanKetukan {
-  final JenisKetukan jenis;
-  final String? notifId; // hanya privat
-  final Uri? urlWeb; // hanya siaran
-
-  const TujuanKetukan.notifikasi(String this.notifId)
-    : jenis = JenisKetukan.notifikasiPribadi,
-      urlWeb = null;
-
-  const TujuanKetukan.siaranWeb(this.urlWeb)
-    : jenis = JenisKetukan.siaranWeb,
-      notifId = null;
+/// Buka halaman daftar notifikasi (pintasan — perilaku ketukan saat ini).
+class AksiBukaList extends AksiTerbuka {
+  const AksiBukaList();
 
   @override
-  bool operator ==(Object other) =>
-      other is TujuanKetukan &&
-      other.jenis == jenis &&
-      other.notifId == notifId &&
-      other.urlWeb == urlWeb;
+  bool operator ==(Object other) => other is AksiBukaList;
 
   @override
-  int get hashCode => Object.hash(jenis, notifId, urlWeb);
+  int get hashCode => runtimeType.hashCode;
 }
 
 /// Lapisan push FCM: membuat channel Android, menampilkan notifikasi lokal
-/// untuk pesan foreground, dan mengarahkan ketukan notifikasi ke detail notif
-/// (skema `amikomstudent`, lewat deep link yang SUDAH ada) atau ke browser
-/// eksternal untuk siaran/pengumuman (skema `http`/`https`, lewat url_launcher).
-/// Tidak menciptakan routing baru; akses Firebase terpusat pada
+/// untuk pesan foreground, dan mengarahkan SEMUA ketukan notifikasi ke halaman
+/// daftar notifikasi sebagai pintasan. Ekstraksi id + dedupe 2 detik tetap
+/// berjalan ([DeepLinkService] untuk jalur privat, dedupe lokal untuk siaran)
+/// supaya ketukan ganda — termasuk kedatangan ganda deep link + pesan FCM —
+/// tidak mendorong dua halaman ke navigator. Akses Firebase terpusat pada
 /// [MessagingGateway]/[FcmGatewayFirebase].
 class PushService {
   PushService._();
@@ -90,8 +79,15 @@ class PushService {
   /// logout dalam satu sesi.
   static String? _lastToken;
 
-  /// Ketukan notifikasi yang datang sebelum UI siap (cold start).
-  static String? _pendingOpenId;
+  /// Aksi ketukan yang datang sebelum UI siap (cold start) — pertama menang.
+  static AksiTerbuka? _pendingTerbuka;
+
+  /// Jendela dedupe PUSHER halaman list: push daftar kedua dalam jendela ini
+  /// dibatalkan. Melindungi navigator dari kedatangan ganda satu ketukan lewat
+  /// dua mekanisme (deep link app_links + pesan FCM) yang kunci dedupe-nya
+  /// berbeda (id vs url).
+  static const _dedupeListWindow = Duration(seconds: 2);
+  DateTime? _listTerakhirAt;
 
   /// `true` bila aktivasi terakhir gagal karena PERANGKAT/build (gateway FCM
   /// tak siap — mis. `google-services.json` hilang / Play Services mati),
@@ -166,50 +162,67 @@ class PushService {
     }
   }
 
-  /// Memetakan [data] ketukan menjadi [TujuanKetukan]: `url` amikomstudent →
-  /// notifikasi privat (lewat [DeepLinkService.extractNotifId]), `url`
-  /// http/https → siaran web (TIDAK jatuh ke `notif_id` — kontrak BE baru),
-  /// tanpa url → fallback `notif_id` (string/angka, di-trim). Null bila tak ada
-  /// ketukan yang dikenal.
-  static TujuanKetukan? tujuanDariData(Map<String, dynamic> data) {
+  /// Memetakan [data] ketukan menjadi [AksiTerbuka]: `url` amikomstudent →
+  /// buka list (id diekstrak [resolveTujuan] untuk dedupe), `url` http/https →
+  /// buka list (KEPUTUSAN USER: tidak lagi dibuka di browser), tanpa url →
+  /// fallback `notif_id` (string/angka, di-trim) → buka list. Null bila
+  /// ketukan tidak dikenal — pemanggil membiarkannya (no-op aman).
+  static AksiTerbuka? tujuanDariData(Map<String, dynamic> data) {
     final rawUrl = data['url'];
     if (rawUrl is String && rawUrl.trim().isNotEmpty) {
       final uri = Uri.tryParse(rawUrl);
       if (uri != null) {
         if (uri.scheme == 'amikomstudent') {
           final fromUrl = DeepLinkService.extractNotifId(uri);
-          if (fromUrl.isNotEmpty) return TujuanKetukan.notifikasi(fromUrl);
+          if (fromUrl.isNotEmpty) return const AksiBukaList();
         } else if (uri.scheme == 'http' || uri.scheme == 'https') {
-          return TujuanKetukan.siaranWeb(uri);
+          return const AksiBukaList();
         }
       }
     }
     final rawId = data['notif_id'];
     if (rawId != null) {
       final id = rawId.toString().trim();
-      if (id.isNotEmpty) return TujuanKetukan.notifikasi(id);
+      if (id.isNotEmpty) return const AksiBukaList();
     }
     return null;
   }
 
-  /// Menyelesaikan [tujuanDariData] lalu menerapkan dedupe: privat lewat
-  /// [DeepLinkService.instance] (jendela ±2 detik, jaringan yang SUDAH ada),
-  /// siaran lewat dedupe LOKAL berjendela [_dedupeSiaranWindow]. Mengembalikan
-  /// tujuan yang boleh dijalankan, atau null bila tak valid / duplikat. Tidak
-  /// membuka apa pun — bisa diuji langsung.
+  /// Menyelesaikan [tujuanDariData] lalu menerapkan dedupe: privat (url
+  /// amikomstudent maupun fallback `notif_id`) lewat [DeepLinkService.instance]
+  /// (jendela ±2 detik, jaringan yang SUDAH ada), siaran lewat dedupe LOKAL
+  /// berjendela [_dedupeSiaranWindow]. Mengembalikan aksi yang boleh dijalankan
+  /// (selalu [AksiBukaList] saat ini), atau null bila tak valid / duplikat.
+  /// Tidak membuka apa pun — bisa diuji langsung.
   @visibleForTesting
-  TujuanKetukan? resolveTujuan(Map<String, dynamic> data) {
-    final tujuan = tujuanDariData(data);
-    if (tujuan == null) return null;
-    switch (tujuan.jenis) {
-      case JenisKetukan.notifikasiPribadi:
-        final uri = Uri.tryParse('amikomstudent://notifikasi/${tujuan.notifId}');
-        if (uri == null) return null;
-        final id = DeepLinkService.instance.handleUri(uri);
-        return id == null ? null : TujuanKetukan.notifikasi(id);
-      case JenisKetukan.siaranWeb:
-        return _bukanDuplikatSiaran(tujuan.urlWeb!) ? tujuan : null;
+  AksiTerbuka? resolveTujuan(Map<String, dynamic> data) {
+    if (tujuanDariData(data) == null) return null;
+
+    final rawUrl = data['url'];
+    final uri = rawUrl is String && rawUrl.trim().isNotEmpty
+        ? Uri.tryParse(rawUrl.trim())
+        : null;
+    if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+      return _bukanDuplikatSiaran(uri) ? const AksiBukaList() : null;
     }
+
+    // Jalur privat: ekstrak id (url dulu, fallback notif_id) lalu dedupe lewat
+    // DeepLinkService — meski tujuannya list, dedupe tetap berjalan agar
+    // ketukan ganda dalam 2 detik tidak mendorong halaman kedua.
+    var id = '';
+    if (uri != null && uri.scheme == 'amikomstudent') {
+      id = DeepLinkService.extractNotifId(uri);
+    }
+    if (id.isEmpty) {
+      final rawId = data['notif_id'];
+      if (rawId != null) id = rawId.toString().trim();
+    }
+    if (id.isEmpty) return null;
+    final dedupeUri = Uri.tryParse('amikomstudent://notifikasi/$id');
+    if (dedupeUri == null) return null;
+    final accepted = DeepLinkService.instance.handleUri(dedupeUri);
+    if (accepted == null) return null;
+    return const AksiBukaList();
   }
 
   /// Dedupe LOKAL ketukan siaran: url sama dalam [_dedupeSiaranWindow] dianggap
@@ -413,6 +426,14 @@ class PushService {
     _aktivasiSudahDicoba = false;
   }
 
+  /// Mereset antrean pending ketukan dan guard dedupe list. Hanya untuk
+  /// pengujian — keduanya state singleton per proses.
+  @visibleForTesting
+  static void resetPendingUntukTest() {
+    _pendingTerbuka = null;
+    instance._listTerakhirAt = null;
+  }
+
   // ── Internal ──────────────────────────────────────────────────────────────
 
   void _onTokenRefresh(Map<String, dynamic> payload) {
@@ -423,22 +444,53 @@ class PushService {
   }
 
   void _handleOpened(Map<String, dynamic> data) {
-    final tujuan = resolveTujuan(data);
-    if (tujuan == null) return;
-    switch (tujuan.jenis) {
-      case JenisKetukan.notifikasiPribadi:
-        _openNotifikasi(tujuan.notifId!);
-      case JenisKetukan.siaranWeb:
-        unawaited(_bukaWeb(tujuan.urlWeb!));
-    }
+    final aksi = resolveTujuan(data);
+    if (aksi == null) return;
+    _jalankanAksi(aksi);
   }
 
   /// Ketukan notifikasi lokal (foreground). Payload adalah `data['url']` asli;
-  /// dibungkus jadi map lalu diperlakukan persis seperti ketukan push lain
-  /// supaya dedupe privat maupun siaran seragam.
+  /// dibungkus jadi map lalu diperlakukan persis seperti ketukan push lain.
+  /// Payload kosong/tak dikenal = no-op aman (resolveTujuan mengembalikan null).
   void _handleTap(String? payload) {
     if (payload == null || payload.isEmpty) return;
     _handleOpened({'url': payload});
+  }
+
+  /// Menjalankan [aksi]: membuka halaman daftar notifikasi. Gagal apapun tidak
+  /// melempar — ketukan bisa datang dari background tanpa konteks UI yang aman.
+  void _jalankanAksi(AksiTerbuka aksi) {
+    switch (aksi) {
+      case AksiBukaList():
+        _bukaList();
+    }
+  }
+
+  /// Membuka [NotifikasiListPage] sebagai pintasan ketukan notifikasi.
+  /// Bila navigator belum tersedia (cold start), aksi diantrekan dan dijalankan
+  /// [MainPage] lewat [terapkanPendingTerbuka] sehingga list tidak pernah
+  /// ditumpuk di atas Splash/Login. Push kedua dalam jendela
+  /// [_dedupeListWindow] dibatalkan supaya satu ketukan yang datang lewat dua
+  /// mekanisme (deep link + FCM) tidak membuka dua halaman.
+  void _bukaList() {
+    final navigator = NavigationService.instance.navigatorKey.currentState;
+    if (navigator == null) {
+      _pendingTerbuka ??= const AksiBukaList();
+      debugPrint('PushService: ketukan notifikasi ditunda sampai UI siap');
+      return;
+    }
+    final terakhirAt = _listTerakhirAt;
+    final sekarang = DateTime.now();
+    if (terakhirAt != null &&
+        sekarang.difference(terakhirAt) < _dedupeListWindow) {
+      return;
+    }
+    _listTerakhirAt = sekarang;
+    unawaited(
+      navigator.push(
+        MaterialPageRoute(builder: (_) => const NotifikasiListPage()),
+      ),
+    );
   }
 
   Future<void> _bukaDariInitial(MessagingGateway gateway) async {
@@ -446,48 +498,21 @@ class PushService {
     if (data != null) _handleOpened(data);
   }
 
-  void _openNotifikasi(String id) {
-    final navigator = NavigationService.instance.navigatorKey.currentState;
-    if (navigator == null) {
-      // Cold start: FCM bisa mengirim tapped message sebelum UI siap. Antre;
-      // dijalankan oleh MainPage lewat [terapkanPendingTerbuka].
-      _pendingOpenId = id;
-      debugPrint('PushService: ketukan notifikasi ditunda sampai UI siap');
-      return;
-    }
-    unawaited(
-      navigator.push(
-        MaterialPageRoute(builder: (_) => NotifikasiDetailPage(id: id)),
-      ),
-    );
-  }
-
-  /// Membuka tautan siaran/pengumuman di browser EKSTERNAL. Tidak pernah
-  /// melempar: kegagalan (device tanpa browser, dll.) hanya dilog — ketukan
-  /// bisa datang dari background, konteks UI belum tentu aman. Tak butuh
-  /// antrean pending: buka browser tak butuh navigator aplikasi.
-  Future<void> _bukaWeb(Uri url) async {
-    try {
-      final berhasil = await launchUrl(
-        url,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!berhasil) {
-        debugPrint('PushService: gagal membuka tautan siaran');
-      }
-    } catch (e) {
-      debugPrint('PushService: gagal membuka tautan siaran (${e.runtimeType})');
-    }
-  }
-
-  /// Menjalankan ketukan notifikasi yang ditunda saat cold start (dipanggil
-  /// MainPage setelah frame pertama, saat navigator sudah tersedia).
+  /// Menjalankan aksi ketukan yang ditunda saat cold start (dipanggil MainPage
+  /// setelah frame pertama, saat navigator sudah tersedia). Bila pending sudah
+  /// ada, ketukan berikutnya tak menimpanya (pertama menang).
   Future<void> terapkanPendingTerbuka() async {
-    final id = _pendingOpenId;
-    if (id == null) return;
-    _pendingOpenId = null;
-    _openNotifikasi(id);
+    final aksi = _pendingTerbuka;
+    if (aksi == null) return;
+    _pendingTerbuka = null;
+    _jalankanAksi(aksi);
   }
+
+  /// Dipakai [MainPage]: ketukan deep link `amikomstudent` yang sudah lewat
+  /// dedupe [DeepLinkService] tetap harus melewati guard list terpusat
+  /// ([_bukaList]) supaya kedatangan ganda satu ketukan lewat dua mekanisme
+  /// (deep link + pesan FCM) tidak membuka dua halaman daftar.
+  void bukaListDariKetukan() => _bukaList();
 
   /// Id tampil notifikasi yang stabil. **Siaran (url http/https) selalu memakai
   /// hash url** — walaupun BE juga mengirim `notif_id` untuk siaran, id mentah

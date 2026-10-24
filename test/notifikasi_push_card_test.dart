@@ -228,9 +228,14 @@ void main() {
       reason: 'langkah izin & optimasi baterai menyebut nama aplikasi ini',
     );
     expect(
-      find.textContaining('ketuk notifikasi untuk membuka detail'),
+      find.textContaining('ketuk notifikasi untuk membuka daftar'),
       findsOneWidget,
-      reason: 'langkah terakhir: notifikasi masuk & ketuk membuka detail',
+      reason: 'langkah terakhir: notifikasi masuk & ketuk membuka daftar',
+    );
+    expect(
+      find.textContaining('Pengingat jadwal juga aktif otomatis'),
+      findsOneWidget,
+      reason: 'info pengingat jadwal 30 menit mengikuti izin notifikasi',
     );
     expect(
       find.byType(FilledButton),

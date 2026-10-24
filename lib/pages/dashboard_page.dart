@@ -8,6 +8,7 @@ import '../services/api_client.dart';
 import '../services/akademik_service.dart';
 import '../services/sp_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/waktu.dart';
 import '../widgets/app_kit.dart';
 import '../widgets/histori_ipk_sheet.dart';
 import 'absensi_page.dart';
@@ -226,7 +227,7 @@ class _DashboardPageState extends State<DashboardPage> {
   // ── Jadwal hari ini: daftar, bukan tombol menuju jadwal ────────────────────
 
   Widget _buildJadwalHariIni() {
-    final todayName = _getHariIndo(DateTime.now().weekday);
+    final todayName = namaHariDariWeekday(DateTime.now().weekday);
     final items = _agendaData?.agenda[todayName] ?? [];
     final ongoing = _ongoingItem(items);
 
@@ -271,24 +272,10 @@ class _DashboardPageState extends State<DashboardPage> {
     final now = DateTime.now();
     final nowMins = now.hour * 60 + now.minute;
     for (final item in items) {
-      final range = _ongoingRange(item);
+      final range = ongoingRange(item);
       if (range == null) continue;
       final (start, end) = range;
       if (nowMins >= start && nowMins <= end) return item;
-    }
-    return null;
-  }
-
-  /// Rentang (mulai, selesai) dalam menit untuk deteksi "berlangsung".
-  /// `jamMulai`/`jamSelesai` dipilih bila keduanya terisi (respons baru);
-  /// jika tidak, jatuh ke parsing `jam` "hh:mm - hh:mm" (respons lama).
-  (int, int)? _ongoingRange(AgendaItem item) {
-    if (item.jamMulai.isNotEmpty && item.jamSelesai.isNotEmpty) {
-      return (_timeToMinutes(item.jamMulai), _timeToMinutes(item.jamSelesai));
-    }
-    final parts = item.jam.split('-');
-    if (parts.length >= 2) {
-      return (_timeToMinutes(parts[0]), _timeToMinutes(parts[1]));
     }
     return null;
   }
@@ -539,37 +526,5 @@ class _DashboardPageState extends State<DashboardPage> {
 
   void _push(Widget page) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-  }
-
-  String _getHariIndo(int weekday) {
-    switch (weekday) {
-      case DateTime.monday:
-        return 'Senin';
-      case DateTime.tuesday:
-        return 'Selasa';
-      case DateTime.wednesday:
-        return 'Rabu';
-      case DateTime.thursday:
-        return 'Kamis';
-      case DateTime.friday:
-        return 'Jumat';
-      case DateTime.saturday:
-        return 'Sabtu';
-      case DateTime.sunday:
-        return 'Minggu';
-      default:
-        return 'Senin';
-    }
-  }
-
-  int _timeToMinutes(String timeStr) {
-    final clean = timeStr.trim().replaceAll('.', ':');
-    final parts = clean.split(':');
-    if (parts.length >= 2) {
-      final h = int.tryParse(parts[0]) ?? 0;
-      final m = int.tryParse(parts[1]) ?? 0;
-      return h * 60 + m;
-    }
-    return 0;
   }
 }
