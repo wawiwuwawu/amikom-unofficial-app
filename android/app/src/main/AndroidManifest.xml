@@ -11,6 +11,11 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- Pembaruan dalam app (APK dari GitHub Releases): open_filex sengaja
+         tidak membawa izin ini (kepatuhan Play Store), tapi app ini
+         didistribusikan sideload-only sehingga izin wajib dideklarasikan
+         sendiri agar pemasang APK bisa membuka file hasil unduhan. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <application
         android:label="Ini Amikom?"
         android:name="${applicationName}"

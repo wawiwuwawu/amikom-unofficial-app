@@ -31,7 +31,10 @@ int timeToMinutes(String timeStr) {
     final a = parts[0].trim();
     final b = parts[1].trim();
     final adaAngka = RegExp(r'\d');
-    if (a.isNotEmpty && b.isNotEmpty && adaAngka.hasMatch(a) && adaAngka.hasMatch(b)) {
+    if (a.isNotEmpty &&
+        b.isNotEmpty &&
+        adaAngka.hasMatch(a) &&
+        adaAngka.hasMatch(b)) {
       return (timeToMinutes(a), timeToMinutes(b));
     }
   }
@@ -51,26 +54,29 @@ String jamChip(AgendaItem i) {
 /// Nama hari Indonesia dari `DateTime.weekday` (Senin = 1 … Minggu = 7) —
 /// selaras pemetaan `dayValue` di `lib/utils/format.dart`.
 String namaHariDariWeekday(int weekday) => switch (weekday) {
-      DateTime.monday => 'Senin',
-      DateTime.tuesday => 'Selasa',
-      DateTime.wednesday => 'Rabu',
-      DateTime.thursday => 'Kamis',
-      DateTime.friday => 'Jumat',
-      DateTime.saturday => 'Sabtu',
-      DateTime.sunday => 'Minggu',
-      _ => 'Senin',
-    };
+  DateTime.monday => 'Senin',
+  DateTime.tuesday => 'Selasa',
+  DateTime.wednesday => 'Rabu',
+  DateTime.thursday => 'Kamis',
+  DateTime.friday => 'Jumat',
+  DateTime.saturday => 'Sabtu',
+  DateTime.sunday => 'Minggu',
+  _ => 'Senin',
+};
 
-/// Parse tanggal "dd-MM-yyyy" (format portal jadwal ujian, UTS maupun UAS)
-/// menjadi [DateTime] tengah malam waktu lokal. Null bila kosong, bukan
-/// format, atau rentangnya tidak valid (mis. 32-13-2026). Sumber tunggal —
-/// dipakai periode ujian, gerbang tampil ujian, dan pengingat jadwal.
-DateTime? tanggalDariDdMmYyyy(String teks) {
+/// Parse tanggal portal menjadi [DateTime] tengah malam waktu lokal. Menerima
+/// DUA format sesuai perjanjian BE: "yyyy-MM-dd" (format seragam baru dari BE
+/// untuk jadwal-ujian dan `tanggal` agenda terpadu) dan "dd-MM-yyyy" (format
+/// warisan portal `TGL_UJIAN`). Deteksi lewat posisi segmen 4 digit tahun.
+/// Null bila kosong, bukan format, atau rentangnya tidak valid (mis. 32-13).
+/// Sumber tunggal — dipakai gerbang tampil ujian dan pengingat jadwal.
+DateTime? tanggalDariPortal(String teks) {
   final parts = teks.trim().split('-');
   if (parts.length != 3) return null;
-  final d = int.tryParse(parts[0]);
+  final iso = parts[0].length == 4;
+  final d = int.tryParse(iso ? parts[2] : parts[0]);
   final m = int.tryParse(parts[1]);
-  final y = int.tryParse(parts[2]);
+  final y = int.tryParse(iso ? parts[0] : parts[2]);
   if (d == null || m == null || y == null) return null;
   if (m < 1 || m > 12 || d < 1 || d > 31) return null;
   final t = DateTime(y, m, d);
@@ -81,8 +87,18 @@ DateTime? tanggalDariDdMmYyyy(String teks) {
 /// Format tanggal Bahasa Indonesia untuk tampilan: "24 November 2026".
 String formatTanggalIndo(DateTime dt) {
   const bulan = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
   ];
   return '${dt.day} ${bulan[dt.month - 1]} ${dt.year}';
 }

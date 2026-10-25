@@ -7,11 +7,12 @@ import '../config/menu_catalog.dart';
 import '../services/api_client.dart';
 import '../services/notifikasi_service.dart';
 import '../services/deep_link_service.dart';
+import '../services/pembaruan_service.dart';
 import '../services/pengingat_jadwal_service.dart';
-import '../services/periode_ujian_service.dart';
 import '../services/push_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
+import '../widgets/pembaruan_sheet.dart';
 import 'absensi_page.dart';
 import 'dashboard_page.dart';
 import 'jadwal_page.dart';
@@ -47,6 +48,8 @@ class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
   int _refreshTrigger = 0;
   int _unreadNotifCount = 0;
+  bool _cekPembaruanLoading = false;
+  String _versiApp = '';
 
   final _searchController = TextEditingController();
   String _menuQuery = '';
@@ -57,11 +60,14 @@ class _MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     _checkUnreadNotif();
+    _muatVersiApp();
     // Keputusan user: SEMUA ketukan notifikasi (push maupun deep link) membuka
     // halaman daftar notifikasi sebagai pintasan. Dedupe id + guard list
     // terpusat ada di PushService supaya satu ketukan yang datang lewat dua
     // mekanisme (deep link app_links + pesan FCM) tidak membuka dua halaman.
-    DeepLinkService.instance.listen((id) => PushService.instance.bukaListDariKetukan());
+    DeepLinkService.instance.listen(
+      (id) => PushService.instance.bukaListDariKetukan(),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final id = DeepLinkService.instance.consumePendingId();
       if (id != null) {
@@ -190,6 +196,48 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
+  // ── Pembaruan aplikasi (APK GitHub Releases, sideload) ───────────────────
+
+  /// Versi terpasang untuk subtitle tile drawer; gagal diemankan — tile tetap
+  /// tampil tanpa subtitle.
+  Future<void> _muatVersiApp() async {
+    try {
+      final versi = await PembaruanService.instance.versiTerpasang();
+      if (mounted) setState(() => _versiApp = versi);
+    } catch (_) {
+      // Subtitle kosong lebih baik daripada crash di drawer.
+    }
+  }
+
+  /// Cek manual dari drawer (melewati throttle harian): update tersedia →
+  /// buka sheet unduh; tidak ada → snackbar; gagal → snackbar pesan ramah.
+  Future<void> _cekPembaruanManual() async {
+    if (_cekPembaruanLoading) return;
+    setState(() => _cekPembaruanLoading = true);
+    try {
+      final info = await PembaruanService.instance.cekPembaruan(paksa: true);
+      if (!mounted) return;
+      if (info == null) {
+        AppSnack.show(
+          context,
+          'Aplikasi sudah versi terbaru',
+          backgroundColor: AppColors.primary,
+        );
+        return;
+      }
+      await showPembaruanSheet(context, info);
+    } catch (e) {
+      if (!mounted) return;
+      AppSnack.show(
+        context,
+        userErrorMessage(e, 'Gagal memeriksa pembaruan. Coba lagi.'),
+        backgroundColor: AppColors.danger,
+      );
+    } finally {
+      if (mounted) setState(() => _cekPembaruanLoading = false);
+    }
+  }
+
   // ── Drawer: yang jarang dibuka, tapi perlu cepat ditemukan ───────────────
 
   Widget _buildDrawer() {
@@ -228,6 +276,37 @@ class _MainPageState extends State<MainPage> {
                   ),
                   ListTile(
                     dense: true,
+                    leading: Icon(
+                      CupertinoIcons.arrow_down_circle,
+                      size: 20,
+                      color: _cekPembaruanLoading
+                          ? AppColors.textMuted
+                          : AppColors.primary,
+                    ),
+                    title: Text(
+                      'Pembaruan Aplikasi',
+                      style: AppText.h3.copyWith(fontSize: 14),
+                    ),
+                    subtitle: _versiApp.isEmpty
+                        ? null
+                        : Text(
+                            'Versi $_versiApp',
+                            style: AppText.bodySm.copyWith(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                    trailing: _cekPembaruanLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : null,
+                    onTap: _cekPembaruanManual,
+                  ),
+                  ListTile(
+                    dense: true,
                     leading: const Icon(
                       CupertinoIcons.square_arrow_right,
                       size: 20,
@@ -254,13 +333,11 @@ class _MainPageState extends State<MainPage> {
                       // Batalkan semua pengingat jadwal + hapus cache lokal
                       // (agenda/hash/registry/libur) milik NIM ini.
                       try {
-                        await PengingatJadwalService.instance.bersihkanSaatLogout();
+                        await PengingatJadwalService.instance
+                            .bersihkanSaatLogout();
                       } catch (_) {
                         // Logout tetap lanjut walau pengingat gagal dibersihkan.
                       }
-                      // Hapus memoize periode ujian milik NIM ini agar tidak
-                      // menggerbangi agenda mahasiswa lain setelah login ulang.
-                      PeriodeUjianService.instance.bersihkanSaatLogout();
                       await ApiClient.instance.fullLogout();
                       if (!mounted) return;
                       Navigator.pushReplacementNamed(context, '/login');

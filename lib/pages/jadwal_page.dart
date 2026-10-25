@@ -29,10 +29,6 @@ class _JadwalPageState extends State<JadwalPage> {
   String? _error;
   AgendaTerpaduData? _agendaData;
 
-  /// Periode ujian terdekat (tanggal, 'UTS'/'UAS') — null bila tidak ada
-  /// ujian mendatang / fetch gagal (fail-open dari [PeriodeUjianService]).
-  (DateTime, String)? _periodeUjian;
-
   String _filterTipe = 'semua'; // 'semua', 'kuliah', 'asisten', 'ujian'
 
   @override
@@ -44,8 +40,6 @@ class _JadwalPageState extends State<JadwalPage> {
   Future<void> _load() async {
     if (!mounted) return;
     setState(() => _loading = true);
-    // Agenda dimuat dulu — halaman TIDAK boleh menunggu fetch periode ujian
-    // (dio yang sama, receiveTimeout 60 detik).
     try {
       final agenda = await _akademikService.getAgendaTerpadu();
       if (mounted) {
@@ -61,31 +55,29 @@ class _JadwalPageState extends State<JadwalPage> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-    // Periode ujian menyusul secara non-blocking: selama belum tiba, gerbang
-    // fail-open (ujian tampil); setState kedua menyaring begitu periode ada.
-    final periode = await PeriodeUjianService.instance.tanggalUjianTerdekat();
-    if (mounted) {
-      setState(() => _periodeUjian = periode);
-    }
   }
 
   bool _adaJam(AgendaItem i) => jamChip(i) != '-';
 
   /// Gerbang tampil ujian: baris ujian (tipe uts/uas) pada tampilan campuran /
-  /// hari biasa hanya dirender bila tanggal ujian terdekat ada dan berada
-  /// dalam [PeriodeUjianService.ambangHariUjian] hari ke depan (sementara
-  /// sebulan sebelum ujian terbit, dulu membuat agenda bising sebulan penuh).
+  /// hari biasa hanya dirender bila tanggal ujiannya sendiri (field `tanggal`
+  /// baris, perjanjian BE) berada dalam [PeriodeUjianService.ambangHariUjian]
+  /// hari ke depan (sementara sebulan sebelum ujian terbit, dulu membuat
+  /// agenda bising sebulan penuh).
   ///
   /// Tab filter 'ujian' SENGAJA dikecualikan: user yang memilih tab Ujian
   /// bertindak sengaja melihat ujian, jadi di sana ujian tampil apa adanya.
   ///
-  /// Fail-open: periode null (fetch gagal / tidak ada baris ber-tanggal) →
-  /// ujian tampil seperti semula.
+  /// Fail-open: tanggal null (BE lama / tak terbaca) → ujian tampil seperti
+  /// semula — tidak pernah hilang diam-diam.
   bool _lolosGerbangUjian(AgendaItem item) {
     if (_filterTipe == 'ujian') return true;
     final tipe = item.tipe.trim().toLowerCase();
     if (tipe != 'uts' && tipe != 'uas') return true;
-    return PeriodeUjianService.dalamJendela(_periodeUjian, _hariIni);
+    return PeriodeUjianService.dalamJendela(
+      tanggalDariPortal(item.tanggal ?? ''),
+      _hariIni,
+    );
   }
 
   DateTime get _hariIni {
@@ -98,15 +90,13 @@ class _JadwalPageState extends State<JadwalPage> {
   /// ujian tanpa jam yang memang terbuang tidak boleh memunculkan banner.
   bool _adaUjianTersembunyi(AgendaTerpaduData data) {
     if (_filterTipe == 'ujian') return false;
-    final periode = _periodeUjian;
-    if (periode == null) return false; // fail-open: tidak ada yang disembunyikan
     for (final entry in data.agenda.entries) {
       for (final item in entry.value) {
         final tipe = item.tipe.trim().toLowerCase();
         final ujian = tipe == 'uts' || tipe == 'uas';
         if (ujian &&
             _lolosAturanHari(entry.key, item) &&
-            !PeriodeUjianService.dalamJendela(periode, _hariIni)) {
+            !_lolosGerbangUjian(item)) {
           return true;
         }
       }
@@ -151,10 +141,10 @@ class _JadwalPageState extends State<JadwalPage> {
   /// Jumlah baris yang benar-benar tampil setelah aturan di atas — dipakai
   /// chip "Semua (N)" supaya tidak mengumumkan lebih dari yang ada di layar.
   int _jumlahTampil(AgendaTerpaduData data) => data.agenda.entries.fold<int>(
-        0,
-        (sum, entry) =>
-            sum + entry.value.where((item) => _tampil(entry.key, item)).length,
-      );
+    0,
+    (sum, entry) =>
+        sum + entry.value.where((item) => _tampil(entry.key, item)).length,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -191,7 +181,8 @@ class _JadwalPageState extends State<JadwalPage> {
     final jumlahTampil = _jumlahTampil(data);
     final jumlahSesuaiFilter = data.agenda.entries.fold<int>(
       0,
-      (sum, entry) => sum +
+      (sum, entry) =>
+          sum +
           entry.value
               .where((item) => _tampil(entry.key, item) && _sesuaiTipe(item))
               .length,
@@ -202,11 +193,12 @@ class _JadwalPageState extends State<JadwalPage> {
       return _emptyAgendaState(
         message: _filterTipe == 'semua'
             ? 'Jadwal yang tersimpan belum punya jam, jadi belum bisa '
-                'ditampilkan. Tarik ke bawah untuk menyegarkan.'
+                  'ditampilkan. Tarik ke bawah untuk menyegarkan.'
             : 'Tidak ada jadwal untuk filter ini. Pilih "Semua" untuk '
-                'melihat seluruh agenda.',
+                  'melihat seluruh agenda.',
         total: jumlahTampil,
         tampilkanBannerUjian: _adaUjianTersembunyi(data),
+        data: data,
       );
     }
 
@@ -228,7 +220,7 @@ class _JadwalPageState extends State<JadwalPage> {
           _filterRow(total: jumlahTampil),
           if (_adaUjianTersembunyi(data)) ...[
             const SizedBox(height: AppSpacing.md),
-            _bannerPeriodeUjian(),
+            _bannerPeriodeUjian(data),
           ],
           for (final day in sortedDays) _daySection(day, data.agenda[day]!),
         ],
@@ -236,7 +228,12 @@ class _JadwalPageState extends State<JadwalPage> {
     );
   }
 
-  Widget _emptyAgendaState({String? message, int? total, bool tampilkanBannerUjian = false}) {
+  Widget _emptyAgendaState({
+    String? message,
+    int? total,
+    bool tampilkanBannerUjian = false,
+    AgendaTerpaduData? data,
+  }) {
     return RefreshIndicator(
       onRefresh: _load,
       color: AppColors.primary,
@@ -253,14 +250,15 @@ class _JadwalPageState extends State<JadwalPage> {
           // Bila agenda "kosong" karena SEMUA barisnya ujian yang digerbang,
           // banner tetap wajib tampil — empty state "belum punya jam" saja
           // akan menyesatkan user.
-          if (tampilkanBannerUjian) ...[
-            _bannerPeriodeUjian(),
+          if (tampilkanBannerUjian && data != null) ...[
+            _bannerPeriodeUjian(data),
             const SizedBox(height: AppSpacing.sm),
           ],
           SizedBox(height: MediaQuery.of(context).size.height * 0.15),
           AppEmptyState(
             title: 'Belum ada agenda',
-            message: message ??
+            message:
+                message ??
                 'Tidak ada jadwal agenda terpadu untuk ditampilkan. '
                     'Tarik ke bawah untuk menyegarkan.',
             icon: CupertinoIcons.calendar,
@@ -303,7 +301,9 @@ class _JadwalPageState extends State<JadwalPage> {
       showCheckmark: false,
       backgroundColor: AppColors.surface,
       selectedColor: AppColors.primary,
-      side: isSelected ? BorderSide.none : const BorderSide(color: AppColors.border),
+      side: isSelected
+          ? BorderSide.none
+          : const BorderSide(color: AppColors.border),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
@@ -323,9 +323,12 @@ class _JadwalPageState extends State<JadwalPage> {
   /// Banner info ujian yang masih di luar jendela tampil. Gaya mengikuti
   /// banner rekomendasi SP di dashboard (AppSurface + ikon + teks token),
   /// tetap satu baris yang bisa diketuk (AppSurface.onTap = InkWell).
-  Widget _bannerPeriodeUjian() {
-    final periode = _periodeUjian;
-    final (tgl, jenis) = periode!;
+  /// Periode dihitung dari baris ujian agenda itu sendiri (tanpa fetch) —
+  /// tidak ada ujian mendatang ber-tanggal → banner tidak dirender.
+  Widget _bannerPeriodeUjian(AgendaTerpaduData data) {
+    final periode = PeriodeUjianService.periodeBerikutnya(data, _hariIni);
+    if (periode == null) return const SizedBox.shrink();
+    final (tgl, jenis) = periode;
     return AppSurface(
       variant: AppSurfaceVariant.hero,
       radius: AppRadius.md,

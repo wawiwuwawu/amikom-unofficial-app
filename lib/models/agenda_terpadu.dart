@@ -13,6 +13,12 @@ class AgendaItem {
   /// field ini; tampilan lalu jatuh ke perilaku warisan.
   final String? komponen;
 
+  /// Tanggal konkret ujian `yyyy-MM-dd` — hanya berarti untuk `tipe` uts/uas
+  /// (perjanjian BE 2026-10-25); kuliah/asisten mingguan tidak membawanya.
+  /// Null pada respons lama atau bila BE gagal mem-parse tanggal portal
+  /// (fail-open dua arah) — pemanggil wajib menganggap null = tanpa tanggal.
+  final String? tanggal;
+
   AgendaItem({
     required this.tipe,
     required this.hari,
@@ -23,6 +29,7 @@ class AgendaItem {
     required this.matakuliah,
     required this.detail,
     this.komponen,
+    this.tanggal,
   });
 
   factory AgendaItem.fromJson(Map<String, dynamic> json) {
@@ -36,6 +43,7 @@ class AgendaItem {
       matakuliah: json['matakuliah']?.toString() ?? '',
       detail: json['detail']?.toString() ?? '',
       komponen: json['komponen']?.toString(),
+      tanggal: json['tanggal']?.toString(),
     );
   }
 }
@@ -44,10 +52,7 @@ class AgendaTerpaduData {
   final int totalAgenda;
   final Map<String, List<AgendaItem>> agenda;
 
-  AgendaTerpaduData({
-    required this.totalAgenda,
-    required this.agenda,
-  });
+  AgendaTerpaduData({required this.totalAgenda, required this.agenda});
 
   factory AgendaTerpaduData.fromJson(Map<String, dynamic> json) {
     final rawAgenda = json['agenda'];

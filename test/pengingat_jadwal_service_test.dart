@@ -7,7 +7,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:app_amikom/models/agenda_terpadu.dart';
-import 'package:app_amikom/models/jadwal_ujian.dart';
 import 'package:app_amikom/services/api_client.dart';
 import 'package:app_amikom/services/pengingat_jadwal_service.dart';
 import 'package:dio/dio.dart';
@@ -72,8 +71,6 @@ class _AgendaAdapter implements HttpClientAdapter {
   _AgendaAdapter(this.agenda);
 
   Map<String, List<Map<String, dynamic>>>? agenda;
-  List<Map<String, dynamic>>? uts;
-  List<Map<String, dynamic>>? uas;
   int requests = 0;
 
   @override
@@ -83,16 +80,11 @@ class _AgendaAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests++;
-    if (options.path.contains('/api/v1/akademik/jadwal-ujian')) {
-      final rows = options.queryParameters['jenis'] == 'uas' ? uas : uts;
-      if (rows == null) throw Exception('simulasi offline jadwal-ujian');
-      return ResponseBody.fromString(
-        jsonEncode({'status': 'success', 'data': rows}),
-        200,
-        headers: {
-          Headers.contentTypeHeader: [Headers.jsonContentType],
-        },
-      );
+    // Endpoint lain (mis. jadwal-ujian) sudah tidak dipanggil layanan —
+    // sumber tanggal ujian kini baris agenda itu sendiri. Bila layanan
+    // menyimpang dan memanggil endpoint lain, test ini gagal cepat.
+    if (!options.path.contains('/api/v1/agenda/terpadu')) {
+      throw Exception('endpoint tak dikenal: ${options.path}');
     }
     final data = agenda;
     if (data == null) {
@@ -219,29 +211,35 @@ void main() {
       expect(hasil, isEmpty);
     });
 
-    test('kejadian hari ini yang sudah lewat dilewati, kemunculan berikutnya tetap', () {
-      final agenda = _agenda({
-        'Senin': [
-          {
-            'tipe': 'kuliah',
-            'hari': 'Senin',
-            'jam': '09:00 - 10:40',
-            'ruang': '',
-            'matakuliah': 'Pemrograman Web',
-            'detail': '',
-          },
-        ],
-      });
-      // Sekarang Senin 2026-11-02 pukul 10:00 → 09:00 sudah lewat.
-      final hasil = PengingatJadwalService.hitungKejadian(
-        agenda: agenda,
-        sekarang: DateTime(2026, 11, 2, 10, 0),
-        tanggalLibur: const {},
-      );
-      expect(hasil.length, 1);
-      expect(hasil.single.tanggal, DateTime(2026, 11, 9),
-          reason: 'hanya kemunculan Senin berikutnya yang dijadwalkan');
-    });
+    test(
+      'kejadian hari ini yang sudah lewat dilewati, kemunculan berikutnya tetap',
+      () {
+        final agenda = _agenda({
+          'Senin': [
+            {
+              'tipe': 'kuliah',
+              'hari': 'Senin',
+              'jam': '09:00 - 10:40',
+              'ruang': '',
+              'matakuliah': 'Pemrograman Web',
+              'detail': '',
+            },
+          ],
+        });
+        // Sekarang Senin 2026-11-02 pukul 10:00 → 09:00 sudah lewat.
+        final hasil = PengingatJadwalService.hitungKejadian(
+          agenda: agenda,
+          sekarang: DateTime(2026, 11, 2, 10, 0),
+          tanggalLibur: const {},
+        );
+        expect(hasil.length, 1);
+        expect(
+          hasil.single.tanggal,
+          DateTime(2026, 11, 9),
+          reason: 'hanya kemunculan Senin berikutnya yang dijadwalkan',
+        );
+      },
+    );
 
     test('baris ujian dari agenda TIDAK lagi menghasilkan kejadian '
         '(sumber kini jadwal-ujian, jalur regex detail dihapus)', () {
@@ -284,10 +282,7 @@ void main() {
         sekarang: DateTime(2026, 11, 2, 7, 0),
         tanggalLibur: const {'2026-11-09'},
       );
-      expect(
-        denganLibur.map((k) => k.tanggal),
-        [DateTime(2026, 11, 2)],
-      );
+      expect(denganLibur.map((k) => k.tanggal), [DateTime(2026, 11, 2)]);
 
       final tanpaLibur = PengingatJadwalService.hitungKejadian(
         agenda: _agenda(raw),
@@ -297,68 +292,74 @@ void main() {
       expect(tanpaLibur.length, 2);
     });
 
-    test('judul: komponen teori/praktek untuk kuliah, "Ujian" untuk uts/uas', () {
-      final agenda = _agenda({
-        'Senin': [
-          {
-            'tipe': 'kuliah',
-            'hari': 'Senin',
-            'jam': '09:00 - 10:40',
-            'ruang': 'LT2',
-            'matakuliah': 'Pemrograman Web',
-            'detail': '',
-            'komponen': 'praktek',
-          },
-          {
-            'tipe': 'asisten',
-            'hari': 'Senin',
-            'jam': '13:00 - 15:00',
-            'ruang': '',
-            'matakuliah': 'Asisten Alpro',
-            'detail': '',
-          },
-        ],
-      });
-      final hasil = PengingatJadwalService.hitungKejadian(
-        agenda: agenda,
-        sekarang: DateTime(2026, 11, 2, 7, 0),
-        tanggalLibur: const {},
-      );
-      final judul = hasil.map((k) => k.judul).toSet();
-      expect(judul, contains('Pemrograman Web · Praktek'));
-      expect(judul, contains('Asisten Alpro'));
-      expect(
-        hasil.first.isi(),
-        'Pemrograman Web · Praktek mulai 30 menit lagi (09:00, LT2)',
-        reason: 'isi menyebut jam MULAI kelas, bukan jam notifikasi',
-      );
-    });
+    test(
+      'judul: komponen teori/praktek untuk kuliah, "Ujian" untuk uts/uas',
+      () {
+        final agenda = _agenda({
+          'Senin': [
+            {
+              'tipe': 'kuliah',
+              'hari': 'Senin',
+              'jam': '09:00 - 10:40',
+              'ruang': 'LT2',
+              'matakuliah': 'Pemrograman Web',
+              'detail': '',
+              'komponen': 'praktek',
+            },
+            {
+              'tipe': 'asisten',
+              'hari': 'Senin',
+              'jam': '13:00 - 15:00',
+              'ruang': '',
+              'matakuliah': 'Asisten Alpro',
+              'detail': '',
+            },
+          ],
+        });
+        final hasil = PengingatJadwalService.hitungKejadian(
+          agenda: agenda,
+          sekarang: DateTime(2026, 11, 2, 7, 0),
+          tanggalLibur: const {},
+        );
+        final judul = hasil.map((k) => k.judul).toSet();
+        expect(judul, contains('Pemrograman Web · Praktek'));
+        expect(judul, contains('Asisten Alpro'));
+        expect(
+          hasil.first.isi(),
+          'Pemrograman Web · Praktek mulai 30 menit lagi (09:00, LT2)',
+          reason: 'isi menyebut jam MULAI kelas, bukan jam notifikasi',
+        );
+      },
+    );
   });
 
-  group('kejadian ujian dari jadwal-ujian (bukan regex detail agenda)', () {
-    JadwalUjian buatUjian({
-      String tanggal = '24-11-2026',
+  group('kejadian ujian dari field `tanggal` baris agenda (perjanjian BE)', () {
+    AgendaTerpaduData agendaDenganUjian({
+      String? tanggal,
       String mkl = 'Basis Data',
       String jamMulai = '07:30',
       String ruang = 'D.1.1',
-    }) =>
-        JadwalUjian(
-          kode: 'TIF123',
-          mkl: mkl,
-          tanggal: tanggal,
-          hari: 'Selasa',
-          ruang: ruang,
-          jamMulai: jamMulai,
-          jamSelesai: '09:10',
-          noKursi: 5,
-          nilai: null,
-        );
+      String tipe = 'uts',
+    }) => _agenda({
+      'Senin': [
+        {
+          'tipe': tipe,
+          'hari': 'Senin',
+          'jam': '$jamMulai - 09:10',
+          'jam_mulai': jamMulai,
+          'jam_selesai': '09:10',
+          'ruang': ruang,
+          'matakuliah': mkl,
+          'detail': '',
+          'tanggal': ?tanggal,
+        },
+      ],
+    });
 
-    test('dalam jendela 14 hari → dijadwalkan dengan judul/jam/ruang ujian', () {
+    test('dalam jendela 14 hari → dijadwalkan (format ISO yyyy-MM-dd)', () {
       // Jendela 2026-11-20 .. 12-03 memuat 24 November.
       final hasil = PengingatJadwalService.hitungKejadian(
-        agenda: _agenda({}),
-        ujianBerjadwal: [(buatUjian(), 'uts')],
+        agenda: agendaDenganUjian(tanggal: '2026-11-24'),
         sekarang: DateTime(2026, 11, 20, 12, 0),
         tanggalLibur: const {},
       );
@@ -373,10 +374,18 @@ void main() {
       );
     });
 
+    test('format warisan dd-MM-yyyy tetap dijadwalkan', () {
+      final hasil = PengingatJadwalService.hitungKejadian(
+        agenda: agendaDenganUjian(tanggal: '24-11-2026'),
+        sekarang: DateTime(2026, 11, 20, 12, 0),
+        tanggalLibur: const {},
+      );
+      expect(hasil.single.tanggal, DateTime(2026, 11, 24));
+    });
+
     test('tanggal libur diskip', () {
       final hasil = PengingatJadwalService.hitungKejadian(
-        agenda: _agenda({}),
-        ujianBerjadwal: [(buatUjian(), 'uas')],
+        agenda: agendaDenganUjian(tanggal: '2026-11-24'),
         sekarang: DateTime(2026, 11, 20, 12, 0),
         tanggalLibur: const {'2026-11-24'},
       );
@@ -386,14 +395,12 @@ void main() {
     test('di luar jendela (sudah lewat / >14 hari) dilewati', () {
       final sekarang = DateTime(2026, 11, 20, 12, 0);
       final lewat = PengingatJadwalService.hitungKejadian(
-        agenda: _agenda({}),
-        ujianBerjadwal: [(buatUjian(tanggal: '19-11-2026'), 'uts')],
+        agenda: agendaDenganUjian(tanggal: '2026-11-19'),
         sekarang: sekarang,
         tanggalLibur: const {},
       );
       final jauh = PengingatJadwalService.hitungKejadian(
-        agenda: _agenda({}),
-        ujianBerjadwal: [(buatUjian(tanggal: '10-12-2026'), 'uts')],
+        agenda: agendaDenganUjian(tanggal: '2026-12-10'),
         sekarang: sekarang,
         tanggalLibur: const {},
       );
@@ -401,45 +408,46 @@ void main() {
       expect(jauh, isEmpty);
     });
 
-    test('tanggal tak terbaca / kosong / jam kosong / mulai <30 menit dilewati',
-        () {
+    test('tanggal tak terbaca / tidak ada (BE lama) / jam kosong / mulai <30 '
+        'menit dilewati', () {
       final sekarang = DateTime(2026, 11, 20, 12, 0);
-      for (final ujian in [
-        buatUjian(tanggal: 'bukan-tanggal'),
-        buatUjian(tanggal: ''),
-        buatUjian(jamMulai: ''),
-        buatUjian(jamMulai: '-'),
-        buatUjian(jamMulai: '00:10'),
+      for (final (tanggal, jamMulai) in [
+        ('bukan-tanggal', '07:30'),
+        (null, '07:30'),
+        ('2026-11-24', ''),
+        ('2026-11-24', '-'),
+        ('2026-11-24', '00:10'),
       ]) {
         final hasil = PengingatJadwalService.hitungKejadian(
-          agenda: _agenda({}),
-          ujianBerjadwal: [(ujian, 'uts')],
+          agenda: agendaDenganUjian(tanggal: tanggal, jamMulai: jamMulai),
           sekarang: sekarang,
           tanggalLibur: const {},
         );
-        expect(hasil, isEmpty, reason: 'ujian ${ujian.tanggal} harus dilewati');
+        expect(
+          hasil,
+          isEmpty,
+          reason: 'ujian ($tanggal, $jamMulai) harus dilewati',
+        );
       }
     });
 
-    test('ujian HARI INI yang jamnya sudah lewat dilewati (bukan jadwal lampau)',
-        () {
-      // Sekarang 20-11-2026 jam 12:00; ujian jam 08:00 hari ini sudah lewat —
-      // alarm exact akan menembak segera bila tetap dijadwalkan.
-      final hasil = PengingatJadwalService.hitungKejadian(
-        agenda: _agenda({}),
-        ujianBerjadwal: [(buatUjian(tanggal: '20-11-2026', jamMulai: '08:00'), 'uts')],
-        sekarang: DateTime(2026, 11, 20, 12, 0),
-        tanggalLibur: const {},
-      );
-      expect(hasil, isEmpty);
-    });
+    test(
+      'ujian HARI INI yang jamnya sudah lewat dilewati (bukan jadwal lampau)',
+      () {
+        // Sekarang 20-11-2026 jam 12:00; ujian jam 08:00 hari ini sudah lewat —
+        // alarm exact akan menembak segera bila tetap dijadwalkan.
+        final hasil = PengingatJadwalService.hitungKejadian(
+          agenda: agendaDenganUjian(tanggal: '2026-11-20', jamMulai: '08:00'),
+          sekarang: DateTime(2026, 11, 20, 12, 0),
+          tanggalLibur: const {},
+        );
+        expect(hasil, isEmpty);
+      },
+    );
 
     test('ujian HARI INI yang belum lewat tetap dijadwalkan', () {
       final hasil = PengingatJadwalService.hitungKejadian(
-        agenda: _agenda({}),
-        ujianBerjadwal: [
-          (buatUjian(tanggal: '20-11-2026', jamMulai: '13:00'), 'uts'),
-        ],
+        agenda: agendaDenganUjian(tanggal: '2026-11-20', jamMulai: '13:00'),
         sekarang: DateTime(2026, 11, 20, 12, 0),
         tanggalLibur: const {},
       );
@@ -449,8 +457,7 @@ void main() {
 
     test('MKL kosong → judul "Ujian" (tanpa nama matkul)', () {
       final hasil = PengingatJadwalService.hitungKejadian(
-        agenda: _agenda({}),
-        ujianBerjadwal: [(buatUjian(mkl: ''), 'uas')],
+        agenda: agendaDenganUjian(tanggal: '2026-11-24', mkl: '', tipe: 'uas'),
         sekarang: DateTime(2026, 11, 20, 12, 0),
         tanggalLibur: const {},
       );
@@ -570,20 +577,26 @@ END:VCALENDAR
       ],
     };
 
-    test('hash sama → tidak reschedule (tidak cancel, tidak schedule ulang)', () async {
-      adapter.agenda = agendaSenin;
+    test(
+      'hash sama → tidak reschedule (tidak cancel, tidak schedule ulang)',
+      () async {
+        adapter.agenda = agendaSenin;
 
-      await service().perbaruiPengingat();
-      final jumlahPertama = gateway.scheduledIds.length;
-      expect(jumlahPertama, greaterThanOrEqualTo(1));
-      final cancelPertama = gateway.cancelledIds.length;
+        await service().perbaruiPengingat();
+        final jumlahPertama = gateway.scheduledIds.length;
+        expect(jumlahPertama, greaterThanOrEqualTo(1));
+        final cancelPertama = gateway.cancelledIds.length;
 
-      await service().perbaruiPengingat();
+        await service().perbaruiPengingat();
 
-      expect(gateway.scheduledIds.length, jumlahPertama,
-          reason: 'hash sama + registry non-kosong → dilewati');
-      expect(gateway.cancelledIds.length, cancelPertama);
-    });
+        expect(
+          gateway.scheduledIds.length,
+          jumlahPertama,
+          reason: 'hash sama + registry non-kosong → dilewati',
+        );
+        expect(gateway.cancelledIds.length, cancelPertama);
+      },
+    );
 
     test('hash beda → cancel registry lama lalu schedule ulang', () async {
       adapter.agenda = agendaSenin;
@@ -597,8 +610,11 @@ END:VCALENDAR
 
       await service().perbaruiPengingat();
 
-      expect(gateway.cancelledIds, idLama,
-          reason: 'semua id registry lama dibatalkan');
+      expect(
+        gateway.cancelledIds,
+        idLama,
+        reason: 'semua id registry lama dibatalkan',
+      );
       expect(gateway.scheduledIds, isNotEmpty);
       expect(
         gateway.scheduledIds.toSet().intersection(idLama.toSet()),
@@ -623,8 +639,11 @@ END:VCALENDAR
 
       await service().perbaruiPengingat();
 
-      expect(gateway.scheduledIds, isNotEmpty,
-          reason: 'cache agenda dipakai — jadwal basi lebih baik daripada hilang');
+      expect(
+        gateway.scheduledIds,
+        isNotEmpty,
+        reason: 'cache agenda dipakai — jadwal basi lebih baik daripada hilang',
+      );
       for (final d in gateway.scheduledDates) {
         expect(d.hour, 8);
         expect(d.minute, 30);
@@ -648,9 +667,16 @@ END:VCALENDAR
 
       await service().perbaruiPengingat();
 
-      expect(gateway.scheduledIds, isEmpty, reason: 'tidak ada yang dijadwalkan');
-      expect(gateway.cancelledIds, isEmpty,
-          reason: 'alarm & registry basi dipertahankan, jangan dihapus');
+      expect(
+        gateway.scheduledIds,
+        isEmpty,
+        reason: 'tidak ada yang dijadwalkan',
+      );
+      expect(
+        gateway.cancelledIds,
+        isEmpty,
+        reason: 'alarm & registry basi dipertahankan, jangan dihapus',
+      );
       expect(_bacaRegistry(prefs), idLama);
     });
 
@@ -673,63 +699,78 @@ END:VCALENDAR
       final p2 = service().perbaruiPengingat();
       await Future.wait([p1, p2]);
 
-      expect(adapter.requests, 3,
-          reason: 'hanya satu fetch per sumber (agenda + uts + uas) — '
-              'melindungi refresh token single-use');
+      expect(
+        adapter.requests,
+        1,
+        reason:
+            'hanya satu fetch agenda — sumber tanggal ujian kini baris agenda '
+            'itu sendiri (tanpa fetch jadwal-ujian tambahan), melindungi '
+            'refresh token single-use',
+      );
       expect(gateway.scheduledIds.length, greaterThanOrEqualTo(1));
     });
 
-    test('jam terjadwal tepat: 30 menit sebelum mulai, dalam 14 hari, zona lokal', () async {
-      adapter.agenda = agendaSenin;
-      await service().perbaruiPengingat();
+    test(
+      'jam terjadwal tepat: 30 menit sebelum mulai, dalam 14 hari, zona lokal',
+      () async {
+        adapter.agenda = agendaSenin;
+        await service().perbaruiPengingat();
 
-      final sekarang = DateTime.now();
-      final hariIni = DateTime(sekarang.year, sekarang.month, sekarang.day);
-      final akhir = hariIni.add(const Duration(days: 13));
+        final sekarang = DateTime.now();
+        final hariIni = DateTime(sekarang.year, sekarang.month, sekarang.day);
+        final akhir = hariIni.add(const Duration(days: 13));
 
-      expect(gateway.scheduledDates, isNotEmpty);
-      for (final d in gateway.scheduledDates) {
-        expect(d.hour, 8);
-        expect(d.minute, 30);
-        final tanggal = DateTime(d.year, d.month, d.day);
+        expect(gateway.scheduledDates, isNotEmpty);
+        for (final d in gateway.scheduledDates) {
+          expect(d.hour, 8);
+          expect(d.minute, 30);
+          final tanggal = DateTime(d.year, d.month, d.day);
+          expect(tanggal.isBefore(hariIni) || tanggal.isAfter(akhir), isFalse);
+        }
         expect(
-          tanggal.isBefore(hariIni) || tanggal.isAfter(akhir),
-          isFalse,
-        );
-      }
-      expect(gateway.bodies.first,
+          gateway.bodies.first,
           'Pemrograman Web mulai 30 menit lagi (09:00, LT2)',
-          reason: 'isi menyebut jam MULAI, bukan jam notifikasi');
-    });
+          reason: 'isi menyebut jam MULAI, bukan jam notifikasi',
+        );
+      },
+    );
 
-    test('payload notifikasi dikosongkan (tap → no-op sesuai Fase 1)', () async {
-      // Payload di-wire sebagai '' di gateway nyata; gateway palsu tidak
-      // menerimanya sebagai argumen — konten body tetap diverifikasi di atas,
-      // dan push_service_test memastikan payload kosong/tak dikenal no-op.
-      adapter.agenda = agendaSenin;
-      await service().perbaruiPengingat();
-      expect(gateway.bodies, isNotEmpty);
-    });
+    test(
+      'payload notifikasi dikosongkan (tap → no-op sesuai Fase 1)',
+      () async {
+        // Payload di-wire sebagai '' di gateway nyata; gateway palsu tidak
+        // menerimanya sebagai argumen — konten body tetap diverifikasi di atas,
+        // dan push_service_test memastikan payload kosong/tak dikenal no-op.
+        adapter.agenda = agendaSenin;
+        await service().perbaruiPengingat();
+        expect(gateway.bodies, isNotEmpty);
+      },
+    );
 
-    test('ujian dari jadwal-ujian dijadwalkan (UTS alias TANGGAL)', () async {
+    test('ujian dari field `tanggal` baris agenda dijadwalkan (e2e)', () async {
       final tglUjian = DateTime.now().add(const Duration(days: 5));
       String dua(int n) => n.toString().padLeft(2, '0');
       final tglStr =
-          '${dua(tglUjian.day)}-${dua(tglUjian.month)}-${tglUjian.year}';
-      adapter.agenda = agendaSenin;
-      adapter.uts = [
-        {
-          'KODE': 'TIF123',
-          'MKL': 'Basis Data',
-          'TANGGAL': tglStr,
-          'HARI': 'Selasa',
-          'RUANG': 'D.1.1',
-          'JAM_MULAI': '07:30',
-          'JAM_SELESEI': '09:10',
-          'NOKURSI': 5,
-        },
-      ];
-      adapter.uas = [];
+          '${tglUjian.year}-${dua(tglUjian.month)}-${dua(tglUjian.day)}';
+      adapter.agenda = {
+        // Baris ujian diletakkan SETELAH spread agar tidak tertimpa key
+        // 'Senin' milik agendaSenin.
+        ...agendaSenin,
+        'Senin': [
+          {
+            'tipe': 'uts',
+            'hari': 'Senin',
+            'jam': '07:30 - 09:10',
+            'jam_mulai': '07:30',
+            'jam_selesai': '09:10',
+            'ruang': 'D.1.1',
+            'matakuliah': 'Basis Data',
+            'detail': '',
+            'tanggal': tglStr,
+          },
+          ...agendaSenin['Senin'] ?? const <Map<String, dynamic>>[],
+        ],
+      };
 
       await service().perbaruiPengingat();
 
@@ -739,34 +780,42 @@ END:VCALENDAR
       );
     });
 
-    test('gagal fetch jadwal-ujian → tanpa kejadian ujian (fail-open)', () async {
-      // Agenda memuat baris ujian dengan tanggal di detail — jalur regex
-      // detail sudah dihapus, jadi tidak boleh ada kejadian ujian sama sekali.
-      adapter.agenda = {
-        'Senin': [
-          {
-            'tipe': 'uts',
-            'hari': 'Senin',
-            'jam': '07:30 - 09:10',
-            'ruang': 'D.1.1',
-            'matakuliah': 'Basis Data',
-            'detail': '24-11-2026',
-          },
-        ],
-        ...agendaSenin,
-      };
-      adapter.uts = null; // fetch jadwal-ujian gagal
-      adapter.uas = null;
+    test(
+      'baris ujian tanpa field `tanggal` (BE lama) → tanpa kejadian ujian',
+      () async {
+        // Agenda memuat baris ujian dengan tanggal di detail — jalur regex
+        // detail sudah dihapus dan respons lama tidak punya `tanggal`, jadi
+        // tidak boleh ada kejadian ujian sama sekali (fail-open).
+        adapter.agenda = {
+          'Senin': [
+            {
+              'tipe': 'uts',
+              'hari': 'Senin',
+              'jam': '07:30 - 09:10',
+              'ruang': 'D.1.1',
+              'matakuliah': 'Basis Data',
+              'detail': '24-11-2026',
+            },
+          ],
+          ...agendaSenin,
+        };
 
-      await service().perbaruiPengingat();
+        await service().perbaruiPengingat();
 
-      expect(gateway.bodies, isNotEmpty,
-          reason: 'kuliah tetap dijadwalkan walau jadwal-ujian gagal');
-      for (final body in gateway.bodies) {
-        expect(body.startsWith('Ujian '), isFalse,
-            reason: 'tanpa jadwal-ujian tidak boleh ada reminder ujian');
-      }
-    });
+        expect(
+          gateway.bodies,
+          isNotEmpty,
+          reason: 'kuliah tetap dijadwalkan walau baris ujian tanpa tanggal',
+        );
+        for (final body in gateway.bodies) {
+          expect(
+            body.startsWith('Ujian '),
+            isFalse,
+            reason: 'tanpa tanggal tidak boleh ada reminder ujian',
+          );
+        }
+      },
+    );
   });
 }
 

@@ -1,17 +1,11 @@
-// Test PeriodeUjianService: pilih ujian terdekat yang belum lewat, skip
-// tanggal tak terbaca, fail-open saat fetch gagal, memoize per sesi (TTL)
-// dengan reset untuk test, dan gerbang jendela tampil [dalamJendela].
-// Seluruh request jaringan lewat adapter Dio palsu — tidak ada Firebase.
+// Test PeriodeUjianService (kini helper MURNI tanpa fetch — sumber tanggal
+// ujian adalah field `tanggal` baris agenda terpadu dari BE): gerbang jendela
+// tampil per-baris [dalamJendela], pencari periode terdekat
+// [periodeBerikutnya], dan parser tanggal dua-format [tanggalDariPortal].
 
-import 'dart:convert';
-import 'dart:typed_data';
-
-import 'package:app_amikom/models/jadwal_ujian.dart';
-import 'package:app_amikom/services/api_client.dart';
+import 'package:app_amikom/models/agenda_terpadu.dart';
 import 'package:app_amikom/services/periode_ujian_service.dart';
 import 'package:app_amikom/utils/waktu.dart';
-import 'package:dio/dio.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 DateTime _hariIni() {
@@ -19,195 +13,44 @@ DateTime _hariIni() {
   return DateTime(now.year, now.month, now.day);
 }
 
+String _iso(DateTime t) =>
+    '${t.year}-${t.month.toString().padLeft(2, '0')}-${t.day.toString().padLeft(2, '0')}';
+
 String _ddmmyyyy(DateTime t) {
   final d = t.day.toString().padLeft(2, '0');
   final m = t.month.toString().padLeft(2, '0');
   return '$d-$m-${t.year}';
 }
 
-Map<String, dynamic> _baris({
-  String? tanggal,
-  String mkl = 'Basis Data',
-}) =>
-    {
-      'KODE': 'TIF123',
-      'MKL': mkl,
-      'TANGGAL': ?tanggal,
-      'HARI': 'Selasa',
-      'RUANG': 'D.1.1',
-      'JAM_MULAI': '07:30',
-      'JAM_SELESEI': '09:10',
-      'NOKURSI': 5,
-    };
+Map<String, dynamic> _barisUjian({String tipe = 'uts', String? tanggal}) => {
+  'tipe': tipe,
+  'hari': 'Senin',
+  'jam': '08:00 - 10:00',
+  'jam_mulai': '08:00',
+  'ruang': 'LT2',
+  'matakuliah': 'Basis Data',
+  'detail': '',
+  'tanggal': ?tanggal,
+};
 
-/// Adapter jadwal-ujian: membalas GET /api/v1/akademik/jadwal-ujian
-/// (?jenis=uts|uas) dengan [uts]/[uas]; null berarti fetch gagal.
-/// Endpoint lain selalu gagal (tidak dipakai layanan ini).
-class _UjianAdapter implements HttpClientAdapter {
-  _UjianAdapter({this.uts, this.uas});
-
-  List<Map<String, dynamic>>? uts;
-  List<Map<String, dynamic>>? uas;
-  int requests = 0;
-
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<Uint8List>? requestStream,
-    Future<void>? cancelFuture,
-  ) async {
-    requests++;
-    if (options.path.contains('/api/v1/akademik/jadwal-ujian')) {
-      final rows = options.queryParameters['jenis'] == 'uas' ? uas : uts;
-      if (rows == null) throw Exception('simulasi offline');
-      return ResponseBody.fromString(
-        jsonEncode({'status': 'success', 'data': rows}),
-        200,
-        headers: {
-          Headers.contentTypeHeader: [Headers.jsonContentType],
-        },
-      );
-    }
-    throw Exception('endpoint tak dikenal');
-  }
-
-  @override
-  void close({bool force = false}) {}
-}
+AgendaTerpaduData _agenda(Map<String, List<Map<String, dynamic>>> hari) =>
+    AgendaTerpaduData.fromJson({
+      'total_agenda': hari.values.fold(0, (s, l) => s + l.length),
+      'agenda': hari,
+    });
 
 void main() {
-  setUpAll(() {
-    dotenv.loadFromString(envString: 'API_BASE_URL=http://localhost:3000');
-  });
-
-  late _UjianAdapter adapter;
-
-  setUp(() {
-    adapter = _UjianAdapter(uts: [], uas: []);
-    ApiClient.instance.dio.httpClientAdapter = adapter;
-    PeriodeUjianService.instance.resetUntukTest();
-  });
-
-  group('tanggalUjianTerdekat (service, fail-open + memoize)', () {
-    test('pilih ujian terdekat yang belum lewat dari uts & uas', () async {
-      adapter.uts = [_baris(tanggal: _ddmmyyyy(_hariIni().add(const Duration(days: 10))))];
-      adapter.uas = [_baris(tanggal: _ddmmyyyy(_hariIni().add(const Duration(days: 3))))];
-
-      final hasil = await PeriodeUjianService.instance.tanggalUjianTerdekat();
-
-      expect(hasil, isNotNull);
-      expect(hasil!.$1, _hariIni().add(const Duration(days: 3)));
-      expect(hasil.$2, 'UAS');
-    });
-
-    test('ujian yang sudah lewat diskip; tanpa ujian mendatang → null', () async {
-      adapter.uts = [
-        _baris(tanggal: _ddmmyyyy(_hariIni().subtract(const Duration(days: 2)))),
-      ];
-
-      final hasil = await PeriodeUjianService.instance.tanggalUjianTerdekat();
-
-      expect(hasil, isNull, reason: 'semua ujian sudah lewat → null, bukan galat');
-    });
-
-    test('tanggal tak terbaca dilewati', () async {
-      adapter.uts = [_baris(tanggal: 'belum diumumkan')];
-      adapter.uas = [_baris(tanggal: _ddmmyyyy(_hariIni().add(const Duration(days: 2))))];
-
-      final hasil = await PeriodeUjianService.instance.tanggalUjianTerdekat();
-
-      expect(hasil!.$2, 'UAS');
-    });
-
-    test('fetch gagal → null (fail-open, tidak melempar)', () async {
-      adapter.uts = null; // keduanya gagal
-      adapter.uas = null;
-
-      final hasil = PeriodeUjianService.instance.tanggalUjianTerdekat();
-
-      // Tidak melempar — hasil null.
-      expect(await hasil, isNull);
-    });
-
-    test('memoize per sesi: panggilan berulang tidak meng-hammer endpoint',
-        () async {
-      adapter.uts = [_baris(tanggal: _ddmmyyyy(_hariIni().add(const Duration(days: 3))))];
-      adapter.uas = [];
-
-      await PeriodeUjianService.instance.tanggalUjianTerdekat();
-      await PeriodeUjianService.instance.tanggalUjianTerdekat();
-      await PeriodeUjianService.instance.tanggalUjianTerdekat();
-
-      // 2 request (uts + uas) hanya pada panggilan pertama.
-      expect(adapter.requests, 2);
-    });
-
-    test('hasil gagal juga dimemoize (TTL 5 menit), reset untuk test memuat ulang',
-        () async {
-      adapter.uts = null;
-      adapter.uas = null;
-
-      await PeriodeUjianService.instance.tanggalUjianTerdekat();
-      await PeriodeUjianService.instance.tanggalUjianTerdekat();
-      expect(adapter.requests, 2, reason: 'hasil gagal dimemoize');
-
-      adapter.uts = [_baris(tanggal: _ddmmyyyy(_hariIni().add(const Duration(days: 3))))];
-      adapter.uas = [];
-      PeriodeUjianService.instance.resetUntukTest();
-
-      final hasil = await PeriodeUjianService.instance.tanggalUjianTerdekat();
-      expect(hasil, isNotNull, reason: 'setelah reset, data baru dimuat');
-      expect(adapter.requests, 4);
-    });
-  });
-
-  group('pilihTerdekat (pure)', () {
-    test('tanggal minimum ≥ hari ini menang, UTS vs UAS', () {
-      final hari = _hariIni();
-      final barisUts = JadwalUjian.fromJson(
-        _baris(tanggal: _ddmmyyyy(hari.add(const Duration(days: 9)))),
-      );
-      final barisUas = JadwalUjian.fromJson(
-        _baris(tanggal: _ddmmyyyy(hari.add(const Duration(days: 9)))),
-      );
-      final hasil = PeriodeUjianService.pilihTerdekat(
-        [barisUts],
-        [barisUas],
-        hari,
-      );
-      expect(hasil!.$2, 'UTS', reason: 'urutan sama → yang pertama dipertahankan');
-    });
-
-    test('semua baris lewat / tanggal kosong → null', () {
-      final hari = _hariIni();
-      final hasil = PeriodeUjianService.pilihTerdekat(
-        [
-          JadwalUjian.fromJson(
-            _baris(tanggal: _ddmmyyyy(hari.subtract(const Duration(days: 1)))),
-          ),
-          JadwalUjian.fromJson(_baris(tanggal: '')),
-        ],
-        [],
-        hari,
-      );
-      expect(hasil, isNull);
-    });
-  });
-
-  group('dalamJendela (gerbang tampil)', () {
-    test('periode null → fail-open (tampil)', () {
+  group('dalamJendela (gerbang per-baris)', () {
+    test('tanggal null → fail-open (tampil)', () {
       expect(PeriodeUjianService.dalamJendela(null, _hariIni()), isTrue);
     });
 
     test('hari ini dan dalam ambang 7 hari → tampil', () {
       final hari = _hariIni();
-      expect(
-        PeriodeUjianService.dalamJendela((hari, 'UTS'), hari),
-        isTrue,
-      );
+      expect(PeriodeUjianService.dalamJendela(hari, hari), isTrue);
       expect(
         PeriodeUjianService.dalamJendela(
-          (hari.add(const Duration(days: 6)), 'UTS'),
+          hari.add(const Duration(days: 6)),
           hari,
         ),
         isTrue,
@@ -218,14 +61,14 @@ void main() {
       final hari = _hariIni();
       expect(
         PeriodeUjianService.dalamJendela(
-          (hari.add(const Duration(days: 7)), 'UTS'),
+          hari.add(const Duration(days: 7)),
           hari,
         ),
         isFalse,
       );
       expect(
         PeriodeUjianService.dalamJendela(
-          (hari.subtract(const Duration(days: 1)), 'UTS'),
+          hari.subtract(const Duration(days: 1)),
           hari,
         ),
         isFalse,
@@ -233,16 +76,85 @@ void main() {
     });
   });
 
-  group('helper waktu (sumber tunggal parser dd-MM-yyyy)', () {
-    test('tanggalDariDdMmYyyy valid', () {
-      expect(tanggalDariDdMmYyyy('08-07-2026'), DateTime(2026, 7, 8));
+  group('periodeBerikutnya (pure, dari baris agenda)', () {
+    test('pilih ujian terdekat ≥ hari ini dari uts & uas', () {
+      final hari = _hariIni();
+      final data = _agenda({
+        'Senin': [
+          _barisUjian(
+            tipe: 'uts',
+            tanggal: _iso(hari.add(const Duration(days: 10))),
+          ),
+          _barisUjian(
+            tipe: 'uas',
+            tanggal: _iso(hari.add(const Duration(days: 3))),
+          ),
+        ],
+      });
+
+      final hasil = PeriodeUjianService.periodeBerikutnya(data, hari);
+
+      expect(hasil, isNotNull);
+      expect(hasil!.$1, hari.add(const Duration(days: 3)));
+      expect(hasil.$2, 'UAS');
     });
 
-    test('tanggal tidak valid / format lain → null', () {
-      expect(tanggalDariDdMmYyyy(''), isNull);
-      expect(tanggalDariDdMmYyyy('32-13-2026'), isNull);
-      expect(tanggalDariDdMmYyyy('2026-07-08'), isNull);
-      expect(tanggalDariDdMmYyyy('abc'), isNull);
+    test('ujian lewat, tanpa tanggal, dan non-ujian diabaikan', () {
+      final hari = _hariIni();
+      final data = _agenda({
+        'Senin': [
+          _barisUjian(
+            tipe: 'uts',
+            tanggal: _iso(hari.subtract(const Duration(days: 2))),
+          ),
+          _barisUjian(tipe: 'uas'), // respons lama: tanpa tanggal
+          {
+            'tipe': 'kuliah',
+            'hari': 'Senin',
+            'jam': '08:00 - 09:40',
+            'jam_mulai': '08:00',
+            'ruang': 'D.3.J',
+            'matakuliah': 'Pemrograman Mobile',
+            'detail': '',
+          },
+        ],
+      });
+
+      expect(PeriodeUjianService.periodeBerikutnya(data, hari), isNull);
+    });
+
+    test('format warisan dd-MM-yyyy tetap terbaca', () {
+      final hari = _hariIni();
+      final dekat = hari.add(const Duration(days: 2));
+      final data = _agenda({
+        'Senin': [_barisUjian(tipe: 'uas', tanggal: _ddmmyyyy(dekat))],
+      });
+
+      final hasil = PeriodeUjianService.periodeBerikutnya(data, hari);
+
+      expect(hasil!.$1, dekat);
+      expect(hasil.$2, 'UAS');
+    });
+  });
+
+  group('parser tanggalDariPortal (dua format per perjanjian BE)', () {
+    test('yyyy-MM-dd (format seragam baru BE) valid', () {
+      expect(tanggalDariPortal('2026-11-24'), DateTime(2026, 11, 24));
+      expect(tanggalDariPortal('2026-07-08'), DateTime(2026, 7, 8));
+    });
+
+    test('dd-MM-yyyy (format warisan portal) valid', () {
+      expect(tanggalDariPortal('08-07-2026'), DateTime(2026, 7, 8));
+      expect(tanggalDariPortal('24-11-2026'), DateTime(2026, 11, 24));
+    });
+
+    test('tidak valid / tidak valid kalender → null', () {
+      expect(tanggalDariPortal(''), isNull);
+      expect(tanggalDariPortal('32-13-2026'), isNull);
+      expect(tanggalDariPortal('2026-13-01'), isNull);
+      expect(tanggalDariPortal('2026-02-30'), isNull);
+      expect(tanggalDariPortal('abc'), isNull);
+      expect(tanggalDariPortal('belum diumumkan'), isNull);
     });
 
     test('formatTanggalIndo memakai nama bulan Indonesia', () {

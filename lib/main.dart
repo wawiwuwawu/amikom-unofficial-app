@@ -7,6 +7,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'services/api_client.dart';
 import 'services/deep_link_service.dart';
+import 'services/pembaruan_service.dart';
 import 'services/pengingat_jadwal_service.dart';
 import 'services/push_service.dart';
 import 'theme/app_theme.dart';
@@ -63,6 +64,10 @@ Future<void> main() async {
   }
 
   await DeepLinkService.instance.initFromInitialLink();
+
+  // Cek pembaruan otomatis (throttle 1x/24 jam, fail-open, tanpa UI): hasil
+  //nya dibaca banner di halaman notifikasi. Tidak boleh menunda app start.
+  unawaited(PembaruanService.instance.cekOtomatis());
 
   runApp(const MyApp());
 }

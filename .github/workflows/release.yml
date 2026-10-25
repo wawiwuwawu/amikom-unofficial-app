@@ -61,6 +61,27 @@ jobs:
             echo "::error::repository secret GOOGLE_SERVICES_JSON belum diset — jalankan: gh secret set GOOGLE_SERVICES_JSON < android/app/google-services.json"
             exit 1
           fi
+      # upload-keystore.jks + key.properties tidak pernah masuk git (gitignore).
+      # Di jalur rilis CI, keduanya disuntikkan dari repository SECRET agar setiap
+      # APK release ditandatangani kunci rilis yang sama — syarat mutlak agar
+      # update in-app (install menimpa APK lama) tidak gagal "signature mismatch".
+      - name: Prepare release keystore from CI secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ]; then
+            echo "::error::repository secret ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD belum diset — jalankan: gh secret set ANDROID_KEYSTORE_BASE64 < keystore.b64 && gh secret set ANDROID_KEYSTORE_PASSWORD --body '...'"
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storeFile=upload-keystore.jks
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEYSTORE_PASSWORD
+          keyAlias=upload
+          EOF
+
       - name: Install dependencies
         run: flutter pub get
 

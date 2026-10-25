@@ -6,10 +6,12 @@ import 'package:flutter/cupertino.dart';
 import '../models/notifikasi.dart';
 import '../services/notifikasi_service.dart';
 import '../services/api_client.dart';
+import '../services/pembaruan_service.dart';
 import '../services/push_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
 import '../widgets/notifikasi_push_card.dart';
+import '../widgets/pembaruan_sheet.dart';
 import 'notifikasi_detail_page.dart';
 
 class NotifikasiListPage extends StatefulWidget {
@@ -32,11 +34,16 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
   bool _optinTidakTersedia = false;
   String? _optinError;
 
+  /// Info pembaruan dari cek otomatis harian; null = tidak ada update atau
+  /// sudah dilewati user.
+  InfoPembaruan? _infoPembaruan;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadData();
+    unawaited(_muatBannerPembaruan());
   }
 
   @override
@@ -148,32 +155,85 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
     await showNotifikasiPushSheet(context);
   }
 
- /// Tombol "Muat Ulang" pada kartu Nonaktif karena server bermasalah:
- /// muat ulang status DAN coba aktivasi ulang (server mungkin sudah
- /// diperbaiki). Aktivasi dipaksa melewati guard sesi supaya percobaan
- /// ulang benar-benar terjadi, bukan sekadar baca status lama.
- Future<void> _muatUlangPush() async {
-   setState(() => _optinLoading = true);
-   try {
-     await PushService.instance.aktifkanJikaBelumPernah(paksa: true);
-   } finally {
-     await _loadOptinStatus();
-   }
- }
+  /// Tombol "Muat Ulang" pada kartu Nonaktif karena server bermasalah: /// muat ulang status DAN coba aktivasi ulang (server mungkin sudah
+  /// diperbaiki). Aktivasi dipaksa melewati guard sesi supaya percobaan
+  /// ulang benar-benar terjadi, bukan sekadar baca status lama.
+  Future<void> _muatUlangPush() async {
+    setState(() => _optinLoading = true);
+    try {
+      await PushService.instance.aktifkanJikaBelumPernah(paksa: true);
+    } finally {
+      await _loadOptinStatus();
+    }
+  }
 
- Widget _buildPushCard() {
- return NotifikasiPushCard(
- status: _optinStatus,
- loading: _optinLoading,
- perangkatGagal:
- _optinStatus != null &&
- !_optinStatus!.enabled &&
- PushService.tokenGagalDiPerangkat,
- serverGagal:
- _optinStatus != null &&
- !_optinStatus!.enabled &&
- PushService.serverGagalTerakhir,
- onMuatUlang: _muatUlangPush,
+  // ── Banner pembaruan (APK dari GitHub Releases) ─────────────────────────
+
+  /// Baca hasil cek otomatis harian dari PembaruanService (fail-open, tidak
+  /// pernah melempar) dan tampilkan banner bila update tersedia dan belum
+  /// dilewati user.
+  Future<void> _muatBannerPembaruan() async {
+    final info = await PembaruanService.instance.cekOtomatis();
+    if (info == null || !mounted) return;
+    final dilewati = await PembaruanService.instance.dilewati(info);
+    if (!mounted || dilewati) return;
+    setState(() => _infoPembaruan = info);
+  }
+
+  Future<void> _bukaSheetPembaruan() async {
+    final info = _infoPembaruan;
+    if (info == null) return;
+    final hasil = await showPembaruanSheet(context, info);
+    if (hasil == 'lewati' && mounted) {
+      setState(() => _infoPembaruan = null);
+    }
+  }
+
+  /// Banner satu baris ala banner periode ujian di jadwal; hilang sendiri
+  /// setelah versi terpasang atau user memilih lewati versi ini.
+  Widget _buildBannerPembaruan() {
+    final info = _infoPembaruan;
+    if (info == null) return const SizedBox.shrink();
+    return AppSurface(
+      variant: AppSurfaceVariant.hero,
+      onTap: _bukaSheetPembaruan,
+      child: Row(
+        children: [
+          Icon(
+            CupertinoIcons.arrow_down_circle_fill,
+            size: 18,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'Pembaruan v${info.versi} tersedia — ketuk untuk memperbarui',
+              style: AppText.bodySm,
+            ),
+          ),
+          Icon(
+            CupertinoIcons.chevron_forward,
+            size: 14,
+            color: AppColors.textMuted,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPushCard() {
+    return NotifikasiPushCard(
+      status: _optinStatus,
+      loading: _optinLoading,
+      perangkatGagal:
+          _optinStatus != null &&
+          !_optinStatus!.enabled &&
+          PushService.tokenGagalDiPerangkat,
+      serverGagal:
+          _optinStatus != null &&
+          !_optinStatus!.enabled &&
+          PushService.serverGagalTerakhir,
+      onMuatUlang: _muatUlangPush,
       tidakTersedia: _optinTidakTersedia,
       pesanGagal: _optinError,
     );
@@ -261,6 +321,8 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
         children: [
           _buildPushCard(),
           const SizedBox(height: AppSpacing.lg),
+          _buildBannerPembaruan(),
+          const SizedBox(height: AppSpacing.lg),
           AppErrorState(message: _error!, onRetry: _retryWithSilentLogin),
         ],
       );
@@ -272,6 +334,8 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           _buildPushCard(),
+          const SizedBox(height: AppSpacing.lg),
+          _buildBannerPembaruan(),
           const SizedBox(height: AppSpacing.xxl),
           const AppEmptyState(
             title: 'Tidak ada notifikasi saat ini',
@@ -287,6 +351,8 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
         _buildPushCard(),
+        const SizedBox(height: AppSpacing.lg),
+        _buildBannerPembaruan(),
         AppSection(
           title: 'Daftar Notifikasi',
           topGap: AppSpacing.lg,

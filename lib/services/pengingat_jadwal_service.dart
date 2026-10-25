@@ -8,7 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/agenda_terpadu.dart';
-import '../models/jadwal_ujian.dart';
 import '../utils/format.dart' show dayValue, formatDateApi;
 import '../utils/waktu.dart';
 import 'akademik_service.dart';
@@ -51,8 +50,7 @@ class FlutterLocalNotificationsPengingatGateway implements PengingatGateway {
 
   static const _channelId = PengingatJadwalService.channelId;
   static const _channelName = PengingatJadwalService.channelName;
-  static const _channelDescription =
-      PengingatJadwalService.channelDescription;
+  static const _channelDescription = PengingatJadwalService.channelDescription;
 
   AndroidFlutterLocalNotificationsPlugin? get _android => _plugin
       .resolvePlatformSpecificImplementation<
@@ -167,8 +165,9 @@ class KejadianPengingat {
   /// "Pemrograman Web mulai 30 menit lagi (08:00, Ruang LT2)".
   String isi() {
     final ruangBersih = ruang.trim();
-    final ruangBagian =
-        (ruangBersih.isEmpty || ruangBersih == '-') ? '' : ', $ruangBersih';
+    final ruangBagian = (ruangBersih.isEmpty || ruangBersih == '-')
+        ? ''
+        : ', $ruangBersih';
     return '$judul mulai 30 menit lagi ($jamMulaiLabel$ruangBagian)';
   }
 
@@ -209,10 +208,13 @@ class PengingatJadwalService {
 
   /// Kunci SharedPreferences (ber-suffix NIM bila tersedia): cache agenda.
   static const _kCacheAgenda = 'pengingat_jadwal_cache_agenda';
+
   /// Registry id notifikasi terjadwal (daftar angka).
   static const _kRegistry = 'pengingat_jadwal_registry';
+
   /// Hash kanonik daftar kejadian terakhir yang dijadwalkan.
   static const _kHash = 'pengingat_jadwal_hash';
+
   /// Cache tanggal libur ('yyyy-MM-dd') + waktu pembaruan (epoch ms).
   static const _kLibur = 'pengingat_jadwal_libur';
   static const _kLiburAt = 'pengingat_jadwal_libur_at';
@@ -297,36 +299,22 @@ class PengingatJadwalService {
       try {
         await prefs.setString('$_kCacheAgenda$suffix', _agendaKeJson(agenda));
       } catch (e) {
-        debugPrint('PengingatJadwal: gagal menyimpan cache agenda (${e.runtimeType})');
+        debugPrint(
+          'PengingatJadwal: gagal menyimpan cache agenda (${e.runtimeType})',
+        );
       }
     } else {
       agenda = _agendaDariCache(prefs, suffix);
     }
     if (agenda == null) return;
 
-    // Kejadian ujian kini dibangun dari jadwal-ujian (UTS + UAS), bukan lagi
-    // regex tanggal pada field `detail` agenda. Fetch paralel; gagal → list
-    // kosong (fail-open: tanpa reminder ujian pada siklus ini, sisa jadwal
-    // tetap jalan) — konsisten dengan fail-open agenda.
-    final ujian = <(JadwalUjian, String)>[];
-    try {
-      final hasil = await Future.wait([
-        AkademikService().getJadwalUjian('uts'),
-        AkademikService().getJadwalUjian('uas'),
-      ]);
-      for (final baris in hasil[0]) {
-        ujian.add((baris, 'uts'));
-      }
-      for (final baris in hasil[1]) {
-        ujian.add((baris, 'uas'));
-      }
-    } catch (e) {
-      debugPrint('PengingatJadwal: fetch jadwal-ujian gagal (${e.runtimeType})');
-    }
+    // Kejadian ujian kini dibangun dari baris agenda (tipe uts/uas) yang
+    // membawa field `tanggal` (perjanjian BE 2026-10-25) — tidak ada fetch
+    // jadwal-ujian tambahan lagi. Respons lama tanpa `tanggal` → tanpa
+    // reminder ujian pada siklus ini (fail-open), sisa jadwal tetap jalan.
 
     final kejadian = hitungKejadian(
       agenda: agenda,
-      ujianBerjadwal: ujian,
       sekarang: tz.TZDateTime.now(tz.local),
       tanggalLibur: tanggalLibur,
     );
@@ -387,7 +375,9 @@ class PengingatJadwalService {
           try {
             await _gateway.cancelAllIds(registry);
           } catch (e) {
-            debugPrint('PengingatJadwal: gagal membatalkan alarm (${e.runtimeType})');
+            debugPrint(
+              'PengingatJadwal: gagal membatalkan alarm (${e.runtimeType})',
+            );
           }
         }
         await prefs.remove('$_kCacheAgenda$s');
@@ -397,7 +387,9 @@ class PengingatJadwalService {
         await prefs.remove('$_kLiburAt$s');
       }
     } catch (e) {
-      debugPrint('PengingatJadwal: pembersihan logout gagal (${e.runtimeType})');
+      debugPrint(
+        'PengingatJadwal: pembersihan logout gagal (${e.runtimeType})',
+      );
     }
   }
 
@@ -406,19 +398,17 @@ class PengingatJadwalService {
   /// Hitung daftar kejadian untuk [jendelaHari] hari ke depan:
   ///  * kuliah/asisten → setiap kemunculan hari-nya dalam jendela (mis. Senin
   ///    muncul 2x), diambil dari bucket hari yang cocok;
-  ///  * ujian → dibangun dari [ujianBerjadwal] (baris jadwal-ujian + tipe
-  ///    'uts'/'uas', ditemparalel-fetch dari perbaruiPengingat): MKL = judul,
-  ///    TANGGAL/TGL_UJIAN = tanggal, JAM_MULAI = jam, RUANG = ruang;
-  ///  * baris ujian dari agenda (tipe uts/uas) TIDAK lagi menghasilkan
-  ///    kejadian — tanggalnya tidak bisa dibaca dari field `detail`;
+  ///  * ujian (tipe uts/uas) → satu kejadian dari field `tanggal` baris
+  ///    (yyyy-MM-dd dari BE; parser juga menerima dd-MM-yyyy warisan) —
+  ///    MKL = judul, JAM_MULAI = jam, RUANG = ruang; aturan sama seperti
+  ///    kelas: jendela, skip libur, skip yang sudah lewat, skip mulai <30
+  ///    menit; baris tanpa/tanggal tak terbaca dilewati (fail-open);
   ///  * tanggal libur ([tanggalLibur], 'yyyy-MM-dd') dilewati;
   ///  * kejadian hari ini yang waktunya sudah lewat dilewati;
-  ///  * item tanpa jam dan baris ujian ber-tanggal tak terbaca dilewati.
+  ///  * item tanpa jam dilewati.
   @visibleForTesting
   static List<KejadianPengingat> hitungKejadian({
     required AgendaTerpaduData agenda,
-    List<(JadwalUjian, String)> ujianBerjadwal =
-        const <(JadwalUjian, String)>[],
     required DateTime sekarang,
     required Set<String> tanggalLibur,
   }) {
@@ -465,8 +455,14 @@ class PengingatJadwalService {
       for (final item in entry.value) {
         final tipe = item.tipe.trim().toLowerCase();
         if (tipe == 'uts' || tipe == 'uas') {
-          // Ujian dari agenda dilewati: kejadian ujian kini bersumber dari
-          // jadwal-ujian ([ujianBerjadwal]), bukan field `detail` agenda.
+          // Ujian: satu kejadian pada tanggal konkretnya (field `tanggal`
+          // agenda). Respons lama tanpa tanggal → dilewati tanpa error.
+          final tgl = tanggalDariPortal(item.tanggal ?? '');
+          if (tgl != null &&
+              !tgl.isBefore(hariIni) &&
+              !tgl.isAfter(akhirJendela)) {
+            tambah(item, tgl);
+          }
           continue;
         }
         // Kuliah/asisten: setiap kemunculan hari dalam jendela.
@@ -477,32 +473,6 @@ class PengingatJadwalService {
           tambah(item, t);
         }
       }
-    }
-
-    // Ujian dari jadwal-ujian: satu kejadian per baris, aturan sama seperti
-    // kelas (jendela 14 hari, skip libur, skip yang sudah lewat, skip mulai
-    // <30 menit).
-    for (final (baris, tipe) in ujianBerjadwal) {
-      final tgl = tanggalDariDdMmYyyy(baris.tanggal);
-      if (tgl == null) continue; // tanggal tak terbaca → dilewati tanpa error
-      if (tgl.isBefore(hariIni) || tgl.isAfter(akhirJendela)) continue;
-      final jamMulai = baris.jamMulai.trim();
-      if (jamMulai.isEmpty || jamMulai == '-') continue;
-      final start = timeToMinutes(jamMulai);
-      if (start < 30) continue; // sama seperti kelas (termasuk tak terbaca = 0)
-      if (tanggalLibur.contains(formatDateApi(tgl))) continue;
-      // Sama seperti jalur kelas: ujian hari ini yang jamnya sudah lewat tidak
-      // boleh dijadwalkan — alarm exact akan menembak segera di masa lampau.
-      if (tgl.isAtSameMomentAs(hariIni) && start <= nowMins) continue;
-      final mk = baris.mkl.trim();
-      final k = KejadianPengingat(
-        tipe: tipe,
-        judul: mk.isEmpty ? 'Ujian' : 'Ujian $mk',
-        tanggal: tgl,
-        jamMulaiMins: start,
-        ruang: baris.ruang,
-      );
-      hasil[idPengingatDariKunci(k.kunciKanonik)] = k;
     }
 
     final daftar = hasil.values.toList()
@@ -561,8 +531,7 @@ class PengingatJadwalService {
           : (await _liburDio.get<String>(
               _icsLiburUrl,
               options: Options(responseType: ResponseType.plain),
-            ))
-                .data;
+            )).data;
       final libur = parseIcsLibur(body ?? '');
       // ICS kosong / gagal parse: pertahankan cache lama, jangan dihapus.
       if (libur.isEmpty) return;
@@ -570,7 +539,10 @@ class PengingatJadwalService {
         '$_kLibur$suffix',
         libur.map(formatDateApi).toList(),
       );
-      await prefs.setInt('$_kLiburAt$suffix', DateTime.now().millisecondsSinceEpoch);
+      await prefs.setInt(
+        '$_kLiburAt$suffix',
+        DateTime.now().millisecondsSinceEpoch,
+      );
     } catch (e) {
       // Gagal jaringan/parse: cache (atau kosong) dipakai — bukan alasan gagal.
       debugPrint('PengingatJadwal: refresh libur gagal (${e.runtimeType})');
@@ -700,25 +672,25 @@ class PengingatJadwalService {
   /// Serialisasi agenda minimal (map bucket → list item) — bentuk sama dengan
   /// `AgendaTerpaduData.fromJson` sehingga cache bisa dinyah-serialisasi ulang.
   String _agendaKeJson(AgendaTerpaduData agenda) => jsonEncode({
-        'total_agenda': agenda.totalAgenda,
-        'agenda': {
-          for (final entry in agenda.agenda.entries)
-            entry.key: [
-              for (final item in entry.value)
-                {
-                  'tipe': item.tipe,
-                  'hari': item.hari,
-                  'jam': item.jam,
-                  'jam_mulai': item.jamMulai,
-                  'jam_selesai': item.jamSelesai,
-                  'ruang': item.ruang,
-                  'matakuliah': item.matakuliah,
-                  'detail': item.detail,
-                  if (item.komponen != null) 'komponen': item.komponen,
-                },
-            ],
-        },
-      });
+    'total_agenda': agenda.totalAgenda,
+    'agenda': {
+      for (final entry in agenda.agenda.entries)
+        entry.key: [
+          for (final item in entry.value)
+            {
+              'tipe': item.tipe,
+              'hari': item.hari,
+              'jam': item.jam,
+              'jam_mulai': item.jamMulai,
+              'jam_selesai': item.jamSelesai,
+              'ruang': item.ruang,
+              'matakuliah': item.matakuliah,
+              'detail': item.detail,
+              if (item.komponen != null) 'komponen': item.komponen,
+            },
+        ],
+    },
+  });
 
   String _suffixNim() {
     final nim = ApiClient.instance.nim;
