@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../models/dashboard.dart';
 import '../models/agenda_terpadu.dart';
 import '../models/sp.dart';
+import '../services/absensi_service.dart';
 import '../services/agenda_cache_service.dart';
 import '../services/api_client.dart';
 import '../services/akademik_service.dart';
@@ -41,10 +42,22 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   final _akademikService = AkademikService();
   final _spService = SpService();
+  final _absensiService = AbsensiService();
 
   Dashboard? _data;
   AgendaTerpaduData? _agendaData;
   SpRekomendasiData? _spRekomendasiData;
+
+  /// Hasil cek "sudah presensi?" untuk kartu berjalan: null = sedang mengecek
+  /// (tampilan sama seperti belum tahu — tombol tetap ada, tanpa spinner agar
+  /// tidak berkedip), false = belum/bisa-jadi-belah (tombol, fail-open),
+  /// true = kartu berubah jadi pemberitahuan tanpa tombol.
+  bool? _presensiSudahTercatat;
+
+  /// Identitas item berjalan yang sedang/terakhir dicek (matakuliah + jam).
+  /// Cek hanya SEKALI per item per sesi build — bukan polling; berganti item
+  /// atau refresh/pull-to-reset me-reset nilainya.
+  String? _presensiCekKey;
 
   /// True saat fetch agenda gagal tetapi data cache masih dirender — seksi
   /// "Jadwal Hari Ini" lalu menampilkan label kecil "data terakhir" alih-alih
@@ -77,6 +90,10 @@ class _DashboardPageState extends State<DashboardPage> {
       _loading = true;
       _agendaFetchGagal = false;
       _agendaTerakhirDisimpan = null;
+      // Pull-to-refresh/reset: cek presensi mulai segar sehingga item berjalan
+      // dicek ulang sekali setelah agenda termuat.
+      _presensiSudahTercatat = null;
+      _presensiCekKey = null;
     });
 
     // Stale-while-revalidate: cache agenda dipakai HANYA untuk render instan;
@@ -289,6 +306,11 @@ class _DashboardPageState extends State<DashboardPage> {
         .toList();
     final ongoing = _ongoingItem(items);
 
+    // Kartu berjalan terdeteksi → cek sekali (unawaited) apakah presensinya
+    // sudah tercatat. Tanpa item berjalan TIDAK ada request absensi sama
+    // sekali (jangan menambah fetch sia-sia saat agenda kosong).
+    if (ongoing != null) _mulaiCekPresensiOngoing(ongoing);
+
     return AppSection(
       title: 'Jadwal Hari Ini',
       trailing: TextButton(
@@ -393,6 +415,35 @@ class _DashboardPageState extends State<DashboardPage> {
     return null;
   }
 
+  /// Mulai cek presensi untuk item berjalan — sekali per item (kunci
+  /// matakuliah+jam); item lain menimpa kunci dan cek hasilnya dibuang bila
+  /// kunci sudah berganti lagi. Dipanggil saat build; hasil dikirim lewat
+  /// setState setelah future selesai.
+  void _mulaiCekPresensiOngoing(AgendaItem item) {
+    final key = '${item.matakuliah}|${item.jam}';
+    if (key == _presensiCekKey) return;
+    _presensiCekKey = key;
+    _presensiSudahTercatat = null;
+    unawaited(_cekPresensiOngoing(item, key));
+  }
+
+  Future<void> _cekPresensiOngoing(AgendaItem item, String key) async {
+    // Fail-open ganda: service sudah menelan galat, dan catch di sini menutup
+    // galat apa pun yang lolos — kartu hanya boleh berubah jadi "tercatat"
+    // bila cek BENAR-BENAR sukses dan positif; selain itu tampilan lama.
+    bool sudah;
+    try {
+      sudah = await _absensiService.sudahPresensiHariIni(
+        makul: item.matakuliah,
+      );
+    } catch (_) {
+      sudah = false;
+    }
+    if (!mounted) return;
+    if (_presensiCekKey != key) return;
+    setState(() => _presensiSudahTercatat = sudah);
+  }
+
   Widget _agendaRow(AgendaItem item, {required bool isOngoing}) {
     final tempat = [
       if (item.ruang.isNotEmpty) item.ruang,
@@ -419,6 +470,11 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildOngoingCard(AgendaItem item) {
+    // true = ganti tombol dengan pemberitahuan; null (sedang mengecek) dan
+    // false (belum tercatat / cek gagal — fail-open) sama-sama menampilkan
+    // tombol seperti sebelumnya, sehingga tidak ada perubahan visual
+    // perantara (tanpa spinner/disabled yang bisa berkedip).
+    final sudahTercatat = _presensiSudahTercatat == true;
     return AppSurface(
       variant: AppSurfaceVariant.hero,
       child: Column(
@@ -448,14 +504,37 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ],
           const SizedBox(height: AppSpacing.lg),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: () => _push(AbsensiPage()),
-              icon: const Icon(CupertinoIcons.qrcode_viewfinder, size: 18),
-              label: const Text('Presensi Sekarang'),
+          if (sudahTercatat)
+            // Sudah presensi → informatif, tanpa tombol (navigasi tetap bisa
+            // lewat baris agenda / tab Presensi).
+            Row(
+              children: [
+                const Icon(
+                  CupertinoIcons.checkmark_circle_fill,
+                  size: 20,
+                  color: AppColors.success,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    'Presensi tercatat — menunggu validasi dosen',
+                    style: AppText.bodySm.copyWith(
+                      color: AppColors.success,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => _push(AbsensiPage()),
+                icon: const Icon(CupertinoIcons.qrcode_viewfinder, size: 18),
+                label: const Text('Presensi Sekarang'),
+              ),
             ),
-          ),
         ],
       ),
     );
