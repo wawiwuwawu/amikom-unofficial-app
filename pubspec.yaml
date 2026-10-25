@@ -57,6 +57,10 @@ dependencies:
   timezone: ^0.11.0
   package_info_plus: ^9.0.1
   crypto: ^3.0.7
+  # Deteksi merek HP (Build.MANUFACTURER) untuk panduan anti-kill OEM
+  device_info_plus: ^12.4.0
+  # Intent "Buka setelan aplikasi" di panduan anti-kill OEM (Android-only)
+  android_intent_plus: ^6.1.0
 
 dev_dependencies:
   flutter_test:

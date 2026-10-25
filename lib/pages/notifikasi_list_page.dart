@@ -6,11 +6,13 @@ import 'package:flutter/cupertino.dart';
 import '../models/notifikasi.dart';
 import '../services/notifikasi_service.dart';
 import '../services/api_client.dart';
+import '../services/oem_baterai_service.dart';
 import '../services/pembaruan_service.dart';
 import '../services/push_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
 import '../widgets/notifikasi_push_card.dart';
+import '../widgets/oem_panduan_sheet.dart';
 import '../widgets/pembaruan_sheet.dart';
 import 'notifikasi_detail_page.dart';
 
@@ -38,12 +40,18 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
   /// sudah dilewati user.
   InfoPembaruan? _infoPembaruan;
 
+  /// Hasil deteksi merek HP untuk panduan anti-kill OEM; null = deteksi
+  /// belum selesai (kartu belum dirender, tanpa flash).
+  OemMerekInfo? _oemMerek;
+  bool _oemPanduanDitutup = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadData();
     unawaited(_muatBannerPembaruan());
+    unawaited(_muatOemPanduan());
   }
 
   @override
@@ -221,6 +229,38 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
     );
   }
 
+  // ── Kartu panduan anti-kill OEM (halaman notifikasi) ──────────────────────
+
+  /// Deteksi merek HP + status dismiss kartu (fail-open — gagal → generik).
+  Future<void> _muatOemPanduan() async {
+    final merek = await OemBateraiService.deteksiMerek();
+    final ditutup = await OemBateraiService.panduanDitutup();
+    if (!mounted) return;
+    setState(() {
+      _oemMerek = merek;
+      _oemPanduanDitutup = ditutup;
+    });
+  }
+
+  /// Tutup kartu: simpan prefs supaya tidak muncul lagi, lalu sembunyikan.
+  Future<void> _tutupKartuOem() async {
+    await OemBateraiService.tandaiPanduanDitutup();
+    if (!mounted) return;
+    setState(() => _oemPanduanDitutup = true);
+  }
+
+  /// Kartu kecil non-nagging antara push card dan banner pembaruan; tampil
+  /// di SEMUA varian yang menampilkan push card (konsisten banner pembaruan).
+  Widget _buildKartuOemPanduan() {
+    final merek = _oemMerek;
+    if (merek == null || _oemPanduanDitutup) return const SizedBox.shrink();
+    return OemPanduanCard(
+      merek: merek,
+      onLihatPanduan: () => unawaited(showOemPanduanSheet(context, merek)),
+      onTutup: () => unawaited(_tutupKartuOem()),
+    );
+  }
+
   Widget _buildPushCard() {
     return NotifikasiPushCard(
       status: _optinStatus,
@@ -321,6 +361,8 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
         children: [
           _buildPushCard(),
           const SizedBox(height: AppSpacing.lg),
+          _buildKartuOemPanduan(),
+          const SizedBox(height: AppSpacing.lg),
           _buildBannerPembaruan(),
           const SizedBox(height: AppSpacing.lg),
           AppErrorState(message: _error!, onRetry: _retryWithSilentLogin),
@@ -334,6 +376,8 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           _buildPushCard(),
+          const SizedBox(height: AppSpacing.lg),
+          _buildKartuOemPanduan(),
           const SizedBox(height: AppSpacing.lg),
           _buildBannerPembaruan(),
           const SizedBox(height: AppSpacing.xxl),
@@ -349,8 +393,9 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
     // Server mengirim semua notifikasi tanpa pagination, jadi daftar panjang
     // dibagi menjadi chunk ±20 baris: ListView.builder hanya membangun
     // AppListGroup chunk yang (hampir) terlihat, bukan 300+ widget sekaligus.
-    // Tampilan tetap sama — header (kartu push + banner + judul seksi) di chunk
-    // pertama, chunk berikutnya dipisah jarak antar kartu (AppSpacing.lg).
+    // Tampilan tetap sama — header (kartu push + kartu OEM + banner + judul
+    // seksi) di chunk pertama, chunk berikutnya dipisah jarak antar kartu
+    // (AppSpacing.lg).
     const chunkSize = 20;
     final chunks = <List<Widget>>[];
     for (var i = 0; i < _list.length; i += chunkSize) {
@@ -370,6 +415,8 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildPushCard(),
+              const SizedBox(height: AppSpacing.lg),
+              _buildKartuOemPanduan(),
               const SizedBox(height: AppSpacing.lg),
               _buildBannerPembaruan(),
               AppSection(
