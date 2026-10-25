@@ -7,6 +7,24 @@ rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-
 
 ## [Unreleased]
 
+## [v1.13.0] - 2026-10-25
+
+### Added
+- ✨ Pengingat jadwal: notifikasi lokal **30 menit sebelum** kelas & ujian — aktif otomatis tanpa perlu diatur, bertahan setelah HP direstart, dan otomatis melewati libur nasional
+- ✨ Pembaruan dalam-app: aplikasi mengecek rilis baru dari GitHub, mengunduh APK lengkap dengan verifikasi keaslian (SHA-256), lalu memasang tanpa keluar aplikasi — banner di halaman Notifikasi + tile "Pembaruan Aplikasi" di drawer
+- ✨ Widget home screen **"Jadwal Hari Ini"**: menampilkan hingga 4 kelas berikutnya dari jadwal ter-cache tanpa perlu login; diperbarui otomatis setiap aplikasi dibuka dan saat jadwal berhasil dimuat
+- ✨ Notifikasi event lokal: "Tagihan baru / Tagihan berubah" dan "Jadwal ujian terbit" terdeteksi dari perubahan data terakhir — tidak butuh perubahan apa pun di server
+- ✨ Mode Mingguan di halaman Jadwal: grid gaya Google Calendar (07.00–19.00) dengan warna tetap per mata kuliah, kelas yang bertabrakan dibagi kolom, dan garis waktu sekarang
+- ✨ Kartu kelas "sedang berlangsung" di Beranda kini menandai apakah presensi kelas sudah tercatat di portal
+- ✨ Panduan "notifikasi sering mati" per merek HP (Xiaomi, OPPO, vivo, Samsung, Infinix, Huawei) di halaman Notifikasi, lengkap dengan tombol langsung ke halaman setelan yang tepat
+- ✨ Jadwal ujian hanya muncul di daftar maksimal 7 hari sebelum ujian; sebelum itu tampil banner "sudah terbit, mulai {tanggal}" yang bisa diketuk
+
+### Changed
+- ♻️ Font Inter dibundel ke dalam APK — tampilan seragam sejak pertama dibuka, tanpa unduhan font saat runtime
+- ♻️ Cache agenda: Beranda & Jadwal terbuka seketika dengan data terakhir, data selalu diperbarui di belakang; label "data terakhir" hanya muncul saat server sedang gagal dihubungi
+- ♻️ Daftar panjang (notifikasi, keuangan, pengumuman, panduan, transkrip, skripsi, dan lainnya) kini dirender bertahap per bagian — tetap ringan walau berisi ratusan item
+- ♻️ Ketukan notifikasi kini selalu membuka halaman Notifikasi — perilaku seragam untuk semua jenis notifikasi (push, siaran, foreground, maupun cold start)
+
 ## [v1.12.0] - 2026-10-15
 
 ### Added
