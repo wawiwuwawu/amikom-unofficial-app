@@ -6,6 +6,7 @@ import 'package:flutter/cupertino.dart';
 import '../config/menu_catalog.dart';
 import '../services/agenda_cache_service.dart';
 import '../services/api_client.dart';
+import '../services/event_diff_service.dart';
 import '../services/notifikasi_service.dart';
 import '../services/deep_link_service.dart';
 import '../services/pembaruan_service.dart';
@@ -345,6 +346,14 @@ class _MainPageState extends State<MainPage> {
                         await AgendaCacheService.instance.bersihkanSaatLogout();
                       } catch (_) {
                         // Logout tetap lanjut walau cache agenda gagal
+                        // dibersihkan.
+                      }
+                      // Hapus snapshot diff event (tagihan/ujian) milik NIM
+                      // ini — urutan sama: sebelum fullLogout.
+                      try {
+                        await EventDiffService.instance.bersihkanSaatLogout();
+                      } catch (_) {
+                        // Logout tetap lanjut walau snapshot event gagal
                         // dibersihkan.
                       }
                       await ApiClient.instance.fullLogout();

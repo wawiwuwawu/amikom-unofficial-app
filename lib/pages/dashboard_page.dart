@@ -10,6 +10,7 @@ import '../services/absensi_service.dart';
 import '../services/agenda_cache_service.dart';
 import '../services/api_client.dart';
 import '../services/akademik_service.dart';
+import '../services/event_diff_service.dart';
 import '../services/periode_ujian_service.dart';
 import '../services/sp_service.dart';
 import '../theme/app_theme.dart';
@@ -145,6 +146,10 @@ class _DashboardPageState extends State<DashboardPage> {
         // Fetch sukses → cache diperbarui (fire-and-forget; gagal simpan hanya
         // dilog di service).
         unawaited(AgendaCacheService.instance.simpan(agenda));
+        // Fase 2c: diff lokal "jadwal ujian terbit" — evaluasi snapshot ujian
+        // dari data yang SUDAH di tangan (tanpa fetch tambahan; seluruh jalur
+        // fail-open di dalam service, tidak mengganggu halaman).
+        unawaited(EventDiffService.instance.evaluasiAgenda(agenda));
       } else if (_agendaData != null) {
         // Fetch gagal tapi data terakhir masih tampil → label kecil, bukan
         // galat penuh untuk seksi agenda.

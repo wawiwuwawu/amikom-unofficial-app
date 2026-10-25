@@ -1,8 +1,11 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../models/keuangan.dart';
+import '../services/event_diff_service.dart';
 import '../services/keuangan_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
@@ -550,6 +553,9 @@ class _TagihanPembayaranTabState extends State<_TagihanPembayaranTab> {
           _selectedIdtrans.clear();
           _error = null;
         });
+        // Fase 2c: diff lokal "tagihan baru/berubah" — evaluasi snapshot dari
+        // data yang SUDAH dimuat (tanpa fetch tambahan; fail-open di service).
+        unawaited(EventDiffService.instance.evaluasiTagihan(res));
       }
     } catch (e) {
       if (mounted) setState(() => _error = userErrorMessage(e));
