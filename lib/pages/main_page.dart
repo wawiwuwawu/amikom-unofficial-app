@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
 import '../config/menu_catalog.dart';
+import '../services/agenda_cache_service.dart';
 import '../services/api_client.dart';
 import '../services/notifikasi_service.dart';
 import '../services/deep_link_service.dart';
@@ -337,6 +338,14 @@ class _MainPageState extends State<MainPage> {
                             .bersihkanSaatLogout();
                       } catch (_) {
                         // Logout tetap lanjut walau pengingat gagal dibersihkan.
+                      }
+                      // Hapus cache agenda terpadu (stale-while-revalidate)
+                      // milik NIM ini — urutan sama: sebelum fullLogout.
+                      try {
+                        await AgendaCacheService.instance.bersihkanSaatLogout();
+                      } catch (_) {
+                        // Logout tetap lanjut walau cache agenda gagal
+                        // dibersihkan.
                       }
                       await ApiClient.instance.fullLogout();
                       if (!mounted) return;

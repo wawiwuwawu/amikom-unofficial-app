@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// ─────────────────────────────────────────────────────────────────────────────
 /// DESIGN SYSTEM — AmiApp (amikom-unofficial-app)
@@ -72,10 +71,28 @@ abstract final class AppRadius {
   static const double pill = 999;
 }
 
+/// Font Inter dibundel via pubspec (assets/fonts/inter) — tanpa fetch runtime.
+/// Helper tunggal agar semua style Inter konsisten tanpa duplikasi.
+TextStyle _inter({
+  double? fontSize,
+  FontWeight? fontWeight,
+  double? height,
+  double? letterSpacing,
+  Color? color,
+}) =>
+    TextStyle(
+      fontFamily: 'Inter',
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      height: height,
+      letterSpacing: letterSpacing,
+      color: color,
+    );
+
 /// Skala tipografi bermakna (semantic), dipetakan ke Inter.
 /// Ganti 920 `TextStyle` ad-hoc dengan style bernama di sini.
 abstract final class AppText {
-  static TextStyle get display => GoogleFonts.inter(
+  static TextStyle get display => _inter(
         fontSize: 28,
         fontWeight: FontWeight.w800,
         height: 1.15,
@@ -83,7 +100,7 @@ abstract final class AppText {
       );
 
   /// Judul halaman.
-  static TextStyle get h1 => GoogleFonts.inter(
+  static TextStyle get h1 => _inter(
         fontSize: 22,
         fontWeight: FontWeight.w800,
         height: 1.2,
@@ -91,7 +108,7 @@ abstract final class AppText {
       );
 
   /// Judul seksi.
-  static TextStyle get h2 => GoogleFonts.inter(
+  static TextStyle get h2 => _inter(
         fontSize: 17,
         fontWeight: FontWeight.w700,
         height: 1.25,
@@ -99,7 +116,7 @@ abstract final class AppText {
       );
 
   /// Judul kartu/item.
-  static TextStyle get h3 => GoogleFonts.inter(
+  static TextStyle get h3 => _inter(
         fontSize: 15,
         fontWeight: FontWeight.w700,
         height: 1.3,
@@ -107,7 +124,7 @@ abstract final class AppText {
       );
 
   /// Isi utama.
-  static TextStyle get body => GoogleFonts.inter(
+  static TextStyle get body => _inter(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         height: 1.45,
@@ -115,7 +132,7 @@ abstract final class AppText {
       );
 
   /// Isi sekunder / keterangan.
-  static TextStyle get bodySm => GoogleFonts.inter(
+  static TextStyle get bodySm => _inter(
         fontSize: 12.5,
         fontWeight: FontWeight.w400,
         height: 1.4,
@@ -123,7 +140,7 @@ abstract final class AppText {
       );
 
   /// Label kecil (caption, badge, meta).
-  static TextStyle get label => GoogleFonts.inter(
+  static TextStyle get label => _inter(
         fontSize: 11,
         fontWeight: FontWeight.w600,
         height: 1.3,
@@ -131,7 +148,7 @@ abstract final class AppText {
       );
 
   /// Label seksi (huruf kapital, spasi lebar).
-  static TextStyle get overline => GoogleFonts.inter(
+  static TextStyle get overline => _inter(
         fontSize: 11,
         fontWeight: FontWeight.w700,
         height: 1.2,
@@ -140,14 +157,14 @@ abstract final class AppText {
       );
 
   /// Teks tombol.
-  static TextStyle get button => GoogleFonts.inter(
+  static TextStyle get button => _inter(
         fontSize: 14,
         fontWeight: FontWeight.w700,
         height: 1.2,
       );
 
   /// Angka besar (KPI / statistik).
-  static TextStyle get metric => GoogleFonts.inter(
+  static TextStyle get metric => _inter(
         fontSize: 24,
         fontWeight: FontWeight.w800,
         height: 1.1,
@@ -212,7 +229,9 @@ abstract final class AppTheme {
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: AppColors.scaffold,
-      textTheme: GoogleFonts.interTextTheme(),
+      // Paritas dengan `GoogleFonts.interTextTheme()` versi lama: basis
+      // Typography.material2014() dengan fontFamily Inter.
+      textTheme: Typography.material2014().black.apply(fontFamily: 'Inter'),
     );
 
     return base.copyWith(

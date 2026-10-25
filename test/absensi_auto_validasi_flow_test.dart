@@ -13,7 +13,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'package:app_amikom/pages/absensi_page.dart';
 import 'package:app_amikom/services/api_client.dart';
@@ -96,7 +95,6 @@ Map<String, dynamic> _pertemuan({
 
 void main() {
   setUpAll(() {
-    GoogleFonts.config.allowRuntimeFetching = false;
     dotenv.loadFromString(envString: 'API_BASE_URL=http://localhost:3000');
   });
 

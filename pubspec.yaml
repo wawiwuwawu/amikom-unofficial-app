@@ -39,7 +39,6 @@ dependencies:
   shared_preferences: ^2.5.5
   path_provider: ^2.1.6
   share_plus: ^12.0.2
-  google_fonts: ^8.2.1
   flutter_animate: ^4.5.2
   flutter_secure_storage: ^10.3.1
   fl_chart: ^1.2.0
@@ -102,6 +101,19 @@ flutter:
     - .env.example
     - assets/icon_amiapp.png
     - assets/splash_icon_round.png
+
+  # Font Inter dibundel (statis, per weight) — tanpa fetch runtime google_fonts.
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/inter/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/inter/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/inter/Inter-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/inter/Inter-ExtraBold.ttf
+          weight: 800
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -15,7 +15,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:app_amikom/models/agenda_terpadu.dart';
 import 'package:app_amikom/pages/dashboard_page.dart';
@@ -56,8 +56,10 @@ class _FakeAdapter implements HttpClientAdapter {
 
 void main() {
   setUpAll(() {
-    GoogleFonts.config.allowRuntimeFetching = false;
     dotenv.loadFromString(envString: 'API_BASE_URL=http://localhost:3000');
+    // Cache agenda (stale-while-revalidate) membaca/menulis SharedPreferences —
+    // mock supaya jalur cache tidak menggantung di widget test.
+    SharedPreferences.setMockInitialValues({});
   });
 
   group('AgendaItem', () {

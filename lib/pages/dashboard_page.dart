@@ -1,9 +1,12 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../models/dashboard.dart';
 import '../models/agenda_terpadu.dart';
 import '../models/sp.dart';
+import '../services/agenda_cache_service.dart';
 import '../services/api_client.dart';
 import '../services/akademik_service.dart';
 import '../services/periode_ujian_service.dart';
@@ -43,6 +46,14 @@ class _DashboardPageState extends State<DashboardPage> {
   AgendaTerpaduData? _agendaData;
   SpRekomendasiData? _spRekomendasiData;
 
+  /// True saat fetch agenda gagal tetapi data cache masih dirender — seksi
+  /// "Jadwal Hari Ini" lalu menampilkan label kecil "data terakhir" alih-alih
+  /// galat penuh (stale-while-revalidate).
+  bool _agendaFetchGagal = false;
+
+  /// Waktu cache agenda terakhir diperbarui (untuk label di atas).
+  DateTime? _agendaTerakhirDisimpan;
+
   bool _loading = true;
   String? _error;
 
@@ -62,13 +73,31 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _load() async {
     if (!mounted) return;
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _agendaFetchGagal = false;
+      _agendaTerakhirDisimpan = null;
+    });
+
+    // Stale-while-revalidate: cache agenda dipakai HANYA untuk render instan;
+    // setiap muat dengan koneksi tetap fetch ulang dan menimpa cache. Baca
+    // cache sebelum fetch agar state agenda terpasang SEBELUM fetch selesai.
+    final cacheAgenda = await AgendaCacheService.instance.baca();
+    if (!mounted) return;
+    if (cacheAgenda != null) {
+      setState(() => _agendaData = cacheAgenda);
+    }
+
     try {
+      // Agenda gagal TIDAK dilempar (perilaku existing): flag lokal membedakan
+      // "kosong sungguhan" dari "fetch gagal".
+      var agendaGagal = false;
       final results = await Future.wait([
         ApiClient.instance.getDashboard(),
-        _akademikService.getAgendaTerpadu().catchError(
-          (_) => AgendaTerpaduData(totalAgenda: 0, agenda: {}),
-        ),
+        _akademikService.getAgendaTerpadu().catchError((_) {
+          agendaGagal = true;
+          return AgendaTerpaduData(totalAgenda: 0, agenda: {});
+        }),
         _spService.getRekomendasi().catchError(
           (_) => SpRekomendasiData(
             hasRekomendasi: false,
@@ -81,12 +110,34 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       ]);
       if (!mounted) return;
+      final agenda = agendaGagal ? null : results[1] as AgendaTerpaduData;
       setState(() {
         _data = results[0] as Dashboard;
-        _agendaData = results[1] as AgendaTerpaduData;
         _spRekomendasiData = results[2] as SpRekomendasiData;
         _error = null;
+        if (agenda != null) {
+          _agendaData = agenda;
+          _agendaFetchGagal = false;
+          _agendaTerakhirDisimpan = null;
+        }
+        // agendaGagal + cache: _agendaData dari cache dipertahankan (placeholder
+        // kosong tidak menimpanya); agendaGagal tanpa cache: perilaku existing
+        // (agenda kosong tanpa galat penuh).
       });
+      if (agenda != null) {
+        // Fetch sukses → cache diperbarui (fire-and-forget; gagal simpan hanya
+        // dilog di service).
+        unawaited(AgendaCacheService.instance.simpan(agenda));
+      } else if (_agendaData != null) {
+        // Fetch gagal tapi data terakhir masih tampil → label kecil, bukan
+        // galat penuh untuk seksi agenda.
+        final terakhir = await AgendaCacheService.instance.terakhirDisimpan();
+        if (!mounted) return;
+        setState(() {
+          _agendaFetchGagal = true;
+          _agendaTerakhirDisimpan = terakhir;
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       // `userErrorMessage` hanya memakai pesan ramah; detail teknis tidak
@@ -244,8 +295,36 @@ class _DashboardPageState extends State<DashboardPage> {
         onPressed: () => _push(const JadwalPage()),
         child: const Text('Lihat semua'),
       ),
-      child: items.isEmpty
-          ? const AppSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // SWR: fetch gagal tapi cache masih tampil → label kecil, bukan
+          // galat penuh.
+          if (_agendaFetchGagal) ...[
+            Row(
+              children: [
+                const Icon(
+                  CupertinoIcons.info_circle,
+                  size: 13,
+                  color: AppColors.textMuted,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Flexible(
+                  child: Text(
+                    _labelDataTerakhir,
+                    style: AppText.label.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          if (items.isEmpty)
+            const AppSurface(
               child: Row(
                 children: [
                   Icon(
@@ -260,7 +339,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 ],
               ),
             )
-          : Column(
+          else
+            Column(
               children: [
                 if (ongoing != null) ...[
                   _buildOngoingCard(ongoing),
@@ -272,7 +352,19 @@ class _DashboardPageState extends State<DashboardPage> {
                 ]),
               ],
             ),
+        ],
+      ),
     );
+  }
+
+  /// Label SWR untuk seksi "Jadwal Hari Ini": "Menampilkan data terakhir
+  /// (dd/mm hh:mm)" — format manual agar pola token waktu konsisten.
+  String get _labelDataTerakhir {
+    final t = _agendaTerakhirDisimpan;
+    if (t == null) return 'Menampilkan data terakhir';
+    String dua(int n) => n.toString().padLeft(2, '0');
+    return 'Menampilkan data terakhir '
+        '(${dua(t.day)}/${dua(t.month)} ${dua(t.hour)}:${dua(t.minute)})';
   }
 
   /// Gerbang ujian "Jadwal Hari Ini": non-ujian selalu tampil; ujian tampil

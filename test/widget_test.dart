@@ -2,14 +2,11 @@
 // Dijalankan otomatis di CI (GitHub Actions) via `flutter test`.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'package:app_amikom/main.dart';
 
 void main() {
   setUpAll(() {
-    // Jangan fetch font dari internet saat test — fokus: verifikasi boot UI.
-    GoogleFonts.config.allowRuntimeFetching = false;
   });
 
   testWidgets('App boots to splash screen', (WidgetTester tester) async {

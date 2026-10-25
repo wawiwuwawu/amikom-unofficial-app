@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'package:app_amikom/models/notifikasi.dart';
 import 'package:app_amikom/theme/app_theme.dart';
@@ -9,7 +8,6 @@ import 'package:app_amikom/widgets/notifikasi_push_card.dart';
 
 void main() {
   setUpAll(() {
-    GoogleFonts.config.allowRuntimeFetching = false;
   });
 
   Widget wrap(Widget child) {

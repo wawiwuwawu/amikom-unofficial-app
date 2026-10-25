@@ -16,7 +16,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'package:app_amikom/models/histori_ipk.dart';
 import 'package:app_amikom/models/transkrip.dart';
@@ -224,7 +223,6 @@ CumlaudeData _cumlaudeData() => CumlaudeData(
 
 void main() {
   setUpAll(() {
-    GoogleFonts.config.allowRuntimeFetching = false;
     // ApiClient membaca API_BASE_URL dari dotenv saat instance pertama dibuat.
     dotenv.loadFromString(envString: 'API_BASE_URL=http://localhost:3000');
   });

@@ -12,7 +12,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 Map<String, dynamic> _barisUjian({String mkl = 'Basis Data'}) => {
       'KODE': 'TIF123',
@@ -70,7 +69,6 @@ Future<void> pumpUjian(
 
 void main() {
   setUpAll(() {
-    GoogleFonts.config.allowRuntimeFetching = false;
     dotenv.loadFromString(envString: 'API_BASE_URL=http://localhost:3000');
   });
 

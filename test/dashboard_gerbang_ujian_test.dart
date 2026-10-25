@@ -15,7 +15,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 DateTime _hariIniUjian() {
   final now = DateTime.now();
@@ -124,8 +124,10 @@ Future<void> pumpDashboard(
 
 void main() {
   setUpAll(() {
-    GoogleFonts.config.allowRuntimeFetching = false;
     dotenv.loadFromString(envString: 'API_BASE_URL=http://localhost:3000');
+    // Cache agenda (stale-while-revalidate) membaca/menulis SharedPreferences —
+    // mock supaya jalur cache tidak menggantung di widget test.
+    SharedPreferences.setMockInitialValues({});
   });
 
   testWidgets('ujian di luar jendela disembunyikan dari Jadwal Hari Ini', (
