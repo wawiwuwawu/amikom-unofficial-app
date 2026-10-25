@@ -16,6 +16,7 @@ import 'package:app_amikom/pages/jadwal_page.dart';
 import 'package:app_amikom/services/api_client.dart';
 import 'package:app_amikom/theme/app_theme.dart';
 import 'package:app_amikom/utils/waktu.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeAdapter implements HttpClientAdapter {
   final Map<String, dynamic> payload;
@@ -177,6 +178,10 @@ final _kuliahWarisanTanpaJam = {
 void main() {
   setUpAll(() {
     dotenv.loadFromString(envString: 'API_BASE_URL=http://localhost:3000');
+    // JadwalPage sekarang membaca cache SWR + mode tampilan dari
+    // SharedPreferences; tanpa mock, channel plugin tidak pernah selesai di
+    // lingkungan test. Nilai kosong = tanpa cache, mode default 'hari'.
+    SharedPreferences.setMockInitialValues({});
   });
 
   Future<void> pumpJadwal(WidgetTester tester, _FakeAdapter adapter) async {
@@ -459,13 +464,17 @@ void main() {
   testWidgets('galat memuat jadwal tetap memakai AppErrorState + coba lagi', (
     tester,
   ) async {
+    // Test sebelumnya menyimpan cache agenda (store mock dipakai bersama);
+    // reset agar jalur "gagal tanpa cache" yang diuji di sini.
+    SharedPreferences.setMockInitialValues({});
     ApiClient.instance.dio.httpClientAdapter = _FailingAdapter();
 
     await tester.pumpWidget(
       MaterialApp(theme: AppTheme.light(), home: const JadwalPage()),
     );
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+    // _load kini membaca cache SWR sebelum fetch (dua hantaran async), jadi
+    // tunggu sampai seluruh rantai selesai dan state galat terpasang.
+    await tester.pumpAndSettle(const Duration(milliseconds: 100));
 
     expect(tester.takeException(), isNull);
     expect(find.text('Coba lagi'), findsOneWidget);
@@ -691,4 +700,49 @@ void main() {
     expect(find.text('Ujian Akhir Semester'), findsOneWidget);
     expect(find.textContaining('Jadwal ujian terbit'), findsNothing);
   });
+
+  // ── Cache SWR (stale-while-revalidate) ──────────────────────────────────────
+
+  testWidgets(
+    'fetch gagal dengan cache tampil memakai label data terakhir, '
+    'bukan galat penuh',
+    (tester) async {
+      // Sukses pertama → cache terisi.
+      SharedPreferences.setMockInitialValues({});
+      ApiClient.instance.dio.httpClientAdapter =
+          _FakeAdapter(_senin([_kuliahTeoriBerjadwal]));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          // UniqueKey memaksa state baru saat pump berikutnya agar _load
+          // dijalankan ulang (widget bertipe sama di posisi sama akan
+          // memakai state lama).
+          home: KeyedSubtree(
+            key: UniqueKey(),
+            child: const JadwalPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+      expect(find.text('Pemrograman Mobile'), findsOneWidget);
+
+      // Fetch berikutnya gagal — data cache tetap dirender + label kecil.
+      ApiClient.instance.dio.httpClientAdapter = _FailingAdapter();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: KeyedSubtree(
+            key: UniqueKey(),
+            child: const JadwalPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Coba lagi'), findsNothing);
+      expect(find.textContaining('Menampilkan data terakhir'), findsOneWidget);
+      expect(find.text('Pemrograman Mobile'), findsOneWidget);
+    },
+  );
 }

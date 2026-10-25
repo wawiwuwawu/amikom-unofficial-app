@@ -190,6 +190,28 @@ abstract final class GradeStyle {
   static Color text(String grade) => of(grade).$2;
 }
 
+/// Palet blok agenda tampilan mingguan — pasangan (latar, teks) lembut yang
+/// SELURUHNYA turunan token status di [AppColors] (tanpa hex baru), sehingga
+/// tetap konsisten bila brand berubah.
+abstract final class AppBlockPalette {
+  static const List<(Color, Color)> semua = [
+    (AppColors.infoBg, AppColors.info),
+    (AppColors.successBg, AppColors.success),
+    (AppColors.warningBg, AppColors.warning),
+    (AppColors.surfaceMuted, AppColors.textSecondary),
+  ];
+
+  /// (latar, teks) deterministik untuk satu mata kuliah: hash nama → indeks
+  /// palet, jadi blok mata kuliah yang sama selalu satu warna antar minggu.
+  static (Color, Color) untuk(String kunci) {
+    var hash = 0;
+    for (final unit in kunci.trim().toLowerCase().codeUnits) {
+      hash = (hash * 31 + unit) & 0x7fffffff;
+    }
+    return semua[hash % semua.length];
+  }
+}
+
 /// Dekorasi siap pakai — menggantikan 253 `BoxDecoration` berulang.
 abstract final class AppDeco {
   /// Permukaan kartu standar untuk konten data.
