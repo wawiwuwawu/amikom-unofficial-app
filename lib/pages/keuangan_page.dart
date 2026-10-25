@@ -234,20 +234,22 @@ class _RiwayatPembayaranTabState extends State<_RiwayatPembayaranTab> {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          AppSpacing.lg,
-          AppSpacing.lg,
-          MediaQuery.of(context).padding.bottom + AppSpacing.xxl,
-        ),
-        children: [
-          _buildSummaryHeader().animate().fadeIn().slideY(begin: -0.05, end: 0),
-          const SizedBox(height: AppSpacing.xl),
-          if (_historyList.isEmpty)
+    final padding = EdgeInsets.fromLTRB(
+      AppSpacing.lg,
+      AppSpacing.lg,
+      AppSpacing.lg,
+      MediaQuery.of(context).padding.bottom + AppSpacing.xxl,
+    );
+
+    if (_historyList.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: padding,
+          children: [
+            _buildSummaryHeader().animate().fadeIn().slideY(begin: -0.05, end: 0),
+            const SizedBox(height: AppSpacing.xl),
             SizedBox(
               height: MediaQuery.of(context).size.height * 0.35,
               child: const AppEmptyState(
@@ -256,15 +258,57 @@ class _RiwayatPembayaranTabState extends State<_RiwayatPembayaranTab> {
                     'Riwayat pembayaran kuliah Anda akan muncul di sini setelah transaksi dikonfirmasi oleh sistem.',
                 icon: CupertinoIcons.money_dollar_circle,
               ),
-            )
-          else
-            AppListGroup.from([
-              for (var item in _historyList) _buildHistoryRow(item),
-            ])
-                .animate()
-                .fadeIn()
-                .slideY(begin: 0.04, end: 0),
-        ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Server mengirim seluruh riwayat tanpa pagination, jadi daftar panjang
+    // dibagi menjadi chunk ±20 baris: ListView.builder hanya membangun
+    // AppListGroup chunk yang (hampir) terlihat, bukan ratusan widget
+    // sekaligus. Header ringkasan di chunk pertama; chunk berikutnya dipisah
+    // jarak antar kartu (AppSpacing.lg). Animasi masuk tetap per chunk.
+    const chunkSize = 20;
+    final chunks = <List<Widget>>[];
+    for (var i = 0; i < _historyList.length; i += chunkSize) {
+      final end =
+          (i + chunkSize) < _historyList.length ? i + chunkSize : _historyList.length;
+      chunks.add([for (var j = i; j < end; j++) _buildHistoryRow(_historyList[j])]);
+    }
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: padding,
+        itemCount: chunks.length,
+        itemBuilder: (context, index) {
+          final group = AppListGroup.from(chunks[index])
+              .animate()
+              .fadeIn()
+              .slideY(begin: 0.04, end: 0);
+          if (index == 0) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildSummaryHeader()
+                    .animate()
+                    .fadeIn()
+                    .slideY(begin: -0.05, end: 0),
+                const SizedBox(height: AppSpacing.xl),
+                group,
+              ],
+            );
+          }
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: AppSpacing.lg),
+              group,
+            ],
+          );
+        },
       ),
     );
   }

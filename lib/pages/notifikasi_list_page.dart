@@ -346,22 +346,51 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
       );
     }
 
-    return ListView(
+    // Server mengirim semua notifikasi tanpa pagination, jadi daftar panjang
+    // dibagi menjadi chunk ±20 baris: ListView.builder hanya membangun
+    // AppListGroup chunk yang (hampir) terlihat, bukan 300+ widget sekaligus.
+    // Tampilan tetap sama — header (kartu push + banner + judul seksi) di chunk
+    // pertama, chunk berikutnya dipisah jarak antar kartu (AppSpacing.lg).
+    const chunkSize = 20;
+    final chunks = <List<Widget>>[];
+    for (var i = 0; i < _list.length; i += chunkSize) {
+      final end = (i + chunkSize) < _list.length ? i + chunkSize : _list.length;
+      chunks.add([for (var j = i; j < end; j++) _buildRow(_list[j])]);
+    }
+
+    return ListView.builder(
       padding: AppSpacing.page,
       physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        _buildPushCard(),
-        const SizedBox(height: AppSpacing.lg),
-        _buildBannerPembaruan(),
-        AppSection(
-          title: 'Daftar Notifikasi',
-          topGap: AppSpacing.lg,
-          trailing: _hasUnread
-              ? AppPill('$_unreadCount belum dibaca', tone: AppPillTone.info)
-              : null,
-          child: AppListGroup.from([for (final item in _list) _buildRow(item)]),
-        ),
-      ],
+      itemCount: chunks.length,
+      itemBuilder: (context, index) {
+        final group = AppListGroup.from(chunks[index]);
+        if (index == 0) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildPushCard(),
+              const SizedBox(height: AppSpacing.lg),
+              _buildBannerPembaruan(),
+              AppSection(
+                title: 'Daftar Notifikasi',
+                topGap: AppSpacing.lg,
+                trailing: _hasUnread
+                    ? AppPill('$_unreadCount belum dibaca', tone: AppPillTone.info)
+                    : null,
+                child: group,
+              ),
+            ],
+          );
+        }
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: AppSpacing.lg),
+            group,
+          ],
+        );
+      },
     );
   }
 
