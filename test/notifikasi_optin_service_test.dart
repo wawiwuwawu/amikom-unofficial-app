@@ -298,10 +298,11 @@ void main() {
           );
         });
 
-        await expectLater(
-          () => service.hapusToken('fcm-token-yang-tidak-ada'),
-          returnsNormally,
-        );
+        // `returnsNormally` TIDAK menunggu future hasil closure — request
+        // DELETE bocor melewati akhir test dan di runner CI yang lambat
+        // future-nya selesai SETELAH test ditutup ("failed after test
+        // completion", flaky). Tunggu future-nya secara langsung.
+        await service.hapusToken('fcm-token-yang-tidak-ada');
       },
     );
 
