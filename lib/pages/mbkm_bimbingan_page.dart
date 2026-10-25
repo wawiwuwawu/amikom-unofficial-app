@@ -339,25 +339,31 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
         emptyIcon: Icons.history_edu_outlined,
         builder: (items) => RefreshIndicator(
           onRefresh: _loadData,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
+          // Log bimbingan bertambah tiap pertemuan — dibangun lazy per
+          // chunk ±20 baris; identitas + statistik + judul seksi tetap di
+          // header chunk pertama (tampilan tidak berubah).
+          child: AppChunkedList<MbkmBimbingan>(
+            items: items,
             padding: EdgeInsets.fromLTRB(
               AppSpacing.lg,
               AppSpacing.lg,
               AppSpacing.lg,
               MediaQuery.of(context).padding.bottom + AppSpacing.xxl * 3,
             ),
-            children: [
-              _buildIdentity(),
-              const SizedBox(height: AppSpacing.md),
-              _buildStats(items),
-              AppSection(
-                title: 'Riwayat Bimbingan',
-                child: AppListGroup.from([
-                  for (final item in items) _buildLogEntry(item),
-                ]),
-              ),
-            ],
+            header: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildIdentity(),
+                const SizedBox(height: AppSpacing.md),
+                _buildStats(items),
+                // Padanan AppSection "Riwayat Bimbingan" (topGap xl).
+                const SizedBox(height: AppSpacing.xl),
+                Text('RIWAYAT BIMBINGAN', style: AppText.overline),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+            ),
+            rowBuilder: (_, item) => _buildLogEntry(item),
           ),
         ),
       ),

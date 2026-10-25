@@ -212,7 +212,11 @@ class _TranskripPageState extends State<TranskripPage> {
     return RefreshIndicator(
       onRefresh: _load,
       color: AppColors.primary,
-      child: ListView(
+      // Daftar mata kuliah (±40 baris) dibangun lazy per chunk ±20 baris;
+      // ringkasan + kartu pelengkap di header chunk pertama, distribusi
+      // nilai di footer setelah chunk terakhir (tampilan tidak berubah).
+      child: AppChunkedList<TranskripItem>(
+        items: list,
         padding: const EdgeInsets.only(
           top: AppSpacing.sm,
           bottom: AppSpacing.xl,
@@ -220,26 +224,44 @@ class _TranskripPageState extends State<TranskripPage> {
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
         ),
-        children: [
-          _buildRingkasan(list, totalSks),
-          if (_cumlaudeData != null)
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.xl),
-              child: _buildCumlaudeCard(_cumlaudeData!),
+        header: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildRingkasan(list, totalSks),
+            if (_cumlaudeData != null)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.xl),
+                child: _buildCumlaudeCard(_cumlaudeData!),
+              ),
+            if (_progressKelulusanData != null)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.xl),
+                child: ProgressKelulusanCard(data: _progressKelulusanData!),
+              ),
+            if (_skpiData != null)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.xl),
+                child: RingkasanSkpiWidget(data: _skpiData!),
+              ),
+            // Padanan AppSection "Mata kuliah" (topGap xl).
+            const SizedBox(height: AppSpacing.xl),
+            Row(
+              children: [
+                Expanded(
+                  child: Text('MATA KULIAH', style: AppText.overline),
+                ),
+                Text(
+                  '${list.length} mata kuliah',
+                  style: AppText.label.copyWith(fontWeight: FontWeight.w400),
+                ),
+              ],
             ),
-          if (_progressKelulusanData != null)
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.xl),
-              child: ProgressKelulusanCard(data: _progressKelulusanData!),
-            ),
-          if (_skpiData != null)
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.xl),
-              child: RingkasanSkpiWidget(data: _skpiData!),
-            ),
-          _buildDaftarMatkul(list),
-          _buildDistribusiNilai(list),
-        ],
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        ),
+        footer: _buildDistribusiNilai(list),
+        rowBuilder: (_, item) => _matkulRow(item),
       ),
     );
   }
@@ -388,20 +410,6 @@ class _TranskripPageState extends State<TranskripPage> {
           Text(keterangan, style: AppText.bodySm),
         ],
       ),
-    );
-  }
-
-  /// Daftar seluruh mata kuliah — satu baris per mata kuliah, bukan satu kartu.
-  Widget _buildDaftarMatkul(List<TranskripItem> list) {
-    return AppSection(
-      title: 'Mata kuliah',
-      trailing: Text(
-        '${list.length} mata kuliah',
-        style: AppText.label.copyWith(fontWeight: FontWeight.w400),
-      ),
-      child: AppListGroup.from([
-        for (final item in list) _matkulRow(item),
-      ]),
     );
   }
 

@@ -254,60 +254,74 @@ class _AgendaAkademikPageState extends State<AgendaAkademikPage> {
     return RefreshIndicator(
       onRefresh: _loadData,
       color: AppColors.primary,
-      child: ListView(
-        padding: EdgeInsets.only(
-          left: AppSpacing.lg,
-          right: AppSpacing.lg,
-          top: AppSpacing.lg,
-          bottom: MediaQuery.of(context).padding.bottom + 100,
-        ),
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          _buildRingkasanBulan(),
-          AppSection(
-            title: 'Kalender',
-            child: AppSurface(
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              child: _buildCalendar(),
+      // Mode "Semua Agenda" menampilkan seluruh bulan sekaligus — via
+      // builder, seksi bulan di luar layar tidak dibangun sampai discroll.
+      child: Builder(
+        builder: (_) {
+          final isi = _isiDaftar(visible);
+          return ListView.builder(
+            padding: EdgeInsets.only(
+              left: AppSpacing.lg,
+              right: AppSpacing.lg,
+              top: AppSpacing.lg,
+              bottom: MediaQuery.of(context).padding.bottom + 100,
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _selectedDay != null
-                      ? 'Agenda di ${DateFormat('dd MMM yyyy').format(_selectedDay!)}'
-                      : 'Semua Agenda',
-                  style: AppText.h2,
-                ),
-              ),
-              if (_selectedDay != null)
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _selectedDay = null;
-                    });
-                  },
-                  child: const Text('Lihat Semua'),
-                ),
-            ],
-          ),
-          if (_agendaList.isEmpty)
-            const AppEmptyState(
-              title: 'Belum ada agenda akademik sama sekali.',
-              icon: CupertinoIcons.calendar,
-            )
-          else if (visible.isEmpty)
-            const AppEmptyState(
-              title: 'Tidak ada agenda pada tanggal ini.',
-              icon: CupertinoIcons.calendar_badge_minus,
-            )
-          else
-            ..._buildKelompokBulan(visible),
-        ],
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: isi.length,
+            itemBuilder: (_, i) => isi[i],
+          );
+        },
       ),
     );
+  }
+
+  /// Susunan isi halaman (ringkasan → kalender → judul daftar → seksi per
+  /// bulan); tiap elemen menjadi satu item ListView.builder.
+  List<Widget> _isiDaftar(List<Agenda> visible) {
+    return [
+      _buildRingkasanBulan(),
+      AppSection(
+        title: 'Kalender',
+        child: AppSurface(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          child: _buildCalendar(),
+        ),
+      ),
+      const SizedBox(height: AppSpacing.md),
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              _selectedDay != null
+                  ? 'Agenda di ${DateFormat('dd MMM yyyy').format(_selectedDay!)}'
+                  : 'Semua Agenda',
+              style: AppText.h2,
+            ),
+          ),
+          if (_selectedDay != null)
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _selectedDay = null;
+                });
+              },
+              child: const Text('Lihat Semua'),
+            ),
+        ],
+      ),
+      if (_agendaList.isEmpty)
+        const AppEmptyState(
+          title: 'Belum ada agenda akademik sama sekali.',
+          icon: CupertinoIcons.calendar,
+        )
+      else if (visible.isEmpty)
+        const AppEmptyState(
+          title: 'Tidak ada agenda pada tanggal ini.',
+          icon: CupertinoIcons.calendar_badge_minus,
+        )
+      else
+        ..._buildKelompokBulan(visible),
+    ];
   }
 
   /// Sorotan bulan & hari berjalan (kartu hero ringkas).

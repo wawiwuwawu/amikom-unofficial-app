@@ -172,14 +172,11 @@ class _PusatStudiPageState extends State<PusatStudiPage> {
         ],
       );
     }
-    return ListView(
+    // Daftar dibangun lazy per chunk ±20 baris (lihat AppChunkedList).
+    return AppChunkedList<PusatStudi>(
+      items: _listSemua,
       padding: _buildBodyPadding(),
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        AppListGroup.from([
-          for (final ps in _listSemua) _buildSemuaRow(ps),
-        ]),
-      ],
+      rowBuilder: (_, ps) => _buildSemuaRow(ps),
     );
   }
 
@@ -230,44 +227,40 @@ class _PusatStudiPageState extends State<PusatStudiPage> {
         ],
       );
     }
-    return ListView(
+    // Daftar dibangun lazy per chunk ±20 baris (lihat AppChunkedList).
+    return AppChunkedList<PusatStudi>(
+      items: _listJoined,
       padding: _buildBodyPadding(),
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        AppListGroup.from([
-          for (final ps in _listJoined)
-            AppListRow(
-              leading: Container(
-                width: AppSpacing.xxl + AppSpacing.sm,
-                height: AppSpacing.xxl + AppSpacing.sm,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.successBg,
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                ),
-                child: const Icon(
-                  CupertinoIcons.checkmark_seal_fill,
-                  size: 20,
-                  color: AppColors.success,
-                ),
-              ),
-              title: ps.nama,
-              subtitle: (ps.grupWa != null && ps.grupWa!.isNotEmpty)
-                  ? 'Grup WA tersedia'
-                  : null,
-              trailing: const Icon(
-                CupertinoIcons.chevron_right,
-                size: 18,
-                color: AppColors.textMuted,
-              ),
-              onTap: () {
-                Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => PusatStudiJoinedPage(pusatStudi: ps),
-                ));
-              },
-            ),
-        ]),
-      ],
+      rowBuilder: (_, ps) => AppListRow(
+        leading: Container(
+          width: AppSpacing.xxl + AppSpacing.sm,
+          height: AppSpacing.xxl + AppSpacing.sm,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.successBg,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+          ),
+          child: const Icon(
+            CupertinoIcons.checkmark_seal_fill,
+            size: 20,
+            color: AppColors.success,
+          ),
+        ),
+        title: ps.nama,
+        subtitle: (ps.grupWa != null && ps.grupWa!.isNotEmpty)
+            ? 'Grup WA tersedia'
+            : null,
+        trailing: const Icon(
+          CupertinoIcons.chevron_right,
+          size: 18,
+          color: AppColors.textMuted,
+        ),
+        onTap: () {
+          Navigator.push(context, MaterialPageRoute(
+            builder: (_) => PusatStudiJoinedPage(pusatStudi: ps),
+          ));
+        },
+      ),
     );
   }
 }

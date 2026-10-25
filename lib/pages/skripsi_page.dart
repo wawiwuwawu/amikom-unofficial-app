@@ -427,36 +427,49 @@ class _SkripsiPageState extends State<SkripsiPage>
       return _tabError(_errorProposal!, _fetchProposals);
     }
 
-    return ListView(
+    // Riwayat milik sendiri tapi bisa menumpuk (pengajuan ulang) — dibangun
+    // lazy per chunk ±20 baris; judul seksi + aksi + keadaan kosong tetap
+    // di header (padanan AppSection lama, tampilan tidak berubah).
+    return AppChunkedList<SkripsiProposalItem>(
+      items: _proposals,
       padding: EdgeInsets.fromLTRB(
         AppSpacing.lg,
         AppSpacing.lg,
         AppSpacing.lg,
         bottomPadding,
       ),
-      children: [
-        AppSection(
-          title: 'Riwayat Proposal Skripsi',
-          topGap: 0,
-          trailing: FilledButton.icon(
-            onPressed: _showFormProposalBaru,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(0, 36),
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            ),
-            icon: const Icon(CupertinoIcons.add, size: 16),
-            label: const Text('Ajukan Proposal'),
+      header: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'RIWAYAT PROPOSAL SKRIPSI',
+                  style: AppText.overline,
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: _showFormProposalBaru,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                ),
+                icon: const Icon(CupertinoIcons.add, size: 16),
+                label: const Text('Ajukan Proposal'),
+              ),
+            ],
           ),
-          child: _proposals.isEmpty
-              ? const AppEmptyState(
-                  title: 'Belum ada riwayat pengajuan proposal',
-                  icon: CupertinoIcons.doc_plaintext,
-                )
-              : AppListGroup.from([
-                  for (final item in _proposals) _buildProposalItem(item),
-                ]),
-        ),
-      ],
+          const SizedBox(height: AppSpacing.sm),
+          if (_proposals.isEmpty)
+            const AppEmptyState(
+              title: 'Belum ada riwayat pengajuan proposal',
+              icon: CupertinoIcons.doc_plaintext,
+            ),
+        ],
+      ),
+      rowBuilder: (_, item) => _buildProposalItem(item),
     );
   }
 
@@ -547,50 +560,63 @@ class _SkripsiPageState extends State<SkripsiPage>
       return _tabError(_errorBimbingan!, _fetchBimbingans);
     }
 
-    return ListView(
+    // Catatan bimbingan bertambah tiap pertemuan — dibangun lazy per chunk
+    // ±20 baris; judul seksi + aksi + keadaan kosong tetap di header
+    // (padanan AppSection lama, tampilan tidak berubah).
+    return AppChunkedList<SkripsiBimbinganItem>(
+      items: _bimbingans,
       padding: EdgeInsets.fromLTRB(
         AppSpacing.lg,
         AppSpacing.lg,
         AppSpacing.lg,
         bottomPadding,
       ),
-      children: [
-        AppSection(
-          title: 'Kartu Bimbingan Skripsi',
-          topGap: 0,
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
+      header: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              if (_bimbingans.isNotEmpty)
-                IconButton(
-                  icon: const Icon(CupertinoIcons.arrow_down_doc_fill),
-                  tooltip: 'Cetak Kartu Bimbingan PDF',
-                  onPressed: () =>
-                      _handleDownloadKartuBimbingan(_bimbingans.first.id),
+              Expanded(
+                child: Text(
+                  'KARTU BIMBINGAN SKRIPSI',
+                  style: AppText.overline,
                 ),
-              FilledButton.icon(
-                onPressed: _showFormBimbingan,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 36),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_bimbingans.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(CupertinoIcons.arrow_down_doc_fill),
+                      tooltip: 'Cetak Kartu Bimbingan PDF',
+                      onPressed: () =>
+                          _handleDownloadKartuBimbingan(_bimbingans.first.id),
+                    ),
+                  FilledButton.icon(
+                    onPressed: _showFormBimbingan,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                      ),
+                    ),
+                    icon: const Icon(CupertinoIcons.add, size: 16),
+                    label: const Text('Catatan Baru'),
                   ),
-                ),
-                icon: const Icon(CupertinoIcons.add, size: 16),
-                label: const Text('Catatan Baru'),
+                ],
               ),
             ],
           ),
-          child: _bimbingans.isEmpty
-              ? const AppEmptyState(
-                  title: 'Belum ada catatan bimbingan skripsi',
-                  icon: CupertinoIcons.doc_text,
-                )
-              : AppListGroup.from([
-                  for (final item in _bimbingans) _buildBimbinganItem(item),
-                ]),
-        ),
-      ],
+          const SizedBox(height: AppSpacing.sm),
+          if (_bimbingans.isEmpty)
+            const AppEmptyState(
+              title: 'Belum ada catatan bimbingan skripsi',
+              icon: CupertinoIcons.doc_text,
+            ),
+        ],
+      ),
+      rowBuilder: (_, item) => _buildBimbinganItem(item),
     );
   }
 
@@ -626,36 +652,49 @@ class _SkripsiPageState extends State<SkripsiPage>
       return _tabError(_errorPendaftaran!, _fetchPendaftarans);
     }
 
-    return ListView(
+    // Dibangun lazy per chunk ±20 baris; judul seksi + aksi + keadaan
+    // kosong tetap di header (padanan AppSection lama, tampilan tidak
+    // berubah).
+    return AppChunkedList<SkripsiPendaftaranItem>(
+      items: _pendaftarans,
       padding: EdgeInsets.fromLTRB(
         AppSpacing.lg,
         AppSpacing.lg,
         AppSpacing.lg,
         bottomPadding,
       ),
-      children: [
-        AppSection(
-          title: 'Pengajuan Ujian Skripsi',
-          topGap: 0,
-          trailing: FilledButton.icon(
-            onPressed: _showFormPendaftaranUjian,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(0, 36),
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            ),
-            icon: const Icon(CupertinoIcons.add, size: 16),
-            label: const Text('Daftar Ujian'),
+      header: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'PENGAJUAN UJIAN SKRIPSI',
+                  style: AppText.overline,
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: _showFormPendaftaranUjian,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                ),
+                icon: const Icon(CupertinoIcons.add, size: 16),
+                label: const Text('Daftar Ujian'),
+              ),
+            ],
           ),
-          child: _pendaftarans.isEmpty
-              ? const AppEmptyState(
-                  title: 'Belum ada riwayat pendaftaran ujian skripsi',
-                  icon: CupertinoIcons.person_2_square_stack,
-                )
-              : AppListGroup.from([
-                  for (final item in _pendaftarans) _buildPendaftaranItem(item),
-                ]),
-        ),
-      ],
+          const SizedBox(height: AppSpacing.sm),
+          if (_pendaftarans.isEmpty)
+            const AppEmptyState(
+              title: 'Belum ada riwayat pendaftaran ujian skripsi',
+              icon: CupertinoIcons.person_2_square_stack,
+            ),
+        ],
+      ),
+      rowBuilder: (_, item) => _buildPendaftaranItem(item),
     );
   }
 
@@ -745,36 +784,49 @@ class _SkripsiPageState extends State<SkripsiPage>
       return _tabError(_errorPlagiarisme!, _fetchPlagiarsmes);
     }
 
-    return ListView(
+    // Dibangun lazy per chunk ±20 baris; judul seksi + aksi + keadaan
+    // kosong tetap di header (padanan AppSection lama, tampilan tidak
+    // berubah).
+    return AppChunkedList<SkripsiPlagiarismeItem>(
+      items: _plagiarsmes,
       padding: EdgeInsets.fromLTRB(
         AppSpacing.lg,
         AppSpacing.lg,
         AppSpacing.lg,
         bottomPadding,
       ),
-      children: [
-        AppSection(
-          title: 'Status Cek Plagiarisme',
-          topGap: 0,
-          trailing: FilledButton.icon(
-            onPressed: _handleUploadPlagiarisme,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(0, 36),
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            ),
-            icon: const Icon(CupertinoIcons.cloud_upload_fill, size: 16),
-            label: const Text('Upload File (.doc/.docx)'),
+      header: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'STATUS CEK PLAGIARISME',
+                  style: AppText.overline,
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: _handleUploadPlagiarisme,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                ),
+                icon: const Icon(CupertinoIcons.cloud_upload_fill, size: 16),
+                label: const Text('Upload File (.doc/.docx)'),
+              ),
+            ],
           ),
-          child: _plagiarsmes.isEmpty
-              ? const AppEmptyState(
-                  title: 'Belum ada dokumen cek plagiarisme',
-                  icon: CupertinoIcons.doc_text_search,
-                )
-              : AppListGroup.from([
-                  for (final item in _plagiarsmes) _buildPlagiarismeItem(item),
-                ]),
-        ),
-      ],
+          const SizedBox(height: AppSpacing.sm),
+          if (_plagiarsmes.isEmpty)
+            const AppEmptyState(
+              title: 'Belum ada dokumen cek plagiarisme',
+              icon: CupertinoIcons.doc_text_search,
+            ),
+        ],
+      ),
+      rowBuilder: (_, item) => _buildPlagiarismeItem(item),
     );
   }
 

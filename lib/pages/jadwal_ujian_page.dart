@@ -234,26 +234,57 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
   }
 
   Widget _buildList() {
-    return ListView(
+    if (_jadwalList.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.sm,
+          AppSpacing.lg,
+          AppSpacing.xxl,
+        ),
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          AppSection(
+            topGap: AppSpacing.md,
+            title: 'Daftar ujian ${_jenisUjian.toUpperCase()}',
+            trailing: _buildTrailingAksi(),
+            child: _buildEmptyState(),
+          ),
+        ],
+      );
+    }
+
+    // Daftar dibangun lazy per chunk ±20 baris; judul seksi + aksi cetak
+    // tetap di atas chunk pertama (padanan AppSection lama, tampilan tidak
+    // berubah).
+    return AppChunkedList<JadwalUjian>(
+      items: _jadwalList,
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
         AppSpacing.sm,
         AppSpacing.lg,
         AppSpacing.xxl,
       ),
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        AppSection(
-          topGap: AppSpacing.md,
-          title: 'Daftar ujian ${_jenisUjian.toUpperCase()}',
-          trailing: _buildTrailingAksi(),
-          child: _jadwalList.isEmpty
-              ? _buildEmptyState()
-              : AppListGroup.from([
-                  for (final jadwal in _jadwalList) _buildJadwalRow(jadwal),
-                ]),
-        ),
-      ],
+      header: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'DAFTAR UJIAN ${_jenisUjian.toUpperCase()}',
+                  style: AppText.overline,
+                ),
+              ),
+              _buildTrailingAksi(),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
+      ),
+      rowBuilder: (_, jadwal) => _buildJadwalRow(jadwal),
     );
   }
 

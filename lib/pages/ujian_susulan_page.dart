@@ -183,55 +183,60 @@ class _UjianSusulanPageState extends State<UjianSusulanPage> {
     // When Available == true
     return RefreshIndicator(
       onRefresh: onRefresh,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
+      // Daftar dibangun lazy per chunk ±20 baris; kartu hero + judul seksi
+      // (dan keadaan kosong) tetap di header (tampilan tidak berubah).
+      child: AppChunkedList<UjianSusulanItem>(
+        items: data.items,
         padding: AppSpacing.page,
-        children: [
-          AppSurface(
-            variant: AppSurfaceVariant.hero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(
-                      CupertinoIcons.checkmark_seal_fill,
-                      color: AppColors.success,
-                      size: 22,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(data.message, style: AppText.h3),
-                    ),
-                  ],
-                ),
-                if (data.badges.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.xs,
+        header: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppSurface(
+              variant: AppSurfaceVariant.hero,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final b in data.badges)
-                        AppPill(b.value, tone: AppPillTone.info),
+                      const Icon(
+                        CupertinoIcons.checkmark_seal_fill,
+                        color: AppColors.success,
+                        size: 22,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(data.message, style: AppText.h3),
+                      ),
                     ],
                   ),
+                  if (data.badges.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.xs,
+                      children: [
+                        for (final b in data.badges)
+                          AppPill(b.value, tone: AppPillTone.info),
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          AppSection(
-            title: 'Daftar Mata Kuliah',
-            child: data.items.isEmpty
-                ? const AppEmptyState(
-                    title: 'Belum ada matakuliah ujian susulan yang terdaftar',
-                    icon: CupertinoIcons.doc_text_search,
-                  )
-                : AppListGroup.from([
-                    for (final item in data.items) _buildItem(item),
-                  ]),
-          ),
-        ],
+            // Padanan AppSection "Daftar Mata Kuliah" (topGap xl).
+            const SizedBox(height: AppSpacing.xl),
+            Text('DAFTAR MATA KULIAH', style: AppText.overline),
+            const SizedBox(height: AppSpacing.sm),
+            if (data.items.isEmpty)
+              const AppEmptyState(
+                title: 'Belum ada matakuliah ujian susulan yang terdaftar',
+                icon: CupertinoIcons.doc_text_search,
+              ),
+          ],
+        ),
+        rowBuilder: (_, item) => _buildItem(item),
       ),
     );
   }

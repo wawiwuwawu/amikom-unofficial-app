@@ -20,6 +20,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:app_amikom/pages/keuangan_page.dart';
 import 'package:app_amikom/pages/notifikasi_list_page.dart';
+import 'package:app_amikom/pages/panduan_list_page.dart';
+import 'package:app_amikom/pages/pengumuman_list_page.dart';
 import 'package:app_amikom/services/api_client.dart';
 import 'package:app_amikom/theme/app_theme.dart';
 
@@ -77,6 +79,25 @@ List<Map<String, dynamic>> _historyPayload(int n) => [
           'angsuran_ke': i + 1,
           'channel_bank': 'BRIVA',
           'kode_bank': 1,
+        },
+    ];
+
+List<Map<String, dynamic>> _pengumumanPayload(int n) => [
+      for (var i = 0; i < n; i++)
+        {
+          'ID': i,
+          'JUDUL': 'Pengumuman Uji $i',
+          'TANGGAL': '24-10-2026',
+        },
+    ];
+
+List<Map<String, dynamic>> _panduanPayload(int n) => [
+      for (var i = 0; i < n; i++)
+        {
+          'ID': i,
+          'JUDUL': 'Panduan Uji $i',
+          'TANGGAL': '24-10-2026',
+          'LINK': 'dokumen-$i',
         },
     ];
 
@@ -168,6 +189,73 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.text('Rp 4.100.000'), findsOneWidget);
       expect(find.text('Rp 30.000.000'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'PengumumanListPage: daftar 300 item dirender lazy dan tetap bisa discroll',
+    (tester) async {
+      ApiClient.instance.dio.httpClientAdapter = _FakeAdapter({
+        '/api/v1/pengumumanAkademik': (_) => _json({
+              'status': 'success',
+              'data': _pengumumanPayload(300),
+            }),
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+            theme: AppTheme.light(), home: const PengumumanListPage()),
+      );
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+
+      expect(tester.takeException(), isNull);
+      // Header & chunk pertama terlihat.
+      expect(find.text('300 PENGUMUMAN'), findsOneWidget);
+      expect(find.text('Pengumuman Uji 0'), findsOneWidget);
+      // Baris jauh BELUM dibangun — bukti render lazy.
+      expect(find.text('Pengumuman Uji 150'), findsNothing);
+
+      await tester.scrollUntilVisible(
+        find.text('Pengumuman Uji 40'),
+        500,
+        scrollable: _scrollList,
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.text('Pengumuman Uji 40'), findsOneWidget);
+      expect(find.text('Pengumuman Uji 250'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'PanduanListPage: daftar 300 item dirender lazy dan tetap bisa discroll',
+    (tester) async {
+      ApiClient.instance.dio.httpClientAdapter = _FakeAdapter({
+        '/api/v1/panduan': (_) => _json({
+              'status': 'success',
+              'data': _panduanPayload(300),
+            }),
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(theme: AppTheme.light(), home: const PanduanListPage()),
+      );
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+
+      expect(tester.takeException(), isNull);
+      // Header seksi & chunk pertama terlihat.
+      expect(find.text('DOKUMEN PANDUAN'), findsOneWidget);
+      expect(find.text('Panduan Uji 0'), findsOneWidget);
+      // Baris jauh BELUM dibangun — bukti render lazy.
+      expect(find.text('Panduan Uji 150'), findsNothing);
+
+      await tester.scrollUntilVisible(
+        find.text('Panduan Uji 40'),
+        500,
+        scrollable: _scrollList,
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.text('Panduan Uji 40'), findsOneWidget);
+      expect(find.text('Panduan Uji 250'), findsNothing);
     },
   );
 }

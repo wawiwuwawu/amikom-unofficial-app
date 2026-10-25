@@ -204,18 +204,21 @@ class _PanduanListPageState extends State<PanduanListPage> {
     return RefreshIndicator(
       onRefresh: _load,
       color: AppColors.primary,
-      child: ListView(
+      // Server mengirim semua dokumen tanpa pagination — daftar dibangun
+      // lazy per chunk ±20 baris; judul seksi tetap di atas chunk pertama
+      // (padanan AppSection, tampilan tidak berubah).
+      child: AppChunkedList<PanduanItem>(
+        items: _filteredList,
         padding: AppSpacing.page,
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          AppSection(
-            title: 'Dokumen Panduan',
-            topGap: 0,
-            child: AppListGroup.from([
-              for (final item in _filteredList) _buildRow(item),
-            ]),
-          ),
-        ],
+        header: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('DOKUMEN PANDUAN', style: AppText.overline),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        ),
+        rowBuilder: (_, item) => _buildRow(item),
       ),
     );
   }

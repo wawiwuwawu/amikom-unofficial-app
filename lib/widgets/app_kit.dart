@@ -240,6 +240,81 @@ class AppListGroup extends StatelessWidget {
   }
 }
 
+/// Daftar panjang dari server (tanpa pagination) yang dirender lazy: item
+/// dibagi menjadi chunk ±20 baris — satu [AppListGroup] per chunk — via
+/// `ListView.builder`, sehingga hanya chunk yang (hampir) terlihat yang
+/// dibangun, bukan ratusan baris sekaligus (pola sama dengan halaman
+/// Notifikasi/Keuangan/Jadwal). [header] (mis. ringkasan atau judul seksi)
+/// berada di atas chunk pertama dan [footer] setelah chunk terakhir —
+/// keduanya tanpa jarak implisit, jarak ke daftar disertakan di dalam
+/// widget pemanggil; antar chunk dipisah jarak antar kartu
+/// (AppSpacing.lg). Header tetap dirender walau daftar kosong. Tampilan
+/// tiap baris tetap dari [rowBuilder], identik dengan versi non-chunk.
+class AppChunkedList<T> extends StatelessWidget {
+  const AppChunkedList({
+    super.key,
+    required this.items,
+    required this.rowBuilder,
+    this.header,
+    this.footer,
+    this.padding,
+    this.physics = const AlwaysScrollableScrollPhysics(),
+    this.chunkSize = 20,
+  }) : assert(chunkSize > 0);
+
+  final List<T> items;
+  final Widget Function(BuildContext context, T item) rowBuilder;
+  final Widget? header;
+  final Widget? footer;
+  final EdgeInsetsGeometry? padding;
+
+  /// Default selalu bisa discroll agar RefreshIndicator tetap berfungsi.
+  final ScrollPhysics physics;
+  final int chunkSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final chunks = <List<Widget>>[];
+    for (var i = 0; i < items.length; i += chunkSize) {
+      final end =
+          (i + chunkSize) < items.length ? i + chunkSize : items.length;
+      chunks.add([
+        for (var j = i; j < end; j++) rowBuilder(context, items[j]),
+      ]);
+    }
+
+    // header → chunk → … → footer; header tetap dirender walau daftar kosong
+    // (mis. dipakai bersama AppEmptyState di dalam seksi yang sama).
+    Widget? itemAt(int index) {
+      var i = index;
+      final head = header;
+      if (head != null) {
+        if (i == 0) return head;
+        i--;
+      }
+      if (i < chunks.length) {
+        final group = AppListGroup.from(chunks[i]);
+        return i == 0
+            ? group
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [const SizedBox(height: AppSpacing.lg), group],
+              );
+      }
+      return footer;
+    }
+
+    final total =
+        chunks.length + (header != null ? 1 : 0) + (footer != null ? 1 : 0);
+    return ListView.builder(
+      padding: padding,
+      physics: physics,
+      itemCount: total,
+      itemBuilder: (context, index) => itemAt(index)!,
+    );
+  }
+}
+
 /// Satu baris data — pengganti "1 kartu per item" yang membuat tampilan ramai.
 class AppListRow extends StatelessWidget {
   final Widget? leading;

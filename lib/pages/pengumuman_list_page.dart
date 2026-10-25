@@ -69,24 +69,25 @@ class _PengumumanListPageState extends State<PengumumanListPage> {
           emptyMessage: 'Pengumuman baru akan muncul di sini.',
           emptyIcon: CupertinoIcons.speaker_2_fill,
           isEmpty: (data) => data.isEmpty,
-          builder: (data) => ListView(
+          // Server mengirim semua pengumuman tanpa pagination — daftar
+          // dibangun lazy per chunk ±20 baris (lihat AppChunkedList).
+          builder: (data) => AppChunkedList<PengumumanItem>(
+            items: data,
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.lg,
               AppSpacing.lg,
               AppSpacing.lg,
               AppSpacing.xxl,
             ),
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: [
-              Text(
-                '${data.length} PENGUMUMAN',
-                style: AppText.overline,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              AppListGroup.from([
-                for (final item in data) _row(item),
-              ]),
-            ],
+            header: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${data.length} PENGUMUMAN', style: AppText.overline),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+            ),
+            rowBuilder: (_, item) => _row(item),
           ),
         ),
       ),

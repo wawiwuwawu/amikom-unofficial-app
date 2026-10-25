@@ -184,23 +184,28 @@ class _OrganisasiPageState extends State<OrganisasiPage> {
         emptyIcon: CupertinoIcons.person_3_fill,
         builder: (items) => RefreshIndicator(
           onRefresh: _load,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
+          // Daftar dibangun lazy per chunk ±20 baris; ringkasan + judul
+          // seksi tetap di atas chunk pertama (padanan AppSection lama,
+          // tampilan tidak berubah).
+          child: AppChunkedList<OrganisasiItem>(
+            items: items,
             padding: EdgeInsets.fromLTRB(
               AppSpacing.lg,
               AppSpacing.lg,
               AppSpacing.lg,
               MediaQuery.of(context).padding.bottom + 96,
             ),
-            children: [
-              _buildSummary(items),
-              AppSection(
-                title: 'Daftar Organisasi',
-                child: AppListGroup.from([
-                  for (final item in items) _buildItem(item),
-                ]),
-              ),
-            ],
+            header: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSummary(items),
+                const SizedBox(height: AppSpacing.xl),
+                Text('DAFTAR ORGANISASI', style: AppText.overline),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+            ),
+            rowBuilder: (_, item) => _buildItem(item),
           ),
         ),
       ),
