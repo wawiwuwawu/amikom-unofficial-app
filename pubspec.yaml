@@ -61,6 +61,10 @@ dependencies:
   device_info_plus: ^12.4.0
   # Intent "Buka setelan aplikasi" di panduan anti-kill OEM (Android-only)
   android_intent_plus: ^6.1.0
+  # Jembatan data untuk widget home screen "Jadwal Hari Ini" (Android):
+  # menyimpan key/value ke SharedPreferences group `home_widget` lalu
+  # memicu AppWidgetProvider native. UI widget 100% native (Kotlin/XML).
+  home_widget: ^0.10.0
 
 dev_dependencies:
   flutter_test:

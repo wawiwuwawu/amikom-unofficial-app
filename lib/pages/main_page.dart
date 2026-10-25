@@ -12,6 +12,7 @@ import '../services/deep_link_service.dart';
 import '../services/pembaruan_service.dart';
 import '../services/pengingat_jadwal_service.dart';
 import '../services/push_service.dart';
+import '../services/widget_jadwal_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
 import '../widgets/pembaruan_sheet.dart';
@@ -355,6 +356,13 @@ class _MainPageState extends State<MainPage> {
                       } catch (_) {
                         // Logout tetap lanjut walau snapshot event gagal
                         // dibersihkan.
+                      }
+                      // Kembalikan widget home "Jadwal Hari Ini" ke keadaan
+                      // tanpa data — jangan tampilkan jadwal NIM lama.
+                      try {
+                        await WidgetJadwalService.instance.bersihkanSaatLogout();
+                      } catch (_) {
+                        // Logout tetap lanjut walau widget gagal dibersihkan.
                       }
                       await ApiClient.instance.fullLogout();
                       if (!mounted) return;

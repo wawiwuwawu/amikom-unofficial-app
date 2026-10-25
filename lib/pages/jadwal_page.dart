@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/akademik_service.dart';
 import '../services/agenda_cache_service.dart';
 import '../services/periode_ujian_service.dart';
+import '../services/widget_jadwal_service.dart';
 import '../models/agenda_terpadu.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
@@ -156,6 +157,9 @@ class _JadwalPageState extends State<JadwalPage> {
         // Fetch sukses → cache diperbarui (fire-and-forget; gagal simpan
         // hanya dilog di service).
         unawaited(AgendaCacheService.instance.simpan(agenda));
+        // Widget home "Jadwal Hari Ini" ikut diperbarui dari cache yang baru
+        // saja ditulis (fail-open di dalam service).
+        unawaited(WidgetJadwalService.instance.perbaruiDariCache());
       }
     } catch (e) {
       if (mounted) {

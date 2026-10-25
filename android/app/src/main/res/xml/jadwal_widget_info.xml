@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget 3x1 (API 31+) dengan fallback minWidth/minHeight untuk perangkat
+     lama. updatePeriodMillis 0: widget TIDAK polling — diperbarui dari app
+     tiap fetch agenda berhasil / app dibuka (kesepakatan Fase 4). -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="60dp"
+    android:targetCellWidth="3"
+    android:targetCellHeight="1"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/jadwal_widget"
+    android:widgetCategory="home_screen" />

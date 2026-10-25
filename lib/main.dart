@@ -10,6 +10,7 @@ import 'services/deep_link_service.dart';
 import 'services/pembaruan_service.dart';
 import 'services/pengingat_jadwal_service.dart';
 import 'services/push_service.dart';
+import 'services/widget_jadwal_service.dart';
 import 'theme/app_theme.dart';
 import 'pages/login_page.dart';
 import 'pages/main_page.dart';
@@ -68,6 +69,10 @@ Future<void> main() async {
   // Cek pembaruan otomatis (throttle 1x/24 jam, fail-open, tanpa UI): hasil
   //nya dibaca banner di halaman notifikasi. Tidak boleh menunda app start.
   unawaited(PembaruanService.instance.cekOtomatis());
+
+  // Segarkan widget home "Jadwal Hari Ini" dari cache (fail-open): widget
+  // ikut muter tanggal setiap kali app dibuka walau tanpa login.
+  unawaited(WidgetJadwalService.instance.perbaruiDariCache());
 
   runApp(const MyApp());
 }

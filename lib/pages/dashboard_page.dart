@@ -13,6 +13,7 @@ import '../services/akademik_service.dart';
 import '../services/event_diff_service.dart';
 import '../services/periode_ujian_service.dart';
 import '../services/sp_service.dart';
+import '../services/widget_jadwal_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/waktu.dart';
 import '../widgets/app_kit.dart';
@@ -146,6 +147,9 @@ class _DashboardPageState extends State<DashboardPage> {
         // Fetch sukses → cache diperbarui (fire-and-forget; gagal simpan hanya
         // dilog di service).
         unawaited(AgendaCacheService.instance.simpan(agenda));
+        // Widget home "Jadwal Hari Ini" ikut diperbarui dari cache yang baru
+        // saja ditulis (fail-open di dalam service).
+        unawaited(WidgetJadwalService.instance.perbaruiDariCache());
         // Fase 2c: diff lokal "jadwal ujian terbit" — evaluasi snapshot ujian
         // dari data yang SUDAH di tangan (tanpa fetch tambahan; seluruh jalur
         // fail-open di dalam service, tidak mengganggu halaman).
