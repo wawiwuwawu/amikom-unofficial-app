@@ -12,6 +12,7 @@ import '../services/agenda_cache_service.dart';
 import '../services/api_client.dart';
 import '../services/akademik_service.dart';
 import '../services/event_diff_service.dart';
+import '../services/periode_service.dart';
 import '../services/periode_ujian_service.dart';
 import '../services/sp_service.dart';
 import '../services/widget_jadwal_service.dart';
@@ -21,6 +22,7 @@ import '../widgets/app_kit.dart';
 import '../widgets/histori_ipk_sheet.dart';
 import 'absensi_page.dart';
 import 'jadwal_page.dart';
+import 'krs/krs_main_page.dart';
 import 'sp_page.dart';
 import 'keuangan_page.dart';
 
@@ -46,6 +48,7 @@ class _DashboardPageState extends State<DashboardPage> {
   final _akademikService = AkademikService();
   final _spService = SpService();
   final _absensiService = AbsensiService();
+  final _periodeService = PeriodeService();
 
   Dashboard? _data;
   AgendaTerpaduData? _agendaData;
@@ -57,6 +60,13 @@ class _DashboardPageState extends State<DashboardPage> {
   static const _kunciSpDitutupAt = 'sp_rekomendasi_ditutup_at';
   static const _sembunyiSpSelama = Duration(days: 30);
   bool _spBannerDitutup = true;
+
+  /// Banner "Periode KRS Dibuka" (dari GET /periode, kontrak BE §2.3).
+  /// Ditutup per-PERIODE, bukan per-durasi: kunci rentang tanggal saat ditutup
+  /// disimpan; periode baru (tanggal beda) otomatis menampilkan banner lagi.
+  static const _kunciKrsDitutup = 'krs_banner_ditutup_periode';
+  PeriodeKrsData? _periodeKrs;
+  String? _krsDitutupPeriode;
 
   /// Hasil cek "sudah presensi?" untuk kartu berjalan: null = sedang mengecek
   /// (tampilan sama seperti belum tahu — tombol tetap ada, tanpa spinner agar
@@ -120,6 +130,7 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final ditutupAt = prefs.getInt(_kunciSpDitutupAt);
+      final krsDitutup = prefs.getString(_kunciKrsDitutup);
       if (!mounted) return;
       setState(() {
         _spBannerDitutup = ditutupAt != null &&
@@ -127,10 +138,16 @@ class _DashboardPageState extends State<DashboardPage> {
                   DateTime.fromMillisecondsSinceEpoch(ditutupAt),
                 ) <
                 _sembunyiSpSelama;
+        _krsDitutupPeriode = krsDitutup;
       });
     } catch (_) {
       // Gagal baca pref → banner tampil (default informatif).
-      if (mounted) setState(() => _spBannerDitutup = false);
+      if (mounted) {
+        setState(() {
+          _spBannerDitutup = false;
+          _krsDitutupPeriode = null;
+        });
+      }
     }
 
     try {
@@ -153,12 +170,19 @@ class _DashboardPageState extends State<DashboardPage> {
             kategoriOpsionalSksBesar: [],
           ),
         ),
+        // Flag periode KRS murah (scope=krs, satu scrape ringan di BE).
+        // Gagal → null → banner tidak tampil (fail-open, perilaku lama).
+        _periodeService
+            .getPeriodeKrs()
+            .then<PeriodeKrsData?>((v) => v)
+            .catchError((_) => null),
       ]);
       if (!mounted) return;
       final agenda = agendaGagal ? null : results[1] as AgendaTerpaduData;
       setState(() {
         _data = results[0] as Dashboard;
         _spRekomendasiData = results[2] as SpRekomendasiData;
+        _periodeKrs = results[3] as PeriodeKrsData?;
         _error = null;
         if (agenda != null) {
           _agendaData = agenda;
@@ -173,9 +197,10 @@ class _DashboardPageState extends State<DashboardPage> {
         // Fetch sukses → cache diperbarui (fire-and-forget; gagal simpan hanya
         // dilog di service).
         unawaited(AgendaCacheService.instance.simpan(agenda));
-        // Widget home "Jadwal Hari Ini" ikut diperbarui dari cache yang baru
-        // saja ditulis (fail-open di dalam service).
-        unawaited(WidgetJadwalService.instance.perbaruiDariCache());
+        // Widget home "Jadwal Hari Ini" ikut diperbarui dari data yang baru
+        // saja di tangan — BUKAN dari cache (race: baca bisa mendahului
+        // tulisan simpan() di atas, widget dapat null di install baru).
+        unawaited(WidgetJadwalService.instance.perbaruiDariData(agenda));
         // Fase 2c: diff lokal "jadwal ujian terbit" — evaluasi snapshot ujian
         // dari data yang SUDAH di tangan (tanpa fetch tambahan; seluruh jalur
         // fail-open di dalam service, tidak mengganggu halaman).
@@ -235,6 +260,10 @@ class _DashboardPageState extends State<DashboardPage> {
     final perluBayar = d.status.status != 'Aktif' || d.status.status.isEmpty;
     final adaSp =
         !_spBannerDitutup && (_spRekomendasiData?.hasRekomendasi ?? false);
+    final krs = _periodeKrs;
+    final adaKrs = krs != null &&
+        krs.dibuka &&
+        _krsDitutupPeriode != krs.kunci;
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -260,6 +289,10 @@ class _DashboardPageState extends State<DashboardPage> {
             _buildSpRekomendasiBanner(
               _spRekomendasiData!,
             ).animate().fadeIn(delay: 120.ms),
+          ],
+          if (adaKrs) ...[
+            const SizedBox(height: AppSpacing.lg),
+            _buildKrsBanner(krs).animate().fadeIn(delay: 100.ms),
           ],
 
           // Informasi paling dicari saat membuka aplikasi.
@@ -764,6 +797,75 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  // ── Banner Periode KRS ────────────────────────────────────────────────────
+
+  /// Banner informatif "Periode KRS Dibuka" — hanya selama `periode.krs.
+  /// dibuka` dari BE. Penutupan per-periode: begitu BE membuka periode baru
+  /// (rentang tanggal berubah), banner muncul lagi otomatis.
+  Widget _buildKrsBanner(PeriodeKrsData periode) {
+    final label = periode.labelRentang;
+    return AppSurface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                CupertinoIcons.calendar_badge_plus,
+                size: 18,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Periode KRS Dibuka',
+                  style: AppText.h3.copyWith(color: AppColors.primary),
+                ),
+              ),
+              GestureDetector(
+                onTap: _tutupKrsBanner,
+                behavior: HitTestBehavior.opaque,
+                child: const Padding(
+                  padding: EdgeInsets.all(AppSpacing.xs),
+                  child: Icon(
+                    CupertinoIcons.xmark,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (label != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Berlaku sampai $label',
+              style: AppText.label,
+            ),
+          ],
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Ajukan mata kuliah yang akan diambil semester ini sebelum '
+            'periode berakhir.',
+            style: AppText.bodySm,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => _push(const KrsMainPage()),
+              icon: const Icon(
+                CupertinoIcons.arrow_right_circle_fill,
+                size: 18,
+              ),
+              label: const Text('Isi KRS'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Utilitas ──────────────────────────────────────────────────────────────
 
   /// Tutup banner rekomendasi SP + catat waktunya (sembunyi 30 hari).
@@ -776,6 +878,19 @@ class _DashboardPageState extends State<DashboardPage> {
         _kunciSpDitutupAt,
         DateTime.now().millisecondsSinceEpoch,
       );
+    } catch (_) {}
+  }
+
+  /// Tutup banner KRS per-periode: simpan kunci rentang tanggal periode yang
+  /// sedang berjalan. Periode baru (kunci beda) menampilkan banner lagi.
+  /// Persist gagal dibiarkan fail-open: banner cuma muncul lagi.
+  Future<void> _tutupKrsBanner() async {
+    final kunci = _periodeKrs?.kunci;
+    if (kunci == null) return;
+    setState(() => _krsDitutupPeriode = kunci);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kunciKrsDitutup, kunci);
     } catch (_) {}
   }
 
