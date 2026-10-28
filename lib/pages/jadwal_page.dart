@@ -157,9 +157,10 @@ class _JadwalPageState extends State<JadwalPage> {
         // Fetch sukses → cache diperbarui (fire-and-forget; gagal simpan
         // hanya dilog di service).
         unawaited(AgendaCacheService.instance.simpan(agenda));
-        // Widget home "Jadwal Hari Ini" ikut diperbarui dari cache yang baru
-        // saja ditulis (fail-open di dalam service).
-        unawaited(WidgetJadwalService.instance.perbaruiDariCache());
+        // Widget home "Jadwal Hari Ini" ikut diperbarui dari data yang baru
+        // saja di tangan — BUKAN dari cache (race: baca bisa mendahului
+        // tulisan simpan() di atas, widget dapat null di install baru).
+        unawaited(WidgetJadwalService.instance.perbaruiDariData(agenda));
       }
     } catch (e) {
       if (mounted) {

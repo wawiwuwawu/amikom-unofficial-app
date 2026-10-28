@@ -118,12 +118,20 @@ class WidgetJadwalService {
     return {
       for (final kunci in kunciSemua)
         kunci: [
-          ...((berjam[kunci] ?? const [])
-                ..sort((a, b) => a.$1.compareTo(b.$1)))
-              .map((x) => _barisItem(x.$2)),
+          ..._terurutJam(berjam[kunci]).map((x) => _barisItem(x.$2)),
           ...(tanpaJam[kunci] ?? const []).map(_barisItem),
         ],
     };
+  }
+
+  /// Salinan terurut jam — JANGAN sort `const []` fallback: kunci yang
+  /// isinya hanya baris tanpa jam (mis. "Tanpa Jadwal" milik Skripsi) tidak
+  /// punya entri berjam, dan `const []..sort()` melempar UnsupportedError
+  /// yang menggagalkan SELURUH penulisan widget (bug nyata 2026-10-29).
+  static List<(int, AgendaItem)> _terurutJam(List<(int, AgendaItem)>? list) {
+    final salinan = [...?list];
+    salinan.sort((a, b) => a.$1.compareTo(b.$1));
+    return salinan;
   }
 
   static String _tanggalIso(DateTime d) =>
@@ -140,13 +148,28 @@ class WidgetJadwalService {
     await _gateway.perbaruiWidget();
   }
 
+  /// Terapkan [data] yang BARU SAJA di-fetch langsung ke widget — tanpa lewat
+  /// cache. Wajib dipakai pemanggil yang baru menulis cache: `perbaruiDariCache`
+  /// bisa mendahului tulisan cache (dua-duanya unawaited) sehingga widget
+  /// mendapat null pada install baru (cache kosong) — bug nyata ditemukan
+  /// pemakaian nyata 2026-10-29. Fail-open.
+  Future<void> perbaruiDariData(AgendaTerpaduData data) async {
+    try {
+      await terapkan(data: data);
+    } catch (e, st) {
+      debugPrint('WidgetJadwal: gagal memperbarui widget: $e\n$st');
+    }
+  }
+
   /// Baca cache agenda milik NIM aktif lalu terapkan ke widget. Fail-open.
+  /// Hanya untuk jalur yang TIDAK punya data segar di tangan (cold start di
+  /// `main.dart`); fetch yang baru sukses harus memakai [perbaruiDariData].
   Future<void> perbaruiDariCache() async {
     try {
       final data = await AgendaCacheService.instance.baca();
       await terapkan(data: data);
-    } catch (e) {
-      debugPrint('WidgetJadwal: gagal memperbarui widget (${e.runtimeType})');
+    } catch (e, st) {
+      debugPrint('WidgetJadwal: gagal memperbarui widget: $e\n$st');
     }
   }
 

@@ -147,6 +147,36 @@ void main() {
     test('data null → peta kosong', () {
       expect(WidgetJadwalService.petaMingguan(null), isEmpty);
     });
+
+    test('kunci HANYA berisi baris tanpa jam (mis. "Tanpa Jadwal") tidak '
+        'melempar UnsupportedError — regresi bug nyata 2026-10-29', () {
+      // Bug nyata: `const []..sort()` pada kunci tanpa entri berjam
+      // menggagalkan SELURUH penulisan widget.
+      final agenda = AgendaTerpaduData.fromJson({
+        'total_agenda': 2,
+        'agenda': {
+          'Senin': [_matkul('Berjam', '07:30', hari: 'Senin')],
+          'Tanpa Jadwal': [
+            {
+              'tipe': 'kuliah',
+              'hari': 'Tanpa Jadwal',
+              'jam': '-',
+              'jam_mulai': '',
+              'jam_selesai': '',
+              'ruang': '',
+              'matakuliah': 'Skripsi',
+              'detail': 'Tanpa kelas',
+              'komponen': 'teori',
+            },
+          ],
+        },
+      });
+
+      final peta = WidgetJadwalService.petaMingguan(agenda);
+
+      expect(peta['Senin'], ['07:30 · Berjam · LT2']);
+      expect(peta['Tanpa Jadwal'], ['- · Skripsi']);
+    });
   });
 
   group('barisHariIni (referensi perilaku native)', () {
@@ -243,6 +273,38 @@ void main() {
 
       expect(gateway.data.containsKey('jadwal_json'), isFalse);
       expect(gateway.jumlahPerbaruiWidget, 1);
+    });
+  });
+
+  group('perbaruiDariData (jalur anti-race)', () {
+    test('data langsung diterapkan walau cache MASIH KOSONG', () async {
+      // Skenario bug nyata: pemanggil baru fetch sukses dan menulis cache
+      // unawaited; baca cache bisa mendahului tulisan → widget dapat null.
+      // perbaruiDariData memotong jalur cache sama sekali.
+      final gateway = _GatewayPalsu();
+      final service = WidgetJadwalService.instance..gantiGatewayUntukTest(gateway);
+
+      await service.perbaruiDariData(_agendaDenganHari('Senin', [
+        _matkul('Pemrograman Web', '07:30', hari: 'Senin'),
+      ]));
+
+      final peta = _peta(gateway.data['jadwal_json']);
+      expect(peta['Senin'], ['07:30 · Pemrograman Web · LT2']);
+      expect(gateway.jumlahPerbaruiWidget, 1);
+    });
+
+    test('data tidak menimpa sesi cache lain — menimpa jadwal_json lama', () async {
+      final gateway = _GatewayPalsu();
+      final service = WidgetJadwalService.instance..gantiGatewayUntukTest(gateway);
+      gateway.data['jadwal_json'] = '{"Minggu": ["lama"]}';
+
+      await service.perbaruiDariData(_agendaDenganHari('Senin', [
+        _matkul('Baru', '08:00', hari: 'Senin'),
+      ]));
+
+      final peta = _peta(gateway.data['jadwal_json']);
+      expect(peta.containsKey('Minggu'), isFalse);
+      expect(peta['Senin'], ['08:00 · Baru · LT2']);
     });
   });
 
