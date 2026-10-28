@@ -7,6 +7,20 @@ rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-
 
 ## [Unreleased]
 
+## [v1.14.0] - 2026-10-29
+
+### Added
+- ✨ Banner **"Periode KRS Dibuka"** di Beranda (dari `GET /api/v1/periode`): tampil hanya selama periode KRS berlangsung, bisa ditutup manual, dan penutupan berlaku per-periode — periode baru otomatis menampilkannya kembali
+- ⚡ Cek presensi kartu "sedang berlangsung" kini memakai endpoint ringkas `POST /absensi/presensi-hari-ini` — 1 request menggantikan 3; jalur lama tetap tersedia sebagai cadangan
+- ⚡ Validasi bersyarat **ETag/304** untuk data publik (berita, pengumuman akademik, panduan, kalender akademik): request ulang mengirim `If-None-Match` dan dipenuhi dari simpanan lokal bila server menjawab "tidak berubah" — hemat kuota & bandwidth
+
+### Fixed
+- 🩺 Widget "Jadwal Hari Ini" **tidak pernah terisi** ("Buka app untuk memuat jadwal" selamanya): penyortiran peta mingguan menabrak daftar konstan saat ada kunci berisi hanya baris tanpa jam (mis. "Tanpa Jadwal" milik Skripsi) — penulisan data gagal seluruhnya tanpa jejak; kini diperbaiki plus log kegagalan yang berisi pesan penuh
+- 🩺 Widget: pembacaan cache bisa mendahului penulisannya pada pemasingan baru sehingga widget sempat kosong — data yang baru dimuat kini diterapkan langsung tanpa lewat cache
+
+### Changed
+- ♻️ `file_picker` 11→13 (API baru: `pickFile`/`PlatformFile`), `share_plus` 12→13, `flutter_secure_storage` 10.3.4, `url_launcher` 6.3.3, `device_info_plus` 13.1.0, `package_info_plus` 10 — resolusi konflik `win32` 5↔6 antar plugin
+
 ## [v1.13.0] - 2026-10-25
 
 ### Added
