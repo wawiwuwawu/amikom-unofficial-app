@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:home_widget/home_widget.dart';
 
@@ -28,10 +30,16 @@ class HomeWidgetGateway implements WidgetJadwalGateway {
 ///
 /// Aliran data sesuai kesepakatan user: widget TIDAK pernah fetch dan TIDAK
 /// butuh sesi login — ia hanya membaca cache agenda (stale-while-revalidate,
-/// [AgendaCacheService]) lalu menulis baris siap-tampil ke storage home_widget
-/// dan memicu update provider native. Pembaruan terjadi tiap fetch agenda
-/// berhasil (dashboard/jadwal) dan tiap app dibuka (main.dart), sehingga user
-/// tidak login pun widget tetap menampilkan jadwal terakhir yang diketahui.
+/// [AgendaCacheService]).
+///
+/// Yang ditulis Dart bukan lagi baris "hari ini" (versi pertama membuat data
+/// membeku di hari terakhir kali app dibuka — bug ditemukan pemakaian nyata:
+/// seminggu tanpa buka app, widget masih menampilkan jadwal hari pemasangan).
+/// Kini Dart menulis SATU kunci `jadwal_json`: peta baris siap-tampil per
+/// kunci — nama hari (kuliah/asisten mingguan) dan tanggal ISO `yyyy-MM-dd`
+/// (ujian dengan field `tanggal`) — lalu provider native mengambil baris
+/// sesuai tanggal perangkat SETIAP kali dirender, termasuk tick periodik
+/// `updatePeriodMillis` sehingga pergantian hari terjadi tanpa membuka app.
 ///
 /// Seluruh method publik fail-open: tidak pernah melempar ke pemanggil.
 class WidgetJadwalService {
@@ -42,25 +50,14 @@ class WidgetJadwalService {
   /// Nama class provider native — harus cocok dengan receiver di manifest.
   static const namaProviderAndroid = 'JadwalWidgetProvider';
 
-  static const _kKeadaan = 'keadaan';
-  static const _kJudul = 'judul_tanggal';
-  static const _kBaris = 'baris';
+  /// Kunci tunggal yang dibaca provider native (di-null-kan saat logout —
+  /// saveWidgetData(nil) menghapus entri di sisi native).
+  static const kunciJadwalJson = 'jadwal_json';
+
   static const _maksBaris = 4;
 
-  static const _bulanPendek = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'Mei',
-    'Jun',
-    'Jul',
-    'Agu',
-    'Sep',
-    'Okt',
-    'Nov',
-    'Des',
-  ];
+  /// Tanggal ISO ujian `yyyy-MM-dd` (perjanjian BE 2026-10-25).
+  static final _polaTanggalIso = RegExp(r'^\d{4}-\d{2}-\d{2}$');
 
   WidgetJadwalGateway _gateway = HomeWidgetGateway();
 
@@ -69,48 +66,77 @@ class WidgetJadwalService {
     _gateway = gateway;
   }
 
-  /// Judul widget, mis. "Jadwal Hari Ini · Jumat, 24 Okt".
-  @visibleForTesting
-  static String judulHariIni(DateTime hariIni) =>
-      'Jadwal Hari Ini · ${namaHariDariWeekday(hariIni.weekday)}, '
-      '${hariIni.day} ${_bulanPendek[hariIni.month - 1]}';
+  /// Teks satu baris widget: "09:00 · Pemrograman Web · LT2".
+  static String _barisItem(AgendaItem item) =>
+      '${jamChip(item)} · ${item.matakuliah}'
+      '${item.ruang.isEmpty ? '' : ' · ${item.ruang}'}';
 
-  /// Baris siap-tampil untuk [hariIni] dari [data]: maks [_maksBaris],
-  /// terurut jam mulai (baris tanpa jam paling akhir), format
-  /// "09:00 · Pemrograman Web · LT2". Pure — dipakai test langsung.
+  /// Baris siap-tampil untuk [hariIni]: kuliah/asisten dari kunci nama hari,
+  /// ujian dari kunci tanggal ISO — digabung (kelas dulu, ujian menyusul),
+  /// maks [_maksBaris]. Pure — dipakai test sebagai referensi perilaku native.
   @visibleForTesting
   static List<String> barisHariIni(AgendaTerpaduData? data, DateTime hariIni) {
     if (data == null) return const [];
-    final items = data.agenda[namaHariDariWeekday(hariIni.weekday)];
-    if (items == null || items.isEmpty) return const [];
-    final berjam = <AgendaItem>[];
-    final tanpaJam = <AgendaItem>[];
-    for (final item in items) {
-      (jamChip(item) == '-' ? tanpaJam : berjam).add(item);
-    }
-    berjam.sort(
-      (a, b) => timeToMinutes(jamChip(a)).compareTo(timeToMinutes(jamChip(b))),
-    );
-    final terpilih = [...berjam, ...tanpaJam].take(_maksBaris);
+    final peta = petaMingguan(data);
     return [
-      for (final item in terpilih)
-        '${jamChip(item)} · ${item.matakuliah}'
-        '${item.ruang.isEmpty ? '' : ' · ${item.ruang}'}',
-    ];
+      ...(peta[namaHariDariWeekday(hariIni.weekday)] ?? const <String>[]),
+      ...(peta[_tanggalIso(hariIni)] ?? const <String>[]),
+    ].take(_maksBaris).toList();
   }
 
-  /// Tulis data widget + picu update provider native.
-  /// [data] null → keadaan "tanpa_data" (belum pernah memuat jadwal).
+  /// Peta baris per kunci dari seluruh [data]: nama hari (Senin..Minggu) untuk
+  /// agenda mingguan, tanggal ISO untuk ujian ber-`tanggal`. Tiap daftar
+  /// terurut jam mulai (baris tanpa jam paling akhir). Pure.
   @visibleForTesting
-  Future<void> terapkan({AgendaTerpaduData? data, DateTime? hariIni}) async {
-    final now = hariIni ?? DateTime.now();
-    final baris = barisHariIni(data, now);
-    final keadaan = data == null ? 'tanpa_data' : (baris.isEmpty ? 'kosong' : 'ada');
-    await _gateway.simpanData(_kKeadaan, keadaan);
-    await _gateway.simpanData(_kJudul, judulHariIni(now));
-    for (var i = 1; i <= _maksBaris; i++) {
-      await _gateway.simpanData('$_kBaris$i', i <= baris.length ? baris[i - 1] : null);
+  static Map<String, List<String>> petaMingguan(AgendaTerpaduData? data) {
+    if (data == null) return const {};
+    final berjam = <String, List<(int, AgendaItem)>>{};
+    final tanpaJam = <String, List<AgendaItem>>{};
+    void tambah(String kunci, AgendaItem item) {
+      final chip = jamChip(item);
+      if (chip == '-') {
+        (tanpaJam[kunci] ??= []).add(item);
+      } else {
+        (berjam[kunci] ??= []).add((timeToMinutes(chip), item));
+      }
     }
+
+    data.agenda.forEach((hari, items) {
+      for (final item in items) {
+        final tanggal = item.tanggal;
+        // Ujian dengan tanggal valid ditempatkan pada kunci tanggalnya;
+        // selain itu (kuliah/asisten, atau ujian tanpa tanggal — BE lama)
+        // mengikuti bucket nama hari. Fail-open dua arah seperti jadwal page.
+        final kunci = (tanggal != null && _polaTanggalIso.hasMatch(tanggal))
+            ? tanggal
+            : hari;
+        tambah(kunci, item);
+      }
+    });
+
+    final kunciSemua = {...berjam.keys, ...tanpaJam.keys};
+    return {
+      for (final kunci in kunciSemua)
+        kunci: [
+          ...((berjam[kunci] ?? const [])
+                ..sort((a, b) => a.$1.compareTo(b.$1)))
+              .map((x) => _barisItem(x.$2)),
+          ...(tanpaJam[kunci] ?? const []).map(_barisItem),
+        ],
+    };
+  }
+
+  static String _tanggalIso(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  /// Tulis peta mingguan + picu update provider native. [data] null → kunci
+  /// dihapus → native merender "tanpa_data" (dipakai saat logout).
+  @visibleForTesting
+  Future<void> terapkan({AgendaTerpaduData? data}) async {
+    final json = data == null ? null : jsonEncode(petaMingguan(data));
+    await _gateway.simpanData(kunciJadwalJson, json);
     await _gateway.perbaruiWidget();
   }
 
@@ -124,8 +150,8 @@ class WidgetJadwalService {
     }
   }
 
-  /// Kembalikan widget ke keadaan "tanpa_data" saat logout (dipanggil dari
-  /// hook logout MainPage, urutan setelah pembersih cache lain).
+  /// Hapus data widget (keadaan "tanpa_data" di native) saat logout —
+  /// dipanggil dari hook logout MainPage, urutan setelah pembersih cache lain.
   Future<void> bersihkanSaatLogout() async {
     try {
       await terapkan(data: null);

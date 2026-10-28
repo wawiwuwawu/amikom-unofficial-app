@@ -8,18 +8,26 @@ import android.content.Intent
 import android.view.View
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetPlugin
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import org.json.JSONObject
 
 /**
  * Widget home screen "Jadwal Hari Ini".
  *
- * Data ditulis dari Dart via home_widget (SharedPreferences group plugin):
- *  - `keadaan`        : "ada" | "kosong" | "tanpa_data"
- *  - `judul_tanggal`  : contoh "Jadwal Hari Ini · Jumat, 24 Okt"
- *  - `baris1..baris4` : teks siap tampil "09:00 · Pemrograman Web · LT2"
+ * Dart menulis SATU kunci `jadwal_json` via home_widget (SharedPreferences
+ * group plugin): peta baris siap-tampil per kunci — nama hari Indonesia
+ * ("Senin".."Minggu") untuk agenda mingguan, dan tanggal ISO `yyyy-MM-dd`
+ * untuk ujian ber-tanggal. Provider inilah yang memilih baris sesuai tanggal
+ * perangkat SETIAP kali widget dirender: saat app menulis data, saat sistem
+ * men-update (tick periodik [AppWidgetInfo.updatePeriodMillis] 30 menit), dan
+ * saat widget ditambahkan — sehingga pergantian hari terjadi TANPA membuka
+ * app (bug versi pertama: baris dibekukan di hari terakhir app dibuka).
  *
- * Widget sengaja TIDAK memicu fetch apa pun — ia hanya membaca cache yang
- * diperbarui app saat dibuka (kesepakatan Fase 4: tanpa wajib login,
- * tanpa background service tambahan).
+ * Widget sengaja TIDAK memicu fetch apa pun — tanpa login, tanpa background
+ * service tambahan; datanya cache terakhir yang ditulis app.
  */
 class JadwalWidgetProvider : AppWidgetProvider() {
 
@@ -29,8 +37,29 @@ class JadwalWidgetProvider : AppWidgetProvider() {
         appWidgetIds: IntArray
     ) {
         val prefs = HomeWidgetPlugin.getData(context)
-        val keadaan = prefs.getString(KUNCI_KEADAAN, KEADAAN_TANPA_DATA)
-        val judul = prefs.getString(KUNCI_JUDUL, "Jadwal Hari Ini")
+        val jadwalJson = prefs.getString(KUNCI_JADWAL, null)
+
+        val now = Calendar.getInstance()
+        val hari = namaHari(now.get(Calendar.DAY_OF_WEEK))
+        val iso = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        val judul = "Jadwal Hari Ini · $hari, " +
+            SimpleDateFormat("d MMM", Locale("id", "ID")).format(Date())
+
+        // Kuliah/asisten dari kunci nama hari, ujian dari kunci tanggal ISO —
+        // digabung (kelas dulu, ujian menyusul), maksimal 4 baris tampil.
+        val baris = mutableListOf<String>()
+        if (jadwalJson != null) {
+            val obj = runCatching { JSONObject(jadwalJson) }.getOrNull()
+            if (obj != null) {
+                for (kunci in arrayOf(hari, iso)) {
+                    val arr = obj.optJSONArray(kunci) ?: continue
+                    for (i in 0 until arr.length()) {
+                        val teks = arr.optString(i)
+                        if (!teks.isNullOrBlank()) baris.add(teks)
+                    }
+                }
+            }
+        }
 
         for (widgetId in appWidgetIds) {
             val views = RemoteViews(context.packageName, R.layout.jadwal_widget)
@@ -43,36 +72,34 @@ class JadwalWidgetProvider : AppWidgetProvider() {
                 R.id.widget_baris4
             )
 
-            when (keadaan) {
-                KEADAAN_ADA -> {
-                    var terisi = false
-                    for (i in idBaris.indices) {
-                        val teks = prefs.getString("${KUNCI_BARIS}${i + 1}", null)
-                        if (teks.isNullOrBlank()) {
-                            views.setViewVisibility(idBaris[i], View.GONE)
-                        } else {
-                            views.setViewVisibility(idBaris[i], View.VISIBLE)
-                            views.setTextViewText(idBaris[i], teks)
-                            terisi = true
-                        }
-                    }
-                    views.setViewVisibility(
-                        R.id.widget_info,
-                        if (terisi) View.GONE else View.VISIBLE
-                    )
-                    if (!terisi) {
-                        views.setTextViewText(R.id.widget_info, "Tidak ada kelas hari ini")
-                    }
+            when {
+                jadwalJson == null -> {
+                    // Belum pernah ada data (belum buka app / setelah logout).
+                    for (id in idBaris) views.setViewVisibility(id, View.GONE)
+                    views.setViewVisibility(R.id.widget_info, View.VISIBLE)
+                    views.setTextViewText(R.id.widget_info, "Buka app untuk memuat jadwal")
                 }
-                KEADAAN_KOSONG -> {
+                baris.isEmpty() -> {
                     for (id in idBaris) views.setViewVisibility(id, View.GONE)
                     views.setViewVisibility(R.id.widget_info, View.VISIBLE)
                     views.setTextViewText(R.id.widget_info, "Tidak ada kelas hari ini")
                 }
                 else -> {
-                    for (id in idBaris) views.setViewVisibility(id, View.GONE)
-                    views.setViewVisibility(R.id.widget_info, View.VISIBLE)
-                    views.setTextViewText(R.id.widget_info, "Buka app untuk memuat jadwal")
+                    var terisi = false
+                    for (i in idBaris.indices) {
+                        if (i < baris.size) {
+                            views.setViewVisibility(idBaris[i], View.VISIBLE)
+                            views.setTextViewText(idBaris[i], baris[i])
+                            terisi = true
+                        } else {
+                            views.setViewVisibility(idBaris[i], View.GONE)
+                        }
+                    }
+                    views.setViewVisibility(R.id.widget_info, View.GONE)
+                    if (!terisi) {
+                        views.setViewVisibility(R.id.widget_info, View.VISIBLE)
+                        views.setTextViewText(R.id.widget_info, "Tidak ada kelas hari ini")
+                    }
                 }
             }
 
@@ -92,12 +119,19 @@ class JadwalWidgetProvider : AppWidgetProvider() {
         }
     }
 
+    /** Calendar.SUNDAY..SATURDAY → "Minggu".."Sabtu" (nama identik dengan FE). */
+    private fun namaHari(dayOfWeek: Int): String = when (dayOfWeek) {
+        Calendar.SUNDAY -> "Minggu"
+        Calendar.MONDAY -> "Senin"
+        Calendar.TUESDAY -> "Selasa"
+        Calendar.WEDNESDAY -> "Rabu"
+        Calendar.THURSDAY -> "Kamis"
+        Calendar.FRIDAY -> "Jumat"
+        Calendar.SATURDAY -> "Sabtu"
+        else -> ""
+    }
+
     companion object {
-        const val KUNCI_KEADAAN = "keadaan"
-        const val KUNCI_JUDUL = "judul_tanggal"
-        const val KUNCI_BARIS = "baris"
-        const val KEADAAN_ADA = "ada"
-        const val KEADAAN_KOSONG = "kosong"
-        const val KEADAAN_TANPA_DATA = "tanpa_data"
+        const val KUNCI_JADWAL = "jadwal_json"
     }
 }

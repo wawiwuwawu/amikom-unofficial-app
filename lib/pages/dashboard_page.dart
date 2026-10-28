@@ -3,6 +3,7 @@ import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/dashboard.dart';
 import '../models/agenda_terpadu.dart';
 import '../models/sp.dart';
@@ -49,6 +50,13 @@ class _DashboardPageState extends State<DashboardPage> {
   Dashboard? _data;
   AgendaTerpaduData? _agendaData;
   SpRekomendasiData? _spRekomendasiData;
+
+  /// Banner rekomendasi SP sengaja ditutup user: tersembunyi selama
+  /// [_sembunyiSpSelama], setelah itu muncul lagi (event SP hanya sesekali —
+  /// antara UAS dan semester baru — jangan menagging tiap buka app).
+  static const _kunciSpDitutupAt = 'sp_rekomendasi_ditutup_at';
+  static const _sembunyiSpSelama = Duration(days: 30);
+  bool _spBannerDitutup = true;
 
   /// Hasil cek "sudah presensi?" untuk kartu berjalan: null = sedang mengecek
   /// (tampilan sama seperti belum tahu — tombol tetap ada, tanpa spinner agar
@@ -105,6 +113,24 @@ class _DashboardPageState extends State<DashboardPage> {
     if (!mounted) return;
     if (cacheAgenda != null) {
       setState(() => _agendaData = cacheAgenda);
+    }
+
+    // Keadaan tutup banner SP dibaca di awal _load (bukan sekali di initState)
+    // supaya pull-to-refresh dan kembali dari halaman lain ikut menyegarkan.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final ditutupAt = prefs.getInt(_kunciSpDitutupAt);
+      if (!mounted) return;
+      setState(() {
+        _spBannerDitutup = ditutupAt != null &&
+            DateTime.now().difference(
+                  DateTime.fromMillisecondsSinceEpoch(ditutupAt),
+                ) <
+                _sembunyiSpSelama;
+      });
+    } catch (_) {
+      // Gagal baca pref → banner tampil (default informatif).
+      if (mounted) setState(() => _spBannerDitutup = false);
     }
 
     try {
@@ -207,7 +233,8 @@ class _DashboardPageState extends State<DashboardPage> {
     }
 
     final perluBayar = d.status.status != 'Aktif' || d.status.status.isEmpty;
-    final adaSp = _spRekomendasiData?.hasRekomendasi ?? false;
+    final adaSp =
+        !_spBannerDitutup && (_spRekomendasiData?.hasRekomendasi ?? false);
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -696,6 +723,20 @@ class _DashboardPageState extends State<DashboardPage> {
                   style: AppText.h3.copyWith(color: AppColors.warning),
                 ),
               ),
+              // Tutup manual: banner sembunyi 30 hari lalu muncul lagi —
+              // event SP hanya sesekali, jangan menagging tiap buka app.
+              GestureDetector(
+                onTap: _tutupSpBanner,
+                behavior: HitTestBehavior.opaque,
+                child: const Padding(
+                  padding: EdgeInsets.all(AppSpacing.xs),
+                  child: Icon(
+                    CupertinoIcons.xmark,
+                    size: 16,
+                    color: AppColors.warning,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -724,6 +765,19 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   // ── Utilitas ──────────────────────────────────────────────────────────────
+
+  /// Tutup banner rekomendasi SP + catat waktunya (sembunyi 30 hari).
+  /// Persist gagal dibiarkan fail-open: banner cuma muncul lagi lebih cepat.
+  Future<void> _tutupSpBanner() async {
+    setState(() => _spBannerDitutup = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(
+        _kunciSpDitutupAt,
+        DateTime.now().millisecondsSinceEpoch,
+      );
+    } catch (_) {}
+  }
 
   void _push(Widget page) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));

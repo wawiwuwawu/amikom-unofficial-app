@@ -1,10 +1,12 @@
-// Test WidgetJadwalService: ekstraksi baris hari ini (sort jam, maks 4,
-// tanpa jam di akhir, format jam · matkul · ruang), keadaan widget
-// (ada/kosong/tanpa_data), judul tanggal Indonesia, fail-open (cache kosong
-// tidak melempar), dan pembersihan logout. Seluruh penyimpanan lewat
-// [WidgetJadwalGateway] palsu — TIDAK menyentuh plugin home_widget.
+// Test WidgetJadwalService (versi peta-mingguan): Dart menulis SATU kunci
+// `jadwal_json` — peta baris per kunci nama hari + tanggal ISO ujian — dan
+// provider native memilih baris tanggal perangkat tiap render (perbaikan bug:
+// versi pertama membekukan baris di hari terakhir app dibuka). Yang diuji di
+// sini sisi Dart: petaMingguan/barisHariIni (pure), isi JSON yang ditulis via
+// [WidgetJadwalGateway] palsu, fail-open, dan pembersihan logout (null =
+// kunci dihapus). TIDAK menyentuh plugin home_widget.
 
-import 'dart:convert' show jsonEncode;
+import 'dart:convert' show jsonDecode, jsonEncode;
 
 import 'package:app_amikom/models/agenda_terpadu.dart';
 import 'package:app_amikom/services/api_client.dart';
@@ -19,7 +21,12 @@ class _GatewayPalsu implements WidgetJadwalGateway {
 
   @override
   Future<void> simpanData(String kunci, String? nilai) async {
-    data[kunci] = nilai;
+    // Native: saveWidgetData(nil) menghapus entri (HomeWidgetPlugin.remove).
+    if (nilai == null) {
+      data.remove(kunci);
+    } else {
+      data[kunci] = nilai;
+    }
   }
 
   @override
@@ -40,16 +47,22 @@ Map<String, dynamic> _matkul(
   String nama,
   String jamMulai, {
   String ruang = 'LT2',
+  String hari = 'Senin',
+  String? tanggal,
 }) => {
-  'tipe': 'kuliah',
-  'hari': 'Senin',
+  'tipe': tanggal != null ? 'uas' : 'kuliah',
+  'hari': hari,
   'jam': '$jamMulai - 10:40',
   'jam_mulai': jamMulai,
   'jam_selesai': '10:40',
   'ruang': ruang,
   'matakuliah': nama,
   'detail': '',
+  'tanggal': ?tanggal,
 };
+
+Map<String, List<dynamic>> _peta(String? json) =>
+    json == null ? {} : Map<String, List<dynamic>>.from(jsonDecode(json) as Map);
 
 void main() {
   setUpAll(() {
@@ -62,38 +75,129 @@ void main() {
     ApiClient.instance.setUserInfo('2200001', 'Budi Santoso');
   });
 
-  group('barisHariIni (pure)', () {
-    final senin = DateTime(2026, 10, 26); // Senin
-
-    test('terurut jam mulai, tanpa jam di akhir, format jam · matkul · ruang',
-        () {
-      final agenda = _agendaDenganHari('Senin', [
-        _matkul('Basis Data', '10:00'),
-        _matkul('Pemrograman Web', '07:30'),
-        {
-          'tipe': 'skripsi',
-          'hari': 'Senin',
-          'jam': '-',
-          'ruang': '',
-          'matakuliah': 'Bimbingan (belum berjam)',
-          'detail': '',
+  group('petaMingguan (pure)', () {
+    test('tiap hari jadi kunci sendiri; terurut jam; tanpa jam di akhir', () {
+      final agenda = AgendaTerpaduData.fromJson({
+        'total_agenda': 4,
+        'agenda': {
+          'Senin': [
+            _matkul('Basis Data', '10:00', hari: 'Senin'),
+            _matkul('Pemrograman Web', '07:30', hari: 'Senin'),
+            {
+              'tipe': 'skripsi',
+              'hari': 'Senin',
+              'jam': '-',
+              'ruang': '',
+              'matakuliah': 'Bimbingan (belum berjam)',
+              'detail': '',
+            },
+          ],
+          'Selasa': [_matkul('Jaringan', '09:00', hari: 'Selasa')],
         },
+      });
+
+      final peta = WidgetJadwalService.petaMingguan(agenda);
+
+      expect(peta.keys.length, 2);
+      expect(peta['Senin'], [
+        '07:30 · Pemrograman Web · LT2',
+        '10:00 · Basis Data · LT2',
+        // Tanpa jam di akhir, tanpa suffix ruang kosong.
+        '- · Bimbingan (belum berjam)',
       ]);
-      final baris = WidgetJadwalService.barisHariIni(agenda, senin);
-      expect(baris.length, 3);
-      expect(baris[0], startsWith('07:30 · Pemrograman Web · LT2'));
-      expect(baris[1], startsWith('10:00 · Basis Data · LT2'));
-      // Baris tanpa jam di akhir, tanpa suffix ruang kosong.
-      expect(baris[2], '- · Bimbingan (belum berjam)');
+      expect(peta['Selasa'], ['09:00 · Jaringan · LT2']);
     });
 
-    test('maksimal 4 baris', () {
+    test('ujian ber-tanggal pindah ke kunci tanggal ISO (bukan nama hari)', () {
+      final agenda = _agendaDenganHari('HariIni', [
+        _matkul('UAS Pemrograman Mobile', '08:00',
+            hari: 'HariIni', tanggal: '2026-11-05'),
+      ]);
+
+      final peta = WidgetJadwalService.petaMingguan(agenda);
+
+      expect(peta.containsKey('HariIni'), isFalse);
+      expect(peta['2026-11-05'], ['08:00 · UAS Pemrograman Mobile · LT2']);
+    });
+
+    test('ujian tanpa tanggal (BE lama) tetap di bucket nama hari — fail-open',
+        () {
+      final agenda = AgendaTerpaduData.fromJson({
+        'total_agenda': 1,
+        'agenda': {
+          'HariIni': [
+            {
+              'tipe': 'uts',
+              'hari': 'HariIni',
+              'jam': '08:00 - 10:00',
+              'jam_mulai': '08:00',
+              'jam_selesai': '10:00',
+              'ruang': 'AULA',
+              'matakuliah': 'UTS Lama',
+              'detail': '',
+            },
+          ],
+        },
+      });
+
+      expect(WidgetJadwalService.petaMingguan(agenda)['HariIni'],
+          ['08:00 · UTS Lama · AULA']);
+    });
+
+    test('data null → peta kosong', () {
+      expect(WidgetJadwalService.petaMingguan(null), isEmpty);
+    });
+  });
+
+  group('barisHariIni (referensi perilaku native)', () {
+    final senin = DateTime(2026, 10, 26); // Senin
+
+    test('gabungan kelas (kunci hari) + ujian (kunci tanggal), maks 4', () {
       final agenda = _agendaDenganHari('Senin', [
         _matkul('A', '07:00'),
         _matkul('B', '08:00'),
         _matkul('C', '09:00'),
-        _matkul('D', '10:00'),
-        _matkul('E', '11:00'),
+      ]);
+
+      // Ujian pada tanggal yang sama — masuk lewat kunci ISO.
+      final peta = WidgetJadwalService.petaMingguan(agenda);
+      peta['2026-10-26'] = ['13:00 · UAS A · AULA'];
+      final baris = [
+        ...(peta['Senin'] ?? const []),
+        ...(peta['2026-10-26'] ?? const []),
+      ].take(4);
+
+      // barisHariIni sendiri menghitung dari data; uji wrapper-nya dengan
+      // agenda yang punya kedua kunci sekaligus.
+      final agendaLengkap = AgendaTerpaduData.fromJson({
+        'total_agenda': 4,
+        'agenda': {
+          'Senin': [
+            _matkul('A', '07:00'),
+            _matkul('B', '08:00'),
+            _matkul('C', '09:00'),
+          ],
+          'HariIni': [
+            _matkul('UAS A', '13:00', hari: 'HariIni', tanggal: '2026-10-26'),
+          ],
+        },
+      });
+
+      expect(baris.length, 4);
+      expect(
+        WidgetJadwalService.barisHariIni(agendaLengkap, senin),
+        [
+          '07:00 · A · LT2',
+          '08:00 · B · LT2',
+          '09:00 · C · LT2',
+          '13:00 · UAS A · LT2',
+        ],
+      );
+    });
+
+    test('maksimal 4 baris per kunci hari', () {
+      final agenda = _agendaDenganHari('Senin', [
+        for (var i = 0; i < 6; i++) _matkul('MK$i', '0${i + 7}:00'),
       ]);
       expect(WidgetJadwalService.barisHariIni(agenda, senin).length, 4);
     });
@@ -106,58 +210,49 @@ void main() {
   });
 
   group('terapkan (via gateway palsu)', () {
-    test('data null → keadaan tanpa_data + baris dikosongkan', () async {
+    test('menulis jadwal_json berisi kunci hari + tanggal, lalu update', () async {
       final gateway = _GatewayPalsu();
       final service = WidgetJadwalService.instance..gantiGatewayUntukTest(gateway);
 
-      await service.terapkan(data: null, hariIni: DateTime(2026, 10, 26));
+      await service.terapkan(
+        data: AgendaTerpaduData.fromJson({
+          'total_agenda': 2,
+          'agenda': {
+            'Senin': [_matkul('Pemrograman Web', '07:30', hari: 'Senin')],
+            'HariIni': [
+              _matkul('UAS A', '13:00',
+                  hari: 'HariIni', tanggal: '2026-11-05'),
+            ],
+          },
+        }),
+      );
 
-      expect(gateway.data['keadaan'], 'tanpa_data');
-      expect(gateway.data['baris1'], isNull);
-      expect(gateway.data['baris4'], isNull);
+      final peta = _peta(gateway.data['jadwal_json']);
+      expect(peta['Senin'], ['07:30 · Pemrograman Web · LT2']);
+      expect(peta['2026-11-05'], ['13:00 · UAS A · LT2']);
       expect(gateway.jumlahPerbaruiWidget, 1);
     });
 
-    test('agenda ada tapi hari ini kosong → keadaan kosong', () async {
+    test('data null → kunci jadwal_json DIHAPUS (native → tanpa_data)',
+        () async {
       final gateway = _GatewayPalsu();
       final service = WidgetJadwalService.instance..gantiGatewayUntukTest(gateway);
-      final senin = DateTime(2026, 10, 26);
+      gateway.data['jadwal_json'] = '{"Senin": ["07:30 · Lama · LT2"]}';
 
-      await service.terapkan(
-        data: _agendaDenganHari('Selasa', [_matkul('X', '07:30')]),
-        hariIni: senin,
-      );
+      await service.terapkan(data: null);
 
-      expect(gateway.data['keadaan'], 'kosong');
-    });
-
-    test('ada kelas hari ini → keadaan ada + judul + baris terisi', () async {
-      final gateway = _GatewayPalsu();
-      final service = WidgetJadwalService.instance..gantiGatewayUntukTest(gateway);
-      final jumat = DateTime(2026, 10, 23); // Jumat
-
-      await service.terapkan(
-        data: _agendaDenganHari('Jumat', [_matkul('Jaringan', '09:00', ruang: 'D.1.1')]),
-        hariIni: jumat,
-      );
-
-      expect(gateway.data['keadaan'], 'ada');
-      expect(gateway.data['judul_tanggal'], 'Jadwal Hari Ini · Jumat, 23 Okt');
-      expect(gateway.data['baris1'], '09:00 · Jaringan · D.1.1');
-      expect(gateway.data['baris2'], isNull);
+      expect(gateway.data.containsKey('jadwal_json'), isFalse);
+      expect(gateway.jumlahPerbaruiWidget, 1);
     });
   });
 
   group('perbaruiDariCache (fail-open)', () {
-    test('cache berisi agenda hari ini → keadaan ada', () async {
-      final hariIni = DateTime.now();
-      const namaHari = 'Senin';
-      // Pakai Senin supaya fixture cocok untuk tanggal Senin berapa pun.
+    test('cache berisi agenda → jadwal_json terisi', () async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('agenda_terpadu_cache_2200001', jsonEncode({
         'total_agenda': 1,
         'agenda': {
-          namaHari: [_matkul('Pemrograman Web', '09:00')],
+          'Senin': [_matkul('Pemrograman Web', '09:00', hari: 'Senin')],
         },
       }));
 
@@ -166,30 +261,35 @@ void main() {
 
       await service.perbaruiDariCache();
 
-      expect(gateway.data['keadaan'],
-          hariIni.weekday == DateTime.monday ? 'ada' : 'kosong');
+      final peta = _peta(gateway.data['jadwal_json']);
+      expect(peta['Senin'], ['09:00 · Pemrograman Web · LT2']);
     });
 
-    test('cache kosong → keadaan tanpa_data, tanpa melempar', () async {
+    test('cache kosong/rusak → kunci dihapus, tanpa melempar', () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('agenda_terpadu_cache_2200001', '{json-rusak');
+
       final gateway = _GatewayPalsu();
       final service = WidgetJadwalService.instance..gantiGatewayUntukTest(gateway);
+      gateway.data['jadwal_json'] = '{"Senin": ["lama"]}';
 
       await service.perbaruiDariCache();
 
-      expect(gateway.data['keadaan'], 'tanpa_data');
+      expect(gateway.data.containsKey('jadwal_json'), isFalse);
       expect(gateway.jumlahPerbaruiWidget, 1);
     });
   });
 
   group('bersihkanSaatLogout', () {
-    test('mengembalikan widget ke tanpa_data', () async {
+    test('menghapus kunci jadwal_json (native → tanpa_data)', () async {
       final gateway = _GatewayPalsu();
       final service = WidgetJadwalService.instance..gantiGatewayUntukTest(gateway);
+      gateway.data['jadwal_json'] = '{"Senin": ["07:30 · Lama · LT2"]}';
 
       await service.bersihkanSaatLogout();
 
-      expect(gateway.data['keadaan'], 'tanpa_data');
-      expect(gateway.data['baris1'], isNull);
+      expect(gateway.data.containsKey('jadwal_json'), isFalse);
+      expect(gateway.jumlahPerbaruiWidget, 1);
     });
   });
 
