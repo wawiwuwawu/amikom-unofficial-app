@@ -274,14 +274,14 @@ class _MbkmPageState extends State<MbkmPage> {
                     label: 'Surat Komitmen (PDF)',
                     path: komitmenPath,
                     onPick: () async {
-                      FilePickerResult? result = await FilePicker.pickFiles(
+                      // file_picker 13: pickFile() langsung membawa SATU
+                      // PlatformFile (FilePickerResult dihapus di 12.0.0).
+                      final file = await FilePicker.pickFile(
                         type: FileType.custom,
                         allowedExtensions: ['pdf'],
                       );
-                      if (result != null) {
-                        setSheetState(
-                          () => komitmenPath = result.files.single.path,
-                        );
+                      if (file != null) {
+                        setSheetState(() => komitmenPath = file.path);
                       }
                     },
                   ),
@@ -290,14 +290,12 @@ class _MbkmPageState extends State<MbkmPage> {
                     label: 'Bukti Pembayaran (PDF/JPG/PNG)',
                     path: pembayaranPath,
                     onPick: () async {
-                      FilePickerResult? result = await FilePicker.pickFiles(
+                      final file = await FilePicker.pickFile(
                         type: FileType.custom,
                         allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
                       );
-                      if (result != null) {
-                        setSheetState(
-                          () => pembayaranPath = result.files.single.path,
-                        );
+                      if (file != null) {
+                        setSheetState(() => pembayaranPath = file.path);
                       }
                     },
                   ),
@@ -426,14 +424,12 @@ class _MbkmPageState extends State<MbkmPage> {
                     label: 'File Luaran (PDF)',
                     path: luaranPath,
                     onPick: () async {
-                      FilePickerResult? result = await FilePicker.pickFiles(
+                      final file = await FilePicker.pickFile(
                         type: FileType.custom,
                         allowedExtensions: ['pdf'],
                       );
-                      if (result != null) {
-                        setSheetState(
-                          () => luaranPath = result.files.single.path,
-                        );
+                      if (file != null) {
+                        setSheetState(() => luaranPath = file.path);
                       }
                     },
                   ),

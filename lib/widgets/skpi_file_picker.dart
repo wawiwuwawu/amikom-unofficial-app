@@ -23,13 +23,14 @@ class SkpiFilePicker extends StatelessWidget {
 
   Future<void> _pickFile(BuildContext context) async {
     try {
-      final result = await FilePicker.pickFiles(
+      final file = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: allowedExtensions,
       );
-      if (result != null && result.files.isNotEmpty) {
-        final file = result.files.first;
-        if (maxSizeBytes != null && file.size > maxSizeBytes!) {
+      if (file != null) {
+        // length() null = ukuran tak dapat dibaca — perlakukan 0 (lolos).
+        final ukuran = await file.length() ?? 0;
+        if (maxSizeBytes != null && ukuran > maxSizeBytes!) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(

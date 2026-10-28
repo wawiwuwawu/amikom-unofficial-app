@@ -899,11 +899,12 @@ class _SkripsiPageState extends State<SkripsiPage>
       return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
     }
 
-    String? validateFile(String name, int size) {
+    String? validateFile(String name, int? size) {
       if (RegExp(r'''[&\"'<>]''').hasMatch(name)) {
         return 'Nama berkas tidak boleh memuat karakter khusus (&, ", \', <, >)';
       }
-      if (size > 3 * 1024 * 1024) {
+      // size null = picker tidak melaporkan ukuran — jangan ditudang melebihi.
+      if (size != null && size > 3 * 1024 * 1024) {
         return 'Ukuran berkas melebihi batas maksimal 3 MB (${formatFileSize(size)})';
       }
       return null;
@@ -917,21 +918,16 @@ class _SkripsiPageState extends State<SkripsiPage>
         builder: (ctx, setBsState) {
           Future<void> pickPdfFile() async {
             try {
-              final result = await FilePicker.pickFiles(
+              final file = await FilePicker.pickFile(
                 type: FileType.custom,
                 allowedExtensions: ['pdf'],
               );
-              if (result != null &&
-                  result.files.isNotEmpty &&
-                  result.files.single.path != null) {
-                final file = File(result.files.single.path!);
-                final name = result.files.single.name;
-                final size = result.files.single.size;
-                final err = validateFile(name, size);
+              if (file != null && file.path != null) {
+                final err = validateFile(file.name, file.lengthSync());
                 setBsState(() {
-                  pickedFile = file;
-                  fileName = name;
-                  fileSize = size;
+                  pickedFile = File(file.path!);
+                  fileName = file.name;
+                  fileSize = file.lengthSync() ?? 0;
                   fileError = err;
                 });
               }
@@ -1608,14 +1604,14 @@ class _SkripsiPageState extends State<SkripsiPage>
   }
 
   void _handleUploadPlagiarisme() async {
-    final result = await FilePicker.pickFiles(
+    final file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: ['doc', 'docx'],
     );
 
-    if (result != null && result.files.single.path != null) {
-      final file = File(result.files.single.path!);
-      final fileSize = await file.length();
+    if (file != null && file.path != null) {
+      final picked = File(file.path!);
+      final fileSize = await picked.length();
       if (fileSize > 3 * 1024 * 1024) {
         _showSnackBar('Ukuran file maksimal 3MB', isError: true);
         return;
@@ -1623,7 +1619,7 @@ class _SkripsiPageState extends State<SkripsiPage>
 
       _showSnackBar('Mengunggah dokumen plagiarisme...');
       try {
-        final res = await _service.uploadPlagiarisme(file);
+        final res = await _service.uploadPlagiarisme(picked);
         _showSnackBar(res['message'] ?? 'Dokumen berhasil diunggah');
         _fetchPlagiarsmes();
       } catch (e) {

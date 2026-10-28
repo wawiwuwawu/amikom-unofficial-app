@@ -38,13 +38,13 @@ dependencies:
   flutter_dotenv: ^6.0.1
   shared_preferences: ^2.5.5
   path_provider: ^2.1.6
-  share_plus: ^12.0.2
+  share_plus: ^13.3.1
   flutter_animate: ^4.5.2
-  flutter_secure_storage: ^10.3.1
+  flutter_secure_storage: ^10.3.4
   fl_chart: ^1.2.0
-  url_launcher: ^6.3.2
+  url_launcher: ^6.3.3
   flutter_html: ^3.0.0
-  file_picker: ^11.0.3
+  file_picker: ^13.1.0
   table_calendar: ^3.2.1
   intl: ^0.20.3
   open_filex: ^4.7.0
@@ -55,10 +55,10 @@ dependencies:
   flutter_local_notifications: ^22.3.2
   # Zona waktu untuk notifikasi terjadwal (pengingat jadwal)
   timezone: ^0.11.0
-  package_info_plus: ^9.0.1
+  package_info_plus: 10.0.0
   crypto: ^3.0.7
   # Deteksi merek HP (Build.MANUFACTURER) untuk panduan anti-kill OEM
-  device_info_plus: ^12.4.0
+  device_info_plus: 13.1.0
   # Intent "Buka setelan aplikasi" di panduan anti-kill OEM (Android-only)
   android_intent_plus: ^6.1.0
   # Jembatan data untuk widget home screen "Jadwal Hari Ini" (Android):
