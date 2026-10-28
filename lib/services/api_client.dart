@@ -11,9 +11,39 @@ import '../models/login_response.dart';
 import '../models/dashboard.dart';
 import '../models/api_response.dart';
 import '../models/app_failure.dart';
+import 'etag_cache_service.dart';
 import 'navigation_service.dart';
 
 const _maxRetries = 2;
+
+/// Endpoint PUBLIK yang boleh memakai ETag/304 (kontrak BE panduan-implement-
+/// fe §2.7): datanya identik untuk semua mahasiswa dan tanpa PII. Pencocokan
+/// PASTI (exact / prefix berhati-hati) — `/api/v1/agenda` (kalender akademik,
+/// publik) TIDAK boleh menangkap `/api/v1/agenda/terpadu` (per-NIM), dan
+/// `/api/v1/panduan` tidak boleh menangkap `/api/v1/panduan/download/...`.
+bool _cacheablePublikGet(String path) {
+  if (path == '/api/v1/berita' || path.startsWith('/api/v1/berita/')) {
+    return true;
+  }
+  if (path == '/api/v1/pengumumanAkademik' ||
+      path.startsWith('/api/v1/pengumumanAkademik/')) {
+    return true;
+  }
+  if (path == '/api/v1/panduan') return true;
+  if (path == '/api/v1/akademik/agenda') return true;
+  if (path == '/api/v1/agenda') return true;
+  return false;
+}
+
+String _kunciCachePublik(RequestOptions options) =>
+    '${options.uri.path}?${options.uri.query}';
+
+/// ETag hanya disimpan untuk envelope sukses (atau list mentah) — envelope
+/// galat tidak pernah di-cache supaya 304 nanti tidak memainkan ulang galat.
+bool _layakSimpanEtag(dynamic data) {
+  if (data is Map<String, dynamic>) return data['status'] == 'success';
+  return data is List;
+}
 
 int _getRetryCount(RequestOptions opts) =>
     opts.extra['retryCount'] as int? ?? 0;
@@ -59,13 +89,46 @@ class ApiClient {
 
     dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: (options, handler) {
+        onRequest: (options, handler) async {
           if (_token != null) {
             options.headers['Authorization'] = 'Bearer $_token';
+          }
+          // ETag/304 endpoint publik: bila ada simpanan, minta validasi
+          // bersyarat. Gagal baca cache → request jalan normal (fail-open).
+          if (options.method.toUpperCase() == 'GET' &&
+              _cacheablePublikGet(options.uri.path)) {
+            try {
+              final kunci = _kunciCachePublik(options);
+              final entri = await EtagCacheService.instance.baca(kunci);
+              final etag = entri?['etag']?.toString() ?? '';
+              if (entri != null && etag.isNotEmpty) {
+                options.headers['If-None-Match'] = etag;
+                options.extra['etag_kunci'] = kunci;
+              }
+            } catch (_) {}
           }
           handler.next(options);
         },
         onResponse: (response, handler) async {
+          // Simpan ETag + body respons publik sukses untuk validasi bersyarat
+          // berikutnya (fire-and-forget; gagal simpan hanya kehilangan hemat).
+          // Kunci dihitung dari request apa adanya — respons pertama (masih
+          // tanpa simpanan) justru yang HARUS tercatat agar cache terisi.
+          final etag = response.headers.value('etag');
+          final reqOpts = response.requestOptions;
+          if (etag != null &&
+              etag.isNotEmpty &&
+              reqOpts.method.toUpperCase() == 'GET' &&
+              _cacheablePublikGet(reqOpts.uri.path) &&
+              _layakSimpanEtag(response.data)) {
+            unawaited(
+              EtagCacheService.instance.simpan(
+                _kunciCachePublik(reqOpts),
+                etag,
+                response.data,
+              ),
+            );
+          }
           if (_token != null && _refreshToken != null) {
             final data = response.data;
             if (data is Map<String, dynamic>) {
@@ -114,6 +177,29 @@ class ApiClient {
                       : (resData?.toString() ?? ''))
                   .toString()
                   .toLowerCase();
+
+          // 304 Not Modified pada endpoint publik: body terakhir yang
+          // tersimpan dipakai ulang sebagai respons 200. Tanpa simpanan
+          // (cache dibersihkan/rusak) → diteruskan sebagai galat biasa dan
+          // service pemanggil memakai fallback-nya masing-masing.
+          if (statusCode == 304 &&
+              error.requestOptions.extra['etag_kunci'] is String) {
+            try {
+              final entri = await EtagCacheService.instance.baca(
+                error.requestOptions.extra['etag_kunci'] as String,
+              );
+              if (entri != null && entri.containsKey('body')) {
+                handler.resolve(
+                  Response<dynamic>(
+                    requestOptions: error.requestOptions,
+                    data: entri['body'],
+                    statusCode: 200,
+                  ),
+                );
+                return;
+              }
+            } catch (_) {}
+          }
 
           // 500 Upstream portal session expired detection
           if (statusCode == 500 &&
