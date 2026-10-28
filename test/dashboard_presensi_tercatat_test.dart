@@ -1,9 +1,12 @@
 // Fase 2a — deteksi presensi nyata pada kartu "Sedang berlangsung" beranda:
-//   • sudah presensi hari ini (POST /absensi/mahasiswa membawa pertemuan
-//     bertanggal hari ini dengan status tercatat) → tombol hilang + teks
-//     "Presensi tercatat";
-//   • belum presensi → tombol tetap ada;
-//   • endpoint absensi gagal → fail-open, tombol tetap ada, tanpa galat UI;
+//   • jalur cepat POST /absensi/presensi-hari-ini (kontrak BE §2.1) tercatat
+//     → tombol hilang + teks "Presensi tercatat", rantai lama TIDAK disentuh;
+//   • jalur cepat menjawab tercatat:false → tombol tetap ada, tanpa request
+//     rantai lama (jawaban negatif jalur cepat dipercaya);
+//   • jalur cepat 404 (BE lama) → rantai lama 3 request dipakai sebagai
+//     cadangan dan tetap mendeteksi presensi;
+//   • endpoint absensi gagal semua → fail-open, tombol tetap ada, tanpa galat
+//     UI;
 //   • tanpa item berjalan → TIDAK ada request /absensi/ (jangan fetch sia-sia).
 // Pola FakeAdapter seperti test/dashboard_gerbang_ujian_test.dart.
 
@@ -66,7 +69,12 @@ const _kuliahBerjalan = {
 };
 
 class _PresensiAdapter implements HttpClientAdapter {
-  _PresensiAdapter({required this.agendaHariIni, this.riwayat, this.absensiGagal = false});
+  _PresensiAdapter({
+    required this.agendaHariIni,
+    this.riwayat,
+    this.absensiGagal = false,
+    this.presensiCepat,
+  });
 
   final List<Map<String, dynamic>> agendaHariIni;
 
@@ -75,6 +83,10 @@ class _PresensiAdapter implements HttpClientAdapter {
 
   /// true → semua request /absensi/ melempar connectionError (fail-open).
   final bool absensiGagal;
+
+  /// Data `data` untuk POST /absensi/presensi-hari-ini (jalur cepat §2.1).
+  /// null → endpoint membalas 404 (simulasi BE lama tanpa endpoint baru).
+  Map<String, dynamic>? presensiCepat;
 
   /// Log jalur yang diminta — untuk asersi "tidak ada request absensi".
   final List<String> paths = [];
@@ -141,7 +153,16 @@ class _PresensiAdapter implements HttpClientAdapter {
       });
     }
 
-    // ── Rantai cek presensi (AbsensiService.sudahPresensiHariIni) ──────────
+    // ── Jalur cepat cek presensi (§2.1) ─────────────────────────────────────
+    if (options.path.contains('/api/v1/absensi/presensi-hari-ini')) {
+      final cepat = presensiCepat;
+      if (cepat == null) {
+        return ResponseBody.fromString('Not Found', 404);
+      }
+      return json(cepat);
+    }
+
+    // ── Rantai cadangan cek presensi (jalur lama 3 request) ─────────────────
     if (options.path.contains('/api/v1/absensi/semester')) {
       return json([
         {'value': 'Gasal', 'label': 'Gasal (Ganjil)'},
@@ -176,11 +197,13 @@ Future<void> pumpDashboard(
   required List<Map<String, dynamic>> agendaHariIni,
   List<Map<String, dynamic>>? riwayat,
   bool absensiGagal = false,
+  Map<String, dynamic>? presensiCepat,
 }) async {
   _adapter = _PresensiAdapter(
     agendaHariIni: agendaHariIni,
     riwayat: riwayat,
     absensiGagal: absensiGagal,
+    presensiCepat: presensiCepat,
   );
   ApiClient.instance.dio.httpClientAdapter = _adapter;
   await tester.pumpWidget(
@@ -195,7 +218,75 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('sudah presensi hari ini → tombol hilang + teks Presensi tercatat', (
+  testWidgets('jalur cepat tercatat → kartu Presensi tercatat, rantai lama mati', (
+    tester,
+  ) async {
+    final now = DateTime.now();
+    await pumpDashboard(
+      tester,
+      agendaHariIni: [_kuliahBerjalan],
+      presensiCepat: {
+        'Pemrograman Mobile': {
+          'tercatat': true,
+          'status': 'H',
+          'tanggal': _iso(now),
+        },
+      },
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Sedang berlangsung'), findsOneWidget);
+    expect(
+      find.textContaining('Presensi tercatat'),
+      findsOneWidget,
+      reason: 'sudah presensi → kartu informatif tanpa tombol',
+    );
+    expect(find.text('Presensi Sekarang'), findsNothing);
+
+    // Jalur cepat benar-benar dipakai: satu request, nama makul dikirim apa
+    // adanya, semester angka sesuai heuristik kalender FE.
+    final cepatPaths = _adapter.paths
+        .where((p) => p.contains('/api/v1/absensi/presensi-hari-ini'))
+        .toList();
+    expect(cepatPaths, hasLength(1));
+    final body = _adapter.bodies.last;
+    expect(body['makul'], ['Pemrograman Mobile']);
+    final ganjil = now.month >= 8 || now.month == 1;
+    expect(body['semester'], ganjil ? 1 : 2);
+    expect(body['thn_akademik'], ganjil
+        ? (now.month >= 8 ? '${now.year}/${now.year + 1}' : '${now.year - 1}/${now.year}')
+        : '${now.year - 1}/${now.year}');
+
+    // Rantai lama TIDAK boleh terpanggil saat jalur cepat menjawab.
+    expect(
+      _adapter.paths.where((p) => p.contains('/absensi/semester')),
+      isEmpty,
+      reason: 'jawaban jalur cepat final — hemat 2 request rantai lama',
+    );
+  });
+
+  testWidgets('jalur cepat menjawab belum tercatat → tombol tetap, tanpa rantai lama', (
+    tester,
+  ) async {
+    await pumpDashboard(
+      tester,
+      agendaHariIni: [_kuliahBerjalan],
+      presensiCepat: {
+        'Pemrograman Mobile': {'tercatat': false},
+      },
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Presensi Sekarang'), findsOneWidget);
+    expect(find.textContaining('Presensi tercatat'), findsNothing);
+    expect(
+      _adapter.paths.where((p) => p.contains('/absensi/semester')),
+      isEmpty,
+      reason: 'tercatat:false dari BE adalah jawaban final, bukan sinyal gagal',
+    );
+  });
+
+  testWidgets('jalur cepat 404 (BE lama) → rantai lama dipakai dan tetap mendeteksi', (
     tester,
   ) async {
     final now = DateTime.now();
@@ -227,37 +318,19 @@ void main() {
     expect(
       find.textContaining('Presensi tercatat'),
       findsOneWidget,
-      reason: 'sudah presensi → kartu informatif tanpa tombol',
+      reason: 'fallback rantai lama tetap mendeteksi presensi hari ini',
     );
     expect(find.text('Presensi Sekarang'), findsNothing);
 
-    // Rantai benar: mahasiswa diminta dengan nama matakuliah agenda.
+    // Fallback benar: 404 dulu di jalur cepat, lalu rantai 3 request jalan.
+    expect(
+      _adapter.paths.where((p) => p.contains('/absensi/presensi-hari-ini')),
+      hasLength(1),
+    );
     final mahasiswaBody = _adapter.bodies.lastWhere(
-      (b) => b.containsKey('makul'),
+      (b) => b.containsKey('makul') && b['makul'] is String,
     );
     expect(mahasiswaBody['makul'], 'Pemrograman Mobile');
-  });
-
-  testWidgets('belum presensi hari ini → tombol Presensi Sekarang tetap ada', (
-    tester,
-  ) async {
-    final kemarin = DateTime.now().subtract(const Duration(days: 1));
-    await pumpDashboard(
-      tester,
-      agendaHariIni: [_kuliahBerjalan],
-      riwayat: [
-        {
-          'tanggal': _iso(kemarin),
-          'materi': 'Widget',
-          'status': 'H',
-          'id_presensi': '111',
-        },
-      ],
-    );
-
-    expect(tester.takeException(), isNull);
-    expect(find.text('Presensi Sekarang'), findsOneWidget);
-    expect(find.textContaining('Presensi tercatat'), findsNothing);
   });
 
   testWidgets('endpoint absensi gagal → fail-open: tombol tetap ada, tanpa galat', (

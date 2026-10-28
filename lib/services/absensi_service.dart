@@ -121,12 +121,17 @@ class AbsensiService {
   /// Best-effort: menjawab "apakah pengguna sudah presensi untuk [makul]
   /// (NAMA tampilan dari agenda, mis. 'Pemrograman Mobile') hari ini?".
   ///
-  /// Keterbatasan (dokumentasi fail-open — JANGAN anggap ini ground truth):
-  /// 1. Endpoint riwayat butuh `thn_akademik` + `semester` + `makul`, sedangkan
-  ///    agenda beranda hanya membawa nama matakuliah. Rantai yang dipakai:
-  ///    `semester` (pilih periode aktif dari daftar) → `matkul` (cocokkan nama
-  ///    secara longgar) → `mahasiswa` (riwayat pertemuan). Salah satu tahap
-  ///    gagal/kosong → dianggap belum presensi.
+  /// Jalur utama (kontrak BE 2026-10-29, panduan-implement-fe §2.1): SATU
+  /// request `POST /absensi/presensi-hari-ini` dengan nama makul apa adanya;
+  /// BE yang mencocokkan ke portal dan membalas `tercatat` per makul
+  /// (fail-open di sisi BE: makul tak dikenal → `tercatat: false`).
+  ///
+  /// Jalur cadangan: rantai 3 request lama (`semester` → `matkul` →
+  /// `mahasiswa`) dipakai hanya bila jalur cepat gagal — BE lama tanpa
+  /// endpoint baru, jaringan, atau bentuk respons tak dikenal. Keterbatasan
+  /// rantai cadangan (dokumentasi fail-open — JANGAN anggap ground truth):
+  /// 1. Agenda beranda hanya membawa nama matakuliah; nama dicocokkan longgar
+  ///    ke opsi portal. Salah satu tahap gagal/kosong → dianggap belum.
   /// 2. `semester` dipilih dari daftar respons BE dengan heuristik ganjil/
   ///    genap; bila ambigu (tidak ada/tidak jelas kandidatnya) → false.
   /// 3. `tanggal` riwayat portal berformat panjang Indonesia ("Senin, 7
@@ -137,10 +142,16 @@ class AbsensiService {
   /// wajib) menangkap ulang. UI yang tampil saat `false` adalah tombol
   /// "Presensi Sekarang", artinya fail-open berujung pada perilaku lama.
   Future<bool> sudahPresensiHariIni({required String makul}) async {
-    try {
-      final now = DateTime.now();
-      final (thn, ganjil) = _periodeAkademikAktif(now);
+    final now = DateTime.now();
+    final (thn, ganjil) = _periodeAkademikAktif(now);
 
+    try {
+      return await _cekJalurPresensiHariIni(thn, ganjil, makul);
+    } catch (_) {
+      // Jalur cepat gagal → jatuh ke rantai lama; keduanya gagal → false.
+    }
+
+    try {
       final semesterList = await getSemester(thn);
       final smt = _pilihSemesterAktif(semesterList, ganjil);
       if (smt == null) return false;
@@ -159,6 +170,31 @@ class AbsensiService {
       // menyentuh UI (kartu kembali berperilaku seperti sebelum fase ini).
       return false;
     }
+  }
+
+  /// Jalur cepat §2.1: `POST /absensi/presensi-hari-ini` — satu request untuk
+  /// N makul (di sini selalu satu, sesuai kartu yang sedang dicek). Kunci
+  /// jawaban = string yang dikirim; entri tanpa `tercatat` dianggap respons
+  /// tak dikenal (dilempar → rantai cadangan, bukan jawaban negatif palsu).
+  Future<bool> _cekJalurPresensiHariIni(
+    String thnAkademik,
+    bool ganjil,
+    String makul,
+  ) async {
+    final response = await _dio.post(
+      '/api/v1/absensi/presensi-hari-ini',
+      data: {
+        'thn_akademik': thnAkademik,
+        'semester': ganjil ? 1 : 2,
+        'makul': [makul],
+      },
+    );
+    final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
+    final entri = data[makul];
+    if (entri is Map) {
+      return entri['tercatat'] == true;
+    }
+    throw AppFailure('Respons presensi-hari-ini tidak lengkap');
   }
 
   /// Periode akademik aktif: (tahun "yyyy/yyyy", apakah semester ganjil).
