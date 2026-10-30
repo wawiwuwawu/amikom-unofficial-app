@@ -31,21 +31,29 @@ String formatDateDisplay(DateTime dt) => '${dt.day}/${dt.month}/${dt.year}';
 List<int> yearOptions() =>
     List.generate(5, (index) => DateTime.now().year - index);
 
+/// Apostrof yang bisa muncul di "Jum'at": lurus, kutip tunggal melengkung
+/// (U+2018/U+2019), backtick, aksen akut, dan modifier letter apostrophe.
+final _apostrof = RegExp("['\u2018\u2019`\u00b4\u02bc]");
+
 /// Urutan hari untuk pengelompokan jadwal (Senin = 1 … Minggu = 7).
 /// Bucket di luar hari biasa: "Lainnya" (8) dan "Tanpa Jadwal" (9) —
-/// keduanya selalu dirender paling bawah.
-int dayValue(String day) => switch (day.toLowerCase().trim()) {
+/// keduanya selalu dirender paling bawah. Apostrof dibuang dulu, jadi
+/// "Jum'at", "Jum’at" dan "Jumat" sama-sama hari Jumat.
+int dayValue(String day) => switch (_namaHari(day)) {
       'senin' => 1,
       'selasa' => 2,
       'rabu' => 3,
       'kamis' => 4,
-      'jumat' || "jum'at" => 5,
+      'jumat' => 5,
       'sabtu' => 6,
       'minggu' => 7,
       'lainnya' => 8,
       'tanpa jadwal' => 9,
       _ => 8,
     };
+
+String _namaHari(String day) =>
+    day.toLowerCase().trim().replaceAll(_apostrof, '');
 
 /// Label tampilan untuk judul seksi hari agenda — hanya bucket khusus yang
 /// diterjemahkan, hari biasa apa adanya.
