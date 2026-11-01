@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -87,6 +88,15 @@ class MyApp extends StatelessWidget {
       title: 'Ini Amikom?',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
+      // Lokalisasi Bahasa Indonesia: kalender showDatePicker, tombol dialog
+      // bawaan (OK/CANCEL), dan format tanggal Material ikut berbahasa Indonesia.
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('id')],
+      locale: const Locale('id'),
       initialRoute: '/splash',
       routes: {
         '/splash': (_) => const SplashPage(),

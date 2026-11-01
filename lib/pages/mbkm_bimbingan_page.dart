@@ -4,6 +4,7 @@ import '../models/mbkm.dart';
 import '../services/mbkm_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
+import '../widgets/app_markdown_composer.dart';
 
 /// Log bimbingan MBKM — identitas program, ringkasan jumlah log, lalu
 /// kronologi bimbingan sebagai daftar bergaris (tanggal sebagai penanda depan).
@@ -124,8 +125,8 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
 
     setState(() => _isSubmitting = true);
 
-    // ponytail: lightweight native markdown-to-HTML converter without 700KB package:markdown
-    final htmlContent = _convertMarkdownToHtml(_inputController.text.trim());
+    // ponytail: konversi markdown→HTML kini bersama di AppMarkdownComposer
+    final htmlContent = markdownKeHtml(_inputController.text.trim());
 
     try {
       await _service.tambahBimbingan(widget.mbkm.id, htmlContent);
@@ -153,72 +154,6 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
     }
   }
 
-  /// ponytail: native conversion for the 4 composer toolbar tokens (**bold**, #, ##, -)
-  String _convertMarkdownToHtml(String input) {
-    String escaped = input
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;');
-
-    escaped = escaped.replaceAllMapped(
-      RegExp(r'\*\*(.+?)\*\*'),
-      (match) => '<strong>${match.group(1)}</strong>',
-    );
-
-    final lines = escaped.split(RegExp(r'\r?\n'));
-    final result = <String>[];
-    bool inList = false;
-
-    for (final line in lines) {
-      final trimmed = line.trim();
-      if (trimmed.startsWith('## ')) {
-        if (inList) {
-          result.add('</ul>');
-          inList = false;
-        }
-        result.add('<h2>${trimmed.substring(3)}</h2>');
-      } else if (trimmed.startsWith('# ')) {
-        if (inList) {
-          result.add('</ul>');
-          inList = false;
-        }
-        result.add('<h1>${trimmed.substring(2)}</h1>');
-      } else if (trimmed.startsWith('- ')) {
-        if (!inList) {
-          result.add('<ul>');
-          inList = true;
-        }
-        result.add('<li>${trimmed.substring(2)}</li>');
-      } else {
-        if (inList) {
-          result.add('</ul>');
-          inList = false;
-        }
-        if (trimmed.isNotEmpty) {
-          result.add('<p>$trimmed</p>');
-        }
-      }
-    }
-    if (inList) {
-      result.add('</ul>');
-    }
-    return result.join();
-  }
-
-  void _insertMarkdown(String prefix, String suffix) {
-    final text = _inputController.text;
-    final selection = _inputController.selection;
-    if (selection.start == -1) {
-      _inputController.text = '$text$prefix$suffix';
-      return;
-    }
-    final newText = text.replaceRange(selection.start, selection.end, '$prefix${text.substring(selection.start, selection.end)}$suffix');
-    _inputController.value = TextEditingValue(
-      text: newText,
-      selection: TextSelection.collapsed(offset: selection.start + prefix.length + (selection.end - selection.start)),
-    );
-  }
-
   Widget _buildInputBottomSheet() {
     return StatefulBuilder(
       builder: (context, setSheetState) {
@@ -239,57 +174,12 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
               children: [
                 Text('Tambah Log Bimbingan', style: AppText.h2),
                 const SizedBox(height: AppSpacing.md),
-                // Toolbar Markdown
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: AppSpacing.xs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceMuted,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.format_bold, size: 20),
-                        onPressed: () => _insertMarkdown('**', '**'),
-                        tooltip: 'Tebal',
-                        constraints: const BoxConstraints(),
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.title, size: 20), // H1
-                        onPressed: () => _insertMarkdown('# ', ''),
-                        tooltip: 'Heading 1',
-                        constraints: const BoxConstraints(),
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.text_fields, size: 16), // H2
-                        onPressed: () => _insertMarkdown('## ', ''),
-                        tooltip: 'Heading 2',
-                        constraints: const BoxConstraints(),
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.format_list_bulleted, size: 20),
-                        onPressed: () => _insertMarkdown('- ', ''),
-                        tooltip: 'List',
-                        constraints: const BoxConstraints(),
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                TextField(
+                // Composer markdown seragam (toolbar + field) — lihat
+                // lib/widgets/app_markdown_composer.dart.
+                AppMarkdownComposer(
                   controller: _inputController,
-                  maxLines: 8,
-                  minLines: 4,
-                  decoration: const InputDecoration(
-                    hintText: 'Ketik laporan bimbingan di sini...\n(Mendukung format Markdown: **Tebal**, # Judul)',
-                  ),
+                  hintText:
+                      'Ketik laporan bimbingan di sini...\n(Mendukung format Markdown: **Tebal**, # Judul)',
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 SizedBox(

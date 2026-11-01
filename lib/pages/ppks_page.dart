@@ -5,6 +5,7 @@ import '../models/ppks.dart';
 import '../services/ppks_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
+import '../widgets/app_date_field.dart';
 import '../widgets/app_kit.dart';
 
 /// Halaman Satgas PPKS Amikom (layanan & formulir pengaduan).
@@ -106,18 +107,6 @@ class _PpksPageState extends State<PpksPage> {
           _isLoading = false;
         });
       }
-    }
-  }
-
-  Future<void> _selectTanggalKejadian() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _tanggalKejadian ?? DateTime.now(),
-      firstDate: DateTime(2015),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) {
-      setState(() => _tanggalKejadian = picked);
     }
   }
 
@@ -689,28 +678,15 @@ class _PpksPageState extends State<PpksPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          InkWell(
-            onTap: _selectTanggalKejadian,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            child: InputDecorator(
-              decoration: const InputDecoration(
-                labelText: 'Tanggal Kejadian',
-                prefixIcon: Icon(
-                  CupertinoIcons.calendar,
-                  color: AppColors.primarySoft,
-                ),
-              ),
-              child: Text(
-                _tanggalKejadian != null
-                    ? formatDateDisplay(_tanggalKejadian!)
-                    : 'Pilih Tanggal Kejadian',
-                style: AppText.body.copyWith(
-                  color: _tanggalKejadian != null
-                      ? AppColors.textPrimary
-                      : AppColors.textMuted,
-                ),
-              ),
-            ),
+          AppDateField(
+            label: 'Tanggal Kejadian',
+            value: _tanggalKejadian,
+            hint: 'Pilih Tanggal Kejadian',
+            // Kejadian tidak mungkin di masa depan.
+            firstDate: DateTime(2015),
+            lastDate: DateTime.now(),
+            onChanged: (picked) =>
+                setState(() => _tanggalKejadian = picked),
           ),
           const SizedBox(height: AppSpacing.lg),
           TextField(

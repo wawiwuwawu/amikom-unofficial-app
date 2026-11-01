@@ -3,7 +3,7 @@ import 'package:flutter/cupertino.dart';
 import '../models/izin_penelitian.dart';
 import '../services/izin_penelitian_service.dart';
 import '../theme/app_theme.dart';
-import '../utils/format.dart';
+import '../widgets/app_date_field.dart';
 import '../widgets/app_kit.dart';
 
 /// Izin penelitian — dua tab: form pengajuan dan riwayat pengajuan.
@@ -82,35 +82,6 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
     final month = dt.month.toString().padLeft(2, '0');
     final day = dt.day.toString().padLeft(2, '0');
     return '$month/$day/${dt.year}';
-  }
-
-  Future<void> _selectStartDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _startDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2035),
-    );
-    if (picked != null) {
-      setState(() {
-        _startDate = picked;
-        if (_endDate != null && _endDate!.isBefore(picked)) {
-          _endDate = picked;
-        }
-      });
-    }
-  }
-
-  Future<void> _selectEndDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _endDate ?? (_startDate ?? DateTime.now()),
-      firstDate: _startDate ?? DateTime(2020),
-      lastDate: DateTime(2035),
-    );
-    if (picked != null) {
-      setState(() => _endDate = picked);
-    }
   }
 
   void _resetForm() {
@@ -480,44 +451,31 @@ class _IzinPenelitianPageState extends State<IzinPenelitianPage> {
                   ],
                   const SizedBox(height: AppSpacing.lg),
 
-                  // Date Picker Row
+                  // Date Picker Row — widget seragam AppDateField (tampilan
+                  // Indonesia, dialog kalender terlokalkan; Selesai tak boleh
+                  // mendahului Mulai).
                   Row(
                     children: [
                       Expanded(
-                        child: InkWell(
-                          onTap: _selectStartDate,
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Tanggal Mulai',
-                              prefixIcon: Icon(CupertinoIcons.calendar, color: AppColors.primary),
-                            ),
-                            child: Text(
-                              _startDate != null ? formatDateDisplay(_startDate!) : 'Pilih Tanggal',
-                              style: AppText.bodySm.copyWith(
-                                color: _startDate != null ? AppColors.textPrimary : AppColors.textMuted,
-                              ),
-                            ),
-                          ),
+                        child: AppDateField(
+                          label: 'Tanggal Mulai',
+                          value: _startDate,
+                          onChanged: (picked) => setState(() {
+                            _startDate = picked;
+                            if (_endDate != null && _endDate!.isBefore(picked)) {
+                              _endDate = picked;
+                            }
+                          }),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
-                        child: InkWell(
-                          onTap: _selectEndDate,
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Tanggal Selesai',
-                              prefixIcon: Icon(CupertinoIcons.calendar, color: AppColors.primary),
-                            ),
-                            child: Text(
-                              _endDate != null ? formatDateDisplay(_endDate!) : 'Pilih Tanggal',
-                              style: AppText.bodySm.copyWith(
-                                color: _endDate != null ? AppColors.textPrimary : AppColors.textMuted,
-                              ),
-                            ),
-                          ),
+                        child: AppDateField(
+                          label: 'Tanggal Selesai',
+                          value: _endDate,
+                          minDate: _startDate,
+                          onChanged: (picked) =>
+                              setState(() => _endDate = picked),
                         ),
                       ),
                     ],

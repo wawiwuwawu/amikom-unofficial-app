@@ -349,10 +349,11 @@ class _AbsensiPageState extends State<AbsensiPage> {
                     dialogMenulis ? null : () => Navigator.pop(ctx, false),
                 child: const Text('Batal'),
               ),
+              // Warna default (primary) — validasi aksi konstruktif, bukan
+              // destruktif; merah konsisten dipakai hanya untuk tombol
+              // berbahaya (hapus/batalkan). Catatan "tak dapat dibatalkan"
+              // tetap disampaikan lewat teks peringatan di atas.
               FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.danger,
-                ),
                 onPressed: dialogMenulis ? null : konfirmasi,
                 child: dialogMenulis
                     ? const Row(

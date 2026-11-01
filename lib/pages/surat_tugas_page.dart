@@ -9,6 +9,7 @@ import '../services/api_client.dart';
 import '../services/surat_tugas_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
+import '../widgets/app_date_field.dart';
 import '../widgets/app_kit.dart';
 
 /// Halaman Surat Tugas — pengajuan baru & riwayat pengajuan.
@@ -97,35 +98,6 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
           _isLoading = false;
         });
       }
-    }
-  }
-
-  Future<void> _selectStartDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _startDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2035),
-    );
-    if (picked != null) {
-      setState(() {
-        _startDate = picked;
-        if (_endDate != null && _endDate!.isBefore(picked)) {
-          _endDate = picked;
-        }
-      });
-    }
-  }
-
-  Future<void> _selectEndDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _endDate ?? (_startDate ?? DateTime.now()),
-      firstDate: _startDate ?? DateTime(2020),
-      lastDate: DateTime(2035),
-    );
-    if (picked != null) {
-      setState(() => _endDate = picked);
     }
   }
 
@@ -453,54 +425,21 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
                   Row(
                     children: [
                       Expanded(
-                        child: InkWell(
-                          onTap: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: editStartDate ?? DateTime.now(),
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime(2035),
-                            );
-                            if (picked != null) {
-                              setStateModal(() => editStartDate = picked);
-                            }
-                          },
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                          child: InputDecorator(
-                            decoration: const InputDecoration(labelText: 'Tanggal Mulai'),
-                            child: Text(
-                              editStartDate != null ? formatDateDisplay(editStartDate!) : 'Pilih Tanggal',
-                              style: AppText.bodySm.copyWith(
-                                color: editStartDate != null ? AppColors.textPrimary : AppColors.textMuted,
-                              ),
-                            ),
-                          ),
+                        child: AppDateField(
+                          label: 'Tanggal Mulai',
+                          value: editStartDate,
+                          onChanged: (picked) =>
+                              setStateModal(() => editStartDate = picked),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
-                        child: InkWell(
-                          onTap: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: editEndDate ?? DateTime.now(),
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime(2035),
-                            );
-                            if (picked != null) {
-                              setStateModal(() => editEndDate = picked);
-                            }
-                          },
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                          child: InputDecorator(
-                            decoration: const InputDecoration(labelText: 'Tanggal Selesai'),
-                            child: Text(
-                              editEndDate != null ? formatDateDisplay(editEndDate!) : 'Pilih Tanggal',
-                              style: AppText.bodySm.copyWith(
-                                color: editEndDate != null ? AppColors.textPrimary : AppColors.textMuted,
-                              ),
-                            ),
-                          ),
+                        child: AppDateField(
+                          label: 'Tanggal Selesai',
+                          value: editEndDate,
+                          minDate: editStartDate,
+                          onChanged: (picked) =>
+                              setStateModal(() => editEndDate = picked),
                         ),
                       ),
                     ],
@@ -744,22 +683,28 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
                 ),
                 const SizedBox(height: AppSpacing.lg),
 
-                // Date Picker Row
+                // Date Picker Row — widget seragam AppDateField.
                 Row(
                   children: [
                     Expanded(
-                      child: _buildDateField(
+                      child: AppDateField(
                         label: 'Tanggal Mulai',
                         value: _startDate,
-                        onTap: _selectStartDate,
+                        onChanged: (picked) => setState(() {
+                          _startDate = picked;
+                          if (_endDate != null && _endDate!.isBefore(picked)) {
+                            _endDate = picked;
+                          }
+                        }),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
-                      child: _buildDateField(
+                      child: AppDateField(
                         label: 'Tanggal Selesai',
                         value: _endDate,
-                        onTap: _selectEndDate,
+                        minDate: _startDate,
+                        onChanged: (picked) => setState(() => _endDate = picked),
                       ),
                     ),
                   ],
@@ -976,28 +921,8 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
   }
 
   /// Kolom tanggal bergaya input global (label + ikon kalender).
-  Widget _buildDateField({
-    required String label,
-    required DateTime? value,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.sm),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: const Icon(CupertinoIcons.calendar),
-        ),
-        child: Text(
-          value != null ? formatDateDisplay(value) : 'Pilih Tanggal',
-          style: AppText.bodySm.copyWith(
-            color: value != null ? AppColors.textPrimary : AppColors.textMuted,
-          ),
-        ),
-      ),
-    );
-  }
+  // _buildDateField dihapus — digantikan widget seragam AppDateField
+  // (lib/widgets/app_date_field.dart).
 
   // ── Tab 2: riwayat pengajuan ───────────────────────────────────────────────
 
