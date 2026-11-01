@@ -7,6 +7,26 @@ rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-
 
 ## [Unreleased]
 
+## [v1.15.0] - 2026-11-01
+
+### Added
+- 🎓 Halaman Skripsi: kartu bimbingan **terpisah per dosen pembimbing** — daftar dosbim kini menjadi judul kartu grupnya (bisa dilipat), tiap catatan menampilkan status & komentar, plus tombol hapus catatan bimbingan
+- 🎓 Form tambah/edit bimbingan: dropdown **Progres** kini terisi langsung dari portal (nilai resmi, bukan teks bebas), pemilih tanggal pakai **kalender** (bukan ketik manual), dan dropdown dosen cukup nama
+- ✨ Peringatan "belum ACC" (Pendaftaran Ujian & Cek Plagiarisme) kini hanya tampil di tab yang benar-benar sudah ada pengajuannya — tidak lagi muncul sembarangan
+- ✨ Halaman Pusat Studi: banner pesan status & saran dari pusat studi, tombol pengisian judul proposal langsung membuka halaman Skripsi
+- ✨ Banner **"Belum pernah bimbingan"** di Beranda — bisa ditutup dan sembunyi 30 hari
+- ✨ Banner rekomendasi Semester Pendek di Beranda kini **berpatokan isi**: setelah ditutup tidak muncul lagi sampai ada nilai baru — tanpa pengingat bulanan yang terasa spam
+
+### Changed
+- ⚠️ Rekomendasi Semester Pendek mengikuti kriteria baru server: hanya nilai **C- ke bawah** yang masuk "Wajib SP" (boleh diingatkan berulang); nilai **C** masuk "Dapat Dipertimbangkan" dan cukup diingatkan sekali; B- ke atas tidak lagi direkomendasikan
+- 🔧 `open_filex` 5.0.0, `firebase_messaging` 16.7.1, `fl_chart` 1.3.0, `actions/setup-java` 6; `intl` dikunci 0.20.2 mengikuti pin `flutter_localizations` SDK
+
+### Fixed
+- 🩺 Jadwal Jumat tidak tampil bila portal mengirim varian "Jum'at" dengan apostrof melengkung/kutip — kini dikenali semua variannya (laporan & perbaikan awal dari kontributor)
+
+### Kontributor
+- Terima kasih **@saimskywalker** 🙏 — menemukan & memperbaiki jadwal Jumat yang tidak tampil karena apostrof melengkung dari portal (#27)
+
 ## [v1.14.0] - 2026-10-29
 
 ### Added
