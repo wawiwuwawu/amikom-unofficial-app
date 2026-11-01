@@ -732,13 +732,15 @@ class _SpPageState extends State<SpPage> {
 
   /// Rekomendasi dikelompokkan per kategori (AppSection) dan disajikan sebagai
   /// daftar, sehingga mata kuliah prioritas langsung terlihat.
+  /// Kontrak BE 2026-11-02: kategori_wajib (C- ke bawah) dan kategori_info
+  /// (hanya C, informasional).
   Widget _buildRekomendasiSection(SpRekomendasiData rekomendasi) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (rekomendasi.kategoriSangatDianjurkan.isNotEmpty)
+        if (rekomendasi.kategoriWajib.isNotEmpty)
           AppSection(
-            title: 'Sangat Dianjurkan (Nilai D/E)',
+            title: 'Wajib SP (Nilai C- ke Bawah)',
             trailing: TextButton(
               onPressed: () {
                 if (_availableData == null) return;
@@ -748,7 +750,7 @@ class _SpPageState extends State<SpPage> {
                 ].map((m) => m.kode).toSet();
 
                 setState(() {
-                  for (var item in rekomendasi.kategoriSangatDianjurkan) {
+                  for (var item in rekomendasi.kategoriWajib) {
                     if (availableKodes.contains(item.kode)) {
                       _selectedKodes.add(item.kode);
                     }
@@ -760,18 +762,18 @@ class _SpPageState extends State<SpPage> {
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Pilih Semua D/E'),
+              child: const Text('Pilih Semua Wajib'),
             ),
             child: AppListGroup.from([
-              for (final item in rekomendasi.kategoriSangatDianjurkan)
+              for (final item in rekomendasi.kategoriWajib)
                 _buildRekomendasiRow(item, isHighPriority: true),
             ]),
           ),
-        if (rekomendasi.kategoriOpsionalSksBesar.isNotEmpty)
+        if (rekomendasi.kategoriInfo.isNotEmpty)
           AppSection(
-            title: 'Opsional SKS Besar (Dongkrak IPK)',
+            title: 'Dapat Dipertimbangkan (Nilai C)',
             child: AppListGroup.from([
-              for (final item in rekomendasi.kategoriOpsionalSksBesar)
+              for (final item in rekomendasi.kategoriInfo)
                 _buildRekomendasiRow(item, isHighPriority: false),
             ]),
           ),

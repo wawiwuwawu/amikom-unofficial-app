@@ -33,8 +33,6 @@ class SpService {
           warningMessage: '',
           totalRekomendasi: 0,
           totalSks: 0,
-          kategoriSangatDianjurkan: [],
-          kategoriOpsionalSksBesar: [],
         );
       }
       throw ApiClient.handleError(e, 'Gagal memuat rekomendasi SP');

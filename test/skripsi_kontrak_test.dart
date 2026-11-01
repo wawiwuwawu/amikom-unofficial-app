@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:app_amikom/models/pusat_studi.dart';
+import 'package:app_amikom/models/sp.dart';
 import 'package:app_amikom/models/skripsi.dart';
 import 'package:app_amikom/services/api_client.dart';
 import 'package:app_amikom/services/skripsi_service.dart';
@@ -45,6 +46,11 @@ class _SkripsiAdapter implements HttpClientAdapter {
         options.method == 'DELETE') {
       deletedBimbinganId = path.split('/').last;
       return json(null);
+    }
+    if (path == '/api/v1/skripsi/bimbingan/opsi' && options.method == 'GET') {
+      return json({
+        'opsi_progres': ['Judul/Tema', 'BAB 1', 'BAB 2', 'BAB 3'],
+      });
     }
     return json(null);
   }
@@ -192,10 +198,69 @@ void main() {
       expect(adapter.putJudulBody?.containsKey('npm'), isFalse,
           reason: 'kontrak BE §4: npm diisi BE dari token login');
     });
+
+    test('getOpsiBimbingan membaca opsi_progres dari <select> portal (BE 2026-11-02)',
+        () async {
+      final opsi = await SkripsiService().getOpsiBimbingan();
+
+      expect(opsi, ['Judul/Tema', 'BAB 1', 'BAB 2', 'BAB 3']);
+    });
   });
 
-  group('PusatStudiJoinedPageData — kontrak BE Nov 2026 §5', () {
-    test('membaca id, pesan_status, saran, dan link pengisian proposal', () {
+  group('SpRekomendasiData — kontrak BE 2026-11-02 (breaking)', () {
+    test('kategori_wajib (C- ke bawah) + kategori_info (hanya C)', () {
+      final data = SpRekomendasiData.fromJson({
+        'has_rekomendasi': true,
+        'warning_message': 'Anda memiliki 1 matakuliah wajib SP.',
+        'total_rekomendasi': 2,
+        'total_sks': 6,
+        'kategori_wajib': [
+          {
+            'kode': 'PSSIW004',
+            'mkl': 'Manajemen Bisnis',
+            'sks': 3,
+            'nilai_sebelumnya': 'D',
+            'bobot': 1,
+            'kategori': 'wajib',
+            'alasan': 'Nilai D (Wajib diperbaiki melalui SP)',
+          },
+        ],
+        'kategori_info': [
+          {
+            'kode': 'PSSIW010',
+            'mkl': 'Sistem Digital',
+            'sks': 3,
+            'nilai_sebelumnya': 'C',
+            'bobot': 2,
+            'kategori': 'info',
+            'alasan': 'Nilai C (Dapat dipertimbangkan untuk SP)',
+          },
+        ],
+      });
+
+      expect(data.kategoriWajib.single.kode, 'PSSIW004');
+      expect(data.kategoriWajib.single.kategori, 'wajib');
+      expect(data.kategoriWajib.single.bobot, 1);
+      expect(data.kategoriInfo.single.nilaiSebelumnya, 'C');
+      expect(data.kategoriInfo.single.kategori, 'info');
+    });
+
+    test('tanpa field kategori per item → default wajib (toleran)', () {
+      final data = SpRekomendasiData.fromJson({
+        'has_rekomendasi': true,
+        'total_rekomendasi': 1,
+        'total_sks': 3,
+        'kategori_wajib': [
+          {'kode': 'X', 'mkl': 'Y', 'sks': 3},
+        ],
+      });
+
+      expect(data.kategoriWajib.single.kategori, 'wajib');
+      expect(data.kategoriWajib.single.bobot, isNull);
+    });
+  });
+
+  group('PusatStudiJoinedPageData — kontrak BE Nov 2026 §5', () {    test('membaca id, pesan_status, saran, dan link pengisian proposal', () {
       final data = PusatStudiJoinedPageData.fromJson({
         'status_code': 'diterima',
         'status_text': 'Diterima',

@@ -52,6 +52,10 @@ class _SkripsiPageState extends State<SkripsiPage>
   String? _errorBimbingan;
   List<SkripsiBimbinganItem> _bimbingans = [];
 
+  // Opsi dropdown "Progres" form bimbingan (kontrak BE 2026-11-02, dari
+  // <select> asli portal). Kosong = BE lama → form jatuh ke TextField.
+  List<String> _opsiProgres = [];
+
   // Pendaftaran State
   bool _isLoadingPendaftaran = true;
   String? _errorPendaftaran;
@@ -86,8 +90,18 @@ class _SkripsiPageState extends State<SkripsiPage>
       _fetchBimbingans(),
       _fetchPendaftarans(),
       _fetchPlagiarsmes(),
+      // Opsi progres gagal/cosong → form jatuh ke TextField (fail-open).
+      _fetchOpsiProgres(),
     ]);
   }
+
+  Future<void> _fetchOpsiProgres() => _fetchData<List<String>>(
+        load: _service.getOpsiBimbingan,
+        onData: (list) => _opsiProgres = list,
+        fallback: 'Opsi progres bimbingan gagal dimuat.',
+        setLoading: (_) {},
+        setError: (_) {},
+      );
 
   /// Rangka pengambilan data bersama untuk kelima tab: tandai memuat dan
   /// bersihkan galat lama, jalankan [load], tandani hasil lewat [onData],
@@ -1656,8 +1670,20 @@ class _SkripsiPageState extends State<SkripsiPage>
     final List<SkripsiDosbim> dosbimList =
         List<SkripsiDosbim>.from(_mainData?.pembimbing ?? const []);
     int dosbimIndex = 0;
-    final progresCtrl = TextEditingController(text: item?.progres ?? '');
     final keteranganCtrl = TextEditingController(text: item?.keterangan ?? '');
+    // Kontrak BE 2026-11-02: opsi progres dari portal — nilai dipakai apa
+    // adanya. Edit: nilai lama di luar daftar tetap ditampilkan. BE lama
+    // (daftar kosong) → jatuh ke TextField bebas.
+    final opsiProgres = List<String>.from(_opsiProgres);
+    if (isEdit &&
+        item.progres.isNotEmpty &&
+        !opsiProgres.contains(item.progres)) {
+      opsiProgres.insert(0, item.progres);
+    }
+    String? progresPilih = (item != null && item.progres.isNotEmpty)
+        ? item.progres
+        : (opsiProgres.isNotEmpty ? opsiProgres.first : null);
+    final progresCtrl = TextEditingController(text: item?.progres ?? '');
     DateTime tanggalPilih =
         item != null ? (tanggalDariPortal(item.tanggal) ?? DateTime.now()) : DateTime.now();
 
@@ -1717,12 +1743,29 @@ class _SkripsiPageState extends State<SkripsiPage>
               onChanged: (d) => setSheetState(() => tanggalPilih = d),
             ),
             const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: progresCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Progres (misal: BAB 1 / BAB 2)',
+            if (opsiProgres.isNotEmpty)
+              DropdownButtonFormField<String>(
+                initialValue: progresPilih,
+                key: ValueKey(progresPilih),
+                decoration: const InputDecoration(
+                  labelText: 'Progres',
+                ),
+                items: [
+                  for (final o in opsiProgres)
+                    DropdownMenuItem(
+                      value: o,
+                      child: Text(o, overflow: TextOverflow.ellipsis),
+                    ),
+                ],
+                onChanged: (v) => setSheetState(() => progresPilih = v),
+              )
+            else
+              TextField(
+                controller: progresCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Progres (misal: BAB 1 / BAB 2)',
+                ),
               ),
-            ),
             const SizedBox(height: AppSpacing.md),
             TextField(
               controller: keteranganCtrl,
@@ -1736,14 +1779,19 @@ class _SkripsiPageState extends State<SkripsiPage>
               width: double.infinity,
               child: FilledButton(
                 onPressed: () async {
-                  if (progresCtrl.text.trim().isEmpty) return;
+                  final progresAkhir = opsiProgres.isNotEmpty
+                      ? progresPilih
+                      : progresCtrl.text.trim();
+                  if (progresAkhir == null || progresAkhir.trim().isEmpty) {
+                    return;
+                  }
                   Navigator.pop(ctx);
                   try {
                     if (isEdit) {
                       final res = await _service.updateBimbingan(
                         id: item.id,
                         tanggal: formatDateApi(tanggalPilih),
-                        progres: progresCtrl.text.trim(),
+                        progres: progresAkhir.trim(),
                         keterangan: keteranganCtrl.text.trim(),
                       );
                       _showSnackBar(
@@ -1756,7 +1804,7 @@ class _SkripsiPageState extends State<SkripsiPage>
                         tanggal: formatDateApi(tanggalPilih),
                         idauto: dosbim?.idauto ?? _mainData?.idauto ?? '',
                         nidn: dosbim?.nidn ?? _mainData?.nidn ?? '',
-                        progres: progresCtrl.text.trim(),
+                        progres: progresAkhir.trim(),
                         keterangan: keteranganCtrl.text.trim(),
                       );
                       _showSnackBar(res['message'] ?? 'Catatan bimbingan disimpan');

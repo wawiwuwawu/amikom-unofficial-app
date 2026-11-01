@@ -123,6 +123,10 @@ class SpRekomendasiItem {
   final int sks;
   final String nilaiSebelumnya;
   final String alasan;
+  // Kontrak BE 2026-11-02: klasifikasi item — 'wajib' (C- ke bawah,
+  // boleh berulang) atau 'info' (hanya C, sekali tampil).
+  final String kategori;
+  final int? bobot;
 
   SpRekomendasiItem({
     required this.kode,
@@ -130,6 +134,8 @@ class SpRekomendasiItem {
     required this.sks,
     required this.nilaiSebelumnya,
     required this.alasan,
+    this.kategori = 'wajib',
+    this.bobot,
   });
 
   factory SpRekomendasiItem.fromJson(Map<String, dynamic> json) {
@@ -139,6 +145,10 @@ class SpRekomendasiItem {
       sks: int.tryParse(json['sks']?.toString() ?? '0') ?? 0,
       nilaiSebelumnya: json['nilai_sebelumnya']?.toString() ?? '',
       alasan: json['alasan']?.toString() ?? '',
+      kategori: json['kategori']?.toString() ?? 'wajib',
+      bobot: json['bobot'] is int
+          ? json['bobot'] as int
+          : int.tryParse(json['bobot']?.toString() ?? ''),
     );
   }
 }
@@ -148,16 +158,19 @@ class SpRekomendasiData {
   final String warningMessage;
   final int totalRekomendasi;
   final int totalSks;
-  final List<SpRekomendasiItem> kategoriSangatDianjurkan;
-  final List<SpRekomendasiItem> kategoriOpsionalSksBesar;
+  // Kontrak BE 2026-11-02 (BREAKING): menggantikan
+  // kategori_sangat_dianjurkan/kategori_opsional_sks_besar. Ambang baru:
+  // wajib = C- ke bawah, info = hanya C; B- ke atas tidak masuk.
+  final List<SpRekomendasiItem> kategoriWajib;
+  final List<SpRekomendasiItem> kategoriInfo;
 
   SpRekomendasiData({
     required this.hasRekomendasi,
     required this.warningMessage,
     required this.totalRekomendasi,
     required this.totalSks,
-    required this.kategoriSangatDianjurkan,
-    required this.kategoriOpsionalSksBesar,
+    this.kategoriWajib = const [],
+    this.kategoriInfo = const [],
   });
 
   factory SpRekomendasiData.fromJson(Map<String, dynamic> json) {
@@ -166,11 +179,11 @@ class SpRekomendasiData {
       warningMessage: json['warning_message']?.toString() ?? '',
       totalRekomendasi: int.tryParse(json['total_rekomendasi']?.toString() ?? '0') ?? 0,
       totalSks: int.tryParse(json['total_sks']?.toString() ?? '0') ?? 0,
-      kategoriSangatDianjurkan: (json['kategori_sangat_dianjurkan'] as List?)
+      kategoriWajib: (json['kategori_wajib'] as List?)
               ?.map((e) => SpRekomendasiItem.fromJson(e))
               .toList() ??
           [],
-      kategoriOpsionalSksBesar: (json['kategori_opsional_sks_besar'] as List?)
+      kategoriInfo: (json['kategori_info'] as List?)
               ?.map((e) => SpRekomendasiItem.fromJson(e))
               .toList() ??
           [],

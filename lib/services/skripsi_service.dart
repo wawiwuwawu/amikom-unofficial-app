@@ -116,6 +116,28 @@ class SkripsiService {
     return [];
   }
 
+  // Kontrak BE 2026-11-02: opsi dropdown "Progres" dari <select> asli modal
+  // Tambah/Edit Bimbingan portal. Pakai nilainya APA ADANYA untuk field
+  // progres — teks bebas lain bisa ditolak/diabaikan portal. 404 → kosong
+  // (BE lama), FE jatuh ke TextField.
+  Future<List<String>> getOpsiBimbingan() async {
+    try {
+      final response =
+          await _dio.get('/api/v1/skripsi/bimbingan/opsi');
+      final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
+      return (data['opsi_progres'] as List?)
+              ?.map((e) => e.toString())
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          [];
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return [];
+      throw ApiClient.handleError(e, 'Gagal memuat opsi progres bimbingan');
+    } catch (e) {
+      throw ApiClient.handleError(e, 'Gagal memuat opsi progres bimbingan');
+    }
+  }
+
   Future<Map<String, dynamic>> submitBimbingan({
     required String tanggal,
     required String idauto,

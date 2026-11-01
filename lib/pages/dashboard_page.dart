@@ -182,8 +182,6 @@ class _DashboardPageState extends State<DashboardPage> {
             warningMessage: '',
             totalRekomendasi: 0,
             totalSks: 0,
-            kategoriSangatDianjurkan: [],
-            kategoriOpsionalSksBesar: [],
           ),
         ),
         // Flag periode KRS murah (scope=krs, satu scrape ringan di BE).
@@ -773,10 +771,11 @@ class _DashboardPageState extends State<DashboardPage> {
   /// Tanda tangan isi rekomendasi SP: daftar "kode:SKS" terurut. Dipakai
   /// sebagai patokan tutup banner — tertutup selama isi sama; nilai baru
   /// yang mengubah daftar membuat banner muncul lagi (bukan timer bulanan).
+  /// Kontrak BE 2026-11-02: kategori_wajib + kategori_info.
   String _spIsiSignature(SpRekomendasiData rekomendasi) {
     final baris = [
-      ...rekomendasi.kategoriSangatDianjurkan,
-      ...rekomendasi.kategoriOpsionalSksBesar,
+      ...rekomendasi.kategoriWajib,
+      ...rekomendasi.kategoriInfo,
     ].map((e) => '${e.kode}:${e.sks}').toList()..sort();
     return baris.join('|');
   }

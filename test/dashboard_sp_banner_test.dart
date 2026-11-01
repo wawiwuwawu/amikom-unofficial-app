@@ -31,23 +31,25 @@ String _signature(List<Map<String, Object>> dianjurkan,
   return baris.join('|');
 }
 
-const _mkDianjurkan = [
+const _mkWajib = [
   {
     'kode': 'TIF3204',
     'mkl': 'Kecerdasan Buatan',
     'sks': 3,
-    'nilai_sebelumnya': 'C-',
-    'alasan': 'Nilai di bawah standar kelulusan',
+    'nilai_sebelumnya': 'D',
+    'kategori': 'wajib',
+    'alasan': 'Nilai D (Wajib diperbaiki melalui SP)',
   },
 ];
 
-const _mkOpsional = [
+const _mkInfo = [
   {
     'kode': 'TIF2201',
     'mkl': 'Sistem Digital',
     'sks': 2,
     'nilai_sebelumnya': 'C',
-    'alasan': 'Beban SKS besar',
+    'kategori': 'info',
+    'alasan': 'Nilai C (Dapat dipertimbangkan untuk SP)',
   },
 ];
 
@@ -95,8 +97,8 @@ class _SpBannerAdapter implements HttpClientAdapter {
         'warning_message': 'Kamu disarankan mengambil SP.',
         'total_rekomendasi': 2,
         'total_sks': 5,
-        'kategori_sangat_dianjurkan': _mkDianjurkan,
-        'kategori_opsional_sks_besar': _mkOpsional,
+        'kategori_wajib': _mkWajib,
+        'kategori_info': _mkInfo,
       });
     }
 
@@ -150,13 +152,13 @@ void main() {
 
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString(_kunciSpDitutupIsi),
-        _signature(_mkDianjurkan, _mkOpsional));
+        _signature(_mkWajib, _mkInfo));
   });
 
   testWidgets('isi rekomendasi sama → tetap tersembunyi saat app dibuka ulang',
       (tester) async {
     SharedPreferences.setMockInitialValues({
-      _kunciSpDitutupIsi: _signature(_mkDianjurkan, _mkOpsional),
+      _kunciSpDitutupIsi: _signature(_mkWajib, _mkInfo),
     });
     await pumpDashboard(tester);
 
@@ -168,7 +170,7 @@ void main() {
       (tester) async {
     // Daftar lama yang pernah ditutup — kini ada MK baru di rekomendasi.
     SharedPreferences.setMockInitialValues({
-      _kunciSpDitutupIsi: _signature(_mkDianjurkan),
+      _kunciSpDitutupIsi: _signature(_mkWajib),
     });
     await pumpDashboard(tester);
 

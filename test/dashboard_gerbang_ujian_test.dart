@@ -95,8 +95,8 @@ class _DashboardAdapter implements HttpClientAdapter {
         'warning_message': '',
         'total_rekomendasi': 0,
         'total_sks': 0,
-        'kategori_sangat_dianjurkan': [],
-        'kategori_opsional_sks_besar': [],
+        'kategori_wajib': [],
+        'kategori_info': [],
       });
     }
     throw DioException(
