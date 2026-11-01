@@ -9,6 +9,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/skripsi.dart';
 import '../services/skripsi_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/format.dart';
+import '../utils/waktu.dart';
+import '../widgets/app_date_field.dart';
 import '../widgets/app_kit.dart';
 
 /// Halaman Skripsi & Tugas Akhir.
@@ -58,6 +61,10 @@ class _SkripsiPageState extends State<SkripsiPage>
   bool _isLoadingPlagiarisme = true;
   String? _errorPlagiarisme;
   List<SkripsiPlagiarismeItem> _plagiarsmes = [];
+
+  // Kunci kartu bimbingan per dosbim yang DICIUTKAN user (masukan user
+  // 2026-11-01: nama dosbim = judul kartunya, bisa di-minimize).
+  final Set<String> _kelompokTertutup = {};
 
   @override
   void initState() {
@@ -412,7 +419,91 @@ class _SkripsiPageState extends State<SkripsiPage>
             ),
           ),
         ],
+        // Kontrak BE Nov 2026 §1: status proposal. Peringatan ACC
+        // ujian/plagiarisme tampil di tab pengajuannya masing-masing,
+        // kartu dosbim di tab bimbingan (masukan user 2026-11-01).
+        if (main.statusProposal != null) _statusProposalCard(main.statusProposal!),
       ],
+    );
+  }
+
+  /// Peringatan ACC per dosbim untuk header tab pengajuannya.
+  List<Widget> _peringatanBlok(List<String> daftar) => [
+        for (final peringatan in daftar)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: _peringatanCard(peringatan),
+          ),
+      ];
+
+  Widget _peringatanCard(String teks) {
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: AppSurface(
+        variant: AppSurfaceVariant.danger,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              CupertinoIcons.exclamationmark_triangle_fill,
+              size: 20,
+              color: AppColors.danger,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                teks,
+                style: AppText.bodySm.copyWith(color: AppColors.danger),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statusProposalCard(SkripsiStatusProposal sp) {
+    final adaIsi = (sp.pesan != null && sp.pesan!.isNotEmpty) ||
+        (sp.komentarPusatStudi != null && sp.komentarPusatStudi!.isNotEmpty) ||
+        (sp.reviewer != null && sp.reviewer!.isNotEmpty);
+    if (!adaIsi) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: AppSurface(
+        radius: AppRadius.lg,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text('Status Proposal', style: AppText.h3),
+                ),
+                AppPill(
+                  sp.layak ? 'Layak' : 'Menunggu',
+                  tone: sp.layak ? AppPillTone.success : AppPillTone.neutral,
+                ),
+              ],
+            ),
+            if (sp.pesan != null && sp.pesan!.isNotEmpty) ...[
+              const Divider(height: AppSpacing.xl),
+              Text(sp.pesan!, style: AppText.body),
+            ],
+            if (sp.komentarPusatStudi != null &&
+                sp.komentarPusatStudi!.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              AppKeyValue(
+                label: 'Komentar Pusat Studi',
+                value: sp.komentarPusatStudi!,
+              ),
+            ],
+            if (sp.reviewer != null && sp.reviewer!.isNotEmpty) ...[
+              AppKeyValue(label: 'Reviewer', value: sp.reviewer!),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -561,10 +652,37 @@ class _SkripsiPageState extends State<SkripsiPage>
     }
 
     // Catatan bimbingan bertambah tiap pertemuan — dibangun lazy per chunk
-    // ±20 baris; judul seksi + aksi + keadaan kosong tetap di header
-    // (padanan AppSection lama, tampilan tidak berubah).
-    return AppChunkedList<SkripsiBimbinganItem>(
-      items: _bimbingans,
+    // ±20 baris. Kartu terpisah per dosbim (kontrak BE Nov 2026 §2) dengan
+    // NAMA DOSBIM sebagai judul kartunya (masukan user: jangan ditulis dua
+    // kali) — bisa diciutkan. Daftar entri (header + baris) jadi satu
+    // AppChunkedList supaya chunking tetap jalan; kartu yang diciutkan
+    // hanya menyumbang header-nya.
+    final kelompok = _kelompokBimbingan();
+    final entri = <_BimbinganEntri>[];
+    for (final g in kelompok) {
+      if (g.baris.isEmpty) continue;
+      // Kelompok tunggal tanpa identitas dosbim (bentuk halaman lama)
+      // dirender polos tanpa header kartu.
+      final adaHeader = g.judul != null || kelompok.length > 1;
+      final kunci = g.judul ?? '__tanpa_dosbim';
+      if (adaHeader) {
+        entri.add(_BimbinganEntri.header(
+          kunci: kunci,
+          judul: g.judul,
+          dosbim: g.dosbim,
+          jumlah: g.baris.length,
+          bisaDilipat: g.judul != null,
+        ));
+      }
+      if (!adaHeader || !_kelompokTertutup.contains(kunci)) {
+        for (final b in g.baris) {
+          entri.add(_BimbinganEntri.baris(b));
+        }
+      }
+    }
+
+    return AppChunkedList<_BimbinganEntri>(
+      items: entri,
       padding: EdgeInsets.fromLTRB(
         AppSpacing.lg,
         AppSpacing.lg,
@@ -616,18 +734,158 @@ class _SkripsiPageState extends State<SkripsiPage>
             ),
         ],
       ),
-      rowBuilder: (_, item) => _buildBimbinganItem(item),
+      rowBuilder: (_, e) => e.baris != null
+          ? _buildBimbinganItem(e.baris!)
+          : _headerKartuBimbingan(e),
+    );
+  }
+
+  /// Kelompok bimbingan per dosbim: urutan mengikuti `pembimbing[]` dari
+  /// data utama; pencocokan baris → dosbim lewat urutan, idauto, atau nama;
+  /// baris bernama yang tak cocok mengikuti urutan kemunculannya; baris
+  /// tanpa identitas dosbim (bentuk halaman lama) jadi kelompok terakhir.
+  List<({SkripsiDosbim? dosbim, String? judul, List<SkripsiBimbinganItem> baris})>
+      _kelompokBimbingan() {
+    final dosbimList = _mainData?.pembimbing ?? const <SkripsiDosbim>[];
+    final perDosbim = <int, List<SkripsiBimbinganItem>>{};
+    final perNama = <String, List<SkripsiBimbinganItem>>{};
+    final tanpaNama = <SkripsiBimbinganItem>[];
+
+    for (final item in _bimbingans) {
+      final idx = dosbimList.indexWhere((d) =>
+          (item.urutanPembimbing != null && item.urutanPembimbing == d.urutan) ||
+          (d.idauto != null &&
+              d.idauto!.isNotEmpty &&
+              item.idauto != null &&
+              item.idauto == d.idauto) ||
+          (item.pembimbing != null && item.pembimbing == d.nama));
+      if (idx >= 0) {
+        perDosbim.putIfAbsent(idx, () => []).add(item);
+      } else if (item.pembimbing != null && item.pembimbing!.isNotEmpty) {
+        perNama.putIfAbsent(item.pembimbing!, () => []).add(item);
+      } else {
+        tanpaNama.add(item);
+      }
+    }
+
+    final kelompok = <({SkripsiDosbim? dosbim, String? judul,
+        List<SkripsiBimbinganItem> baris})>[];
+    final indeksTerurut = perDosbim.keys.toList()..sort();
+    for (final i in indeksTerurut) {
+      final d = dosbimList[i];
+      final label = (d.label != null && d.label!.isNotEmpty)
+          ? '${d.label} — ${d.nama}'
+          : d.nama;
+      kelompok.add((dosbim: d, judul: label, baris: perDosbim[i]!));
+    }
+    perNama.forEach(
+      (nama, rows) => kelompok.add((dosbim: null, judul: nama, baris: rows)),
+    );
+    if (tanpaNama.isNotEmpty) {
+      kelompok.add((dosbim: null, judul: null, baris: tanpaNama));
+    }
+    return kelompok;
+  }
+
+  /// Judul kartu bimbingan = dosbimnya (bukan kartu terpisah lagi) — tap
+  /// untuk melipat/membuka catatan dosbim tsb. Pesan portal "belum pernah
+  /// bimbingan" tampil di kartu dosbim terkait.
+  Widget _headerKartuBimbingan(_BimbinganEntri e) {
+    final terbuka = !e.bisaDilipat || !_kelompokTertutup.contains(e.kunci);
+    final d = e.dosbim;
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: AppSurface(
+        radius: AppRadius.lg,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              onTap: e.bisaDilipat
+                  ? () => setState(() {
+                        _kelompokTertutup.contains(e.kunci)
+                            ? _kelompokTertutup.remove(e.kunci)
+                            : _kelompokTertutup.add(e.kunci);
+                      })
+                  : null,
+              child: Row(
+                children: [
+                  const Icon(
+                    CupertinoIcons.person_2_fill,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      e.judul ?? 'CATATAN BIMBINGAN',
+                      style: AppText.h3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  AppPill('${e.jumlah} catatan', tone: AppPillTone.info),
+                  if (e.bisaDilipat) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    Icon(
+                      terbuka
+                          ? CupertinoIcons.chevron_up
+                          : CupertinoIcons.chevron_down,
+                      size: 16,
+                      color: AppColors.textMuted,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (terbuka &&
+                d != null &&
+                d.pesanBimbingan != null &&
+                d.pesanBimbingan!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.xs),
+                child: Text(
+                  d.pesanBimbingan!,
+                  style: AppText.bodySm.copyWith(
+                    color: AppColors.warning,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildBimbinganItem(SkripsiBimbinganItem item) {
+    // Kontrak BE Nov 2026 §2: baris kini mencakup SEMUA dosbim — label
+    // dosbim wajib tampil supaya baris Pembimbing I/II tak tertukar.
+    final infoBaris = <String>[
+      if (item.pembimbing != null && item.pembimbing!.isNotEmpty)
+        item.pembimbing!,
+      if (item.status != null && item.status!.isNotEmpty) item.status!,
+    ];
+    final subtitle = [
+      if (infoBaris.isNotEmpty) infoBaris.join(' • '),
+      if (item.keterangan.isNotEmpty) item.keterangan,
+      if (item.komentar != null && item.komentar!.isNotEmpty)
+        'Komentar: ${item.komentar}',
+    ].where((s) => s.isNotEmpty).join('\n');
+
     return AppListRow(
       leading: AppPill(item.progres, tone: AppPillTone.info),
       title: 'Tanggal: ${item.tanggal}',
-      subtitle: item.keterangan,
+      subtitle: subtitle.isNotEmpty ? subtitle : null,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (item.id.isNotEmpty)
+            IconButton(
+              icon: const Icon(CupertinoIcons.trash, size: 18),
+              tooltip: 'Hapus Catatan',
+              onPressed: () => _handleHapusBimbingan(item),
+            ),
           IconButton(
             icon: const Icon(CupertinoIcons.pencil, size: 18),
             onPressed: () => _showFormBimbingan(item: item),
@@ -639,6 +897,33 @@ class _SkripsiPageState extends State<SkripsiPage>
         ],
       ),
     );
+  }
+
+  // Kontrak BE Nov 2026 §3: DELETE /skripsi/bimbingan/:id.
+  Future<void> _handleHapusBimbingan(SkripsiBimbinganItem item) async {
+    final confirm = await AppConfirm.ask(
+      context,
+      title: 'Hapus Catatan Bimbingan',
+      content:
+          'Hapus catatan bimbingan${item.pembimbing != null && item.pembimbing!.isNotEmpty ? ' ${item.pembimbing}' : ''} tanggal ${item.tanggal}? Tindakan ini tidak dapat dibatalkan.',
+      confirmLabel: 'Ya, Hapus',
+      confirmColor: AppColors.danger,
+    );
+
+    if (confirm != true) return;
+    try {
+      final res = await _service.hapusBimbingan(item.id);
+      _showSnackBar(res['message'] ?? 'Catatan bimbingan dihapus');
+      _fetchBimbingans();
+    } catch (e) {
+      _showSnackBar(
+        userErrorMessage(
+          e,
+          'Catatan bimbingan gagal dihapus. Silakan coba lagi.',
+        ),
+        isError: true,
+      );
+    }
   }
 
   // --- TAB 3: PENDAFTARAN & UJIAN ---
@@ -667,6 +952,10 @@ class _SkripsiPageState extends State<SkripsiPage>
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Peringatan ACC Ujian hanya berlaku bila ada pengajuan ujian.
+          if (_pendaftarans.isNotEmpty)
+            ..._peringatanBlok(
+                _mainData?.peringatanAccUjian ?? const <String>[]),
           Row(
             children: [
               Expanded(
@@ -799,6 +1088,10 @@ class _SkripsiPageState extends State<SkripsiPage>
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Peringatan ACC Cek Plagiarisme hanya berlaku bila ada berkas.
+          if (_plagiarsmes.isNotEmpty)
+            ..._peringatanBlok(
+                _mainData?.peringatanAccPlagiarisme ?? const <String>[]),
           Row(
             children: [
               Expanded(
@@ -1357,17 +1650,23 @@ class _SkripsiPageState extends State<SkripsiPage>
 
   void _showFormBimbingan({SkripsiBimbinganItem? item}) {
     final isEdit = item != null;
-    final tanggalCtrl = TextEditingController(
-      text: item?.tanggal ?? DateTime.now().toString().split(' ').first,
-    );
+    // Kontrak BE Nov 2026 §1: idauto/nidn per dosbim diambil dari
+    // pembimbing[] ("untuk dosbim kedua ambil dari pembimbing[]") —
+    // form tambah jadi memilih dosbim, bukan mengandalkan top-level.
+    final List<SkripsiDosbim> dosbimList =
+        List<SkripsiDosbim>.from(_mainData?.pembimbing ?? const []);
+    int dosbimIndex = 0;
     final progresCtrl = TextEditingController(text: item?.progres ?? '');
     final keteranganCtrl = TextEditingController(text: item?.keterangan ?? '');
+    DateTime tanggalPilih =
+        item != null ? (tanggalDariPortal(item.tanggal) ?? DateTime.now()) : DateTime.now();
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Container(
         padding: EdgeInsets.fromLTRB(
           AppSpacing.xl,
           AppSpacing.xl,
@@ -1389,11 +1688,33 @@ class _SkripsiPageState extends State<SkripsiPage>
               style: AppText.h3.copyWith(color: AppColors.primary),
             ),
             const SizedBox(height: AppSpacing.lg),
-            TextField(
-              controller: tanggalCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Tanggal (YYYY-MM-DD)',
+            if (!isEdit && dosbimList.isNotEmpty) ...[
+              DropdownButtonFormField<int>(
+                initialValue: dosbimIndex,
+                key: ValueKey(dosbimIndex),
+                decoration: const InputDecoration(
+                  labelText: 'Dosen Pembimbing',
+                ),
+                items: [
+                  for (var i = 0; i < dosbimList.length; i++)
+                    DropdownMenuItem(
+                      value: i,
+                      // Nama saja — "Pembimbing I — Nama" kepanjangan
+                      // di lebar sheet (masukan user 2026-11-01).
+                      child: Text(
+                        dosbimList[i].nama,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: (v) => setSheetState(() => dosbimIndex = v ?? 0),
               ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            AppDateField(
+              label: 'Tanggal Bimbingan',
+              value: tanggalPilih,
+              onChanged: (d) => setSheetState(() => tanggalPilih = d),
             ),
             const SizedBox(height: AppSpacing.md),
             TextField(
@@ -1421,7 +1742,7 @@ class _SkripsiPageState extends State<SkripsiPage>
                     if (isEdit) {
                       final res = await _service.updateBimbingan(
                         id: item.id,
-                        tanggal: tanggalCtrl.text.trim(),
+                        tanggal: formatDateApi(tanggalPilih),
                         progres: progresCtrl.text.trim(),
                         keterangan: keteranganCtrl.text.trim(),
                       );
@@ -1429,10 +1750,12 @@ class _SkripsiPageState extends State<SkripsiPage>
                         res['message'] ?? 'Catatan bimbingan berhasil diperbarui',
                       );
                     } else {
+                      final dosbim =
+                          dosbimList.isNotEmpty ? dosbimList[dosbimIndex] : null;
                       final res = await _service.submitBimbingan(
-                        tanggal: tanggalCtrl.text.trim(),
-                        idauto: _mainData?.idauto ?? '',
-                        nidn: _mainData?.nidn ?? '',
+                        tanggal: formatDateApi(tanggalPilih),
+                        idauto: dosbim?.idauto ?? _mainData?.idauto ?? '',
+                        nidn: dosbim?.nidn ?? _mainData?.nidn ?? '',
                         progres: progresCtrl.text.trim(),
                         keterangan: keteranganCtrl.text.trim(),
                       );
@@ -1454,6 +1777,7 @@ class _SkripsiPageState extends State<SkripsiPage>
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -1903,6 +2227,33 @@ class _SkripsiPageState extends State<SkripsiPage>
       ),
     );
   }
+}
+
+/// Satu entri daftar tab Bimbingan: judul kartu dosbim ([baris] == null)
+/// atau baris catatan bimbingan. Header dan baris menyatu dalam satu
+/// AppChunkedList supaya chunking tetap jalan.
+class _BimbinganEntri {
+  final String kunci;
+  final String? judul;
+  final SkripsiDosbim? dosbim;
+  final int jumlah;
+  final bool bisaDilipat;
+  final SkripsiBimbinganItem? baris;
+
+  const _BimbinganEntri.header({
+    required this.kunci,
+    required this.judul,
+    required this.dosbim,
+    required this.jumlah,
+    required this.bisaDilipat,
+  }) : baris = null;
+
+  const _BimbinganEntri.baris(SkripsiBimbinganItem this.baris)
+      : kunci = '',
+        judul = null,
+        dosbim = null,
+        jumlah = 0,
+        bisaDilipat = false;
 }
 
 class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {

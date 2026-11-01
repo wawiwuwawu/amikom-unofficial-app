@@ -202,6 +202,11 @@ class PusatStudiJoinedPageData {
   final bool canSubmitProposal;
   final String? idAjuan;
   final DetailPengajuanTema? detailPengajuan;
+  // Kontrak BE Nov 2026 §5 — null pada kondisi yang tidak memuatnya.
+  final String? id;
+  final String? pesanStatus;
+  final String? saranPusatStudi;
+  final String? linkPengisianProposal;
 
   PusatStudiJoinedPageData({
     this.infoBanner,
@@ -211,6 +216,10 @@ class PusatStudiJoinedPageData {
     required this.canSubmitProposal,
     this.idAjuan,
     this.detailPengajuan,
+    this.id,
+    this.pesanStatus,
+    this.saranPusatStudi,
+    this.linkPengisianProposal,
   });
 
   factory PusatStudiJoinedPageData.fromJson(Map<String, dynamic> json) {
@@ -229,6 +238,10 @@ class PusatStudiJoinedPageData {
       detailPengajuan: detailMap != null
           ? DetailPengajuanTema.fromJson(detailMap)
           : null,
+      id: json['id']?.toString(),
+      pesanStatus: json['pesan_status']?.toString(),
+      saranPusatStudi: json['saran_pusat_studi']?.toString(),
+      linkPengisianProposal: json['link_pengisian_proposal']?.toString(),
     );
   }
 }

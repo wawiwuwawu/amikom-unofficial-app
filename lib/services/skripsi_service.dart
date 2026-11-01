@@ -156,6 +156,15 @@ class SkripsiService {
         return ApiClient.mutationRoot(response.data);
       }, 'Gagal memperbarui catatan bimbingan');
 
+  // Endpoint baru BE Nov 2026: membungkus POST /skripsi/delete_bimbingan
+  // portal; :id = field id pada item daftar bimbingan.
+  Future<Map<String, dynamic>> hapusBimbingan(String id) =>
+      ApiClient.guard<Map<String, dynamic>>(() async {
+        final response =
+            await _dio.delete('/api/v1/skripsi/bimbingan/$id');
+        return ApiClient.mutationRoot(response.data);
+      }, 'Gagal menghapus catatan bimbingan');
+
   Future<String> downloadKartuBimbingan(String id) =>
       ApiClient.guard<String>(() async {
         // ponytail: centralized download dir via ApiClient
@@ -251,18 +260,18 @@ class SkripsiService {
       }, 'Gagal menghapus dokumen plagiarisme');
 
   // 6. Pasca Ujian (Update Judul & Link Berkas)
+  // npm diisi BE dari token login (kontrak BE Nov 2026 §4) — tak lagi
+  // dikirim dari klien.
   Future<Map<String, dynamic>> updateJudulSkripsi({
     required String judulId,
     required String judulEn,
   }) =>
       ApiClient.guard<Map<String, dynamic>>(() async {
-        final nim = ApiClient.instance.nim ?? '';
         final response = await _dio.put(
           '/api/v1/skripsi/judul',
           data: {
             'judul_skripsi_id': judulId,
             'judul_skripsi_en': judulEn,
-            'npm': nim,
           },
         );
         return ApiClient.mutationRoot(response.data);

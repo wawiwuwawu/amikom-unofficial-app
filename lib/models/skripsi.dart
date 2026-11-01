@@ -5,6 +5,12 @@ class SkripsiBimbinganItem {
   final String keterangan;
   final String? idauto;
   final String? nidn;
+  // Kontrak BE Nov 2026: daftar bimbingan kini mencakup SEMUA dosbim
+  // (array flat). Field null pada bentuk halaman lama.
+  final String? pembimbing;
+  final int? urutanPembimbing;
+  final String? status;
+  final String? komentar;
 
   SkripsiBimbinganItem({
     required this.id,
@@ -13,6 +19,10 @@ class SkripsiBimbinganItem {
     required this.keterangan,
     this.idauto,
     this.nidn,
+    this.pembimbing,
+    this.urutanPembimbing,
+    this.status,
+    this.komentar,
   });
 
   factory SkripsiBimbinganItem.fromJson(Map<String, dynamic> json) {
@@ -23,6 +33,12 @@ class SkripsiBimbinganItem {
       keterangan: json['keterangan']?.toString() ?? '',
       idauto: json['idauto']?.toString(),
       nidn: json['nidn']?.toString(),
+      pembimbing: json['pembimbing']?.toString(),
+      urutanPembimbing: json['urutan_pembimbing'] is int
+          ? json['urutan_pembimbing'] as int
+          : int.tryParse(json['urutan_pembimbing']?.toString() ?? ''),
+      status: json['status']?.toString(),
+      komentar: json['komentar']?.toString(),
     );
   }
 
@@ -33,7 +49,70 @@ class SkripsiBimbinganItem {
         'keterangan': keterangan,
         if (idauto != null) 'idauto': idauto,
         if (nidn != null) 'nidn': nidn,
+        if (pembimbing != null) 'pembimbing': pembimbing,
+        if (urutanPembimbing != null) 'urutan_pembimbing': urutanPembimbing,
+        if (status != null) 'status': status,
+        if (komentar != null) 'komentar': komentar,
       };
+}
+
+/// Metadata satu dosen pembimbing dari tab Kartu Bimbingan (kontrak BE
+/// Nov 2026 §1). Sumber `idauto`/`nidn` untuk form tambah bimbingan per
+/// dosbim — untuk dosbim kedua BE tidak menyediakannya di top-level.
+class SkripsiDosbim {
+  final int? urutan;
+  final String? label;
+  final String nama;
+  final String? idauto;
+  final String? nidn;
+  final String? pesanBimbingan;
+
+  SkripsiDosbim({
+    this.urutan,
+    this.label,
+    required this.nama,
+    this.idauto,
+    this.nidn,
+    this.pesanBimbingan,
+  });
+
+  factory SkripsiDosbim.fromJson(Map<String, dynamic> json) {
+    return SkripsiDosbim(
+      urutan: json['urutan'] is int
+          ? json['urutan'] as int
+          : int.tryParse(json['urutan']?.toString() ?? ''),
+      label: json['label']?.toString(),
+      nama: json['nama']?.toString() ?? '',
+      idauto: json['idauto']?.toString(),
+      nidn: json['nidn']?.toString(),
+      pesanBimbingan: json['pesan_bimbingan']?.toString(),
+    );
+  }
+}
+
+/// Status ajuan proposal dari kotak alert tab Proposal (kontrak BE
+/// Nov 2026 §1).
+class SkripsiStatusProposal {
+  final bool layak;
+  final String? pesan;
+  final String? komentarPusatStudi;
+  final String? reviewer;
+
+  SkripsiStatusProposal({
+    required this.layak,
+    this.pesan,
+    this.komentarPusatStudi,
+    this.reviewer,
+  });
+
+  factory SkripsiStatusProposal.fromJson(Map<String, dynamic> json) {
+    return SkripsiStatusProposal(
+      layak: json['layak'] == true,
+      pesan: json['pesan']?.toString(),
+      komentarPusatStudi: json['komentar_pusat_studi']?.toString(),
+      reviewer: json['reviewer']?.toString(),
+    );
+  }
 }
 
 class SkripsiMainData {
@@ -44,6 +123,11 @@ class SkripsiMainData {
   final String? idauto;
   final String? nidn;
   final List<SkripsiBimbinganItem> bimbingan;
+  // Kontrak BE Nov 2026 §1 — null/[] pada bentuk halaman lama.
+  final List<SkripsiDosbim> pembimbing;
+  final SkripsiStatusProposal? statusProposal;
+  final List<String> peringatanAccUjian;
+  final List<String> peringatanAccPlagiarisme;
 
   SkripsiMainData({
     required this.informasi,
@@ -53,6 +137,10 @@ class SkripsiMainData {
     this.idauto,
     this.nidn,
     required this.bimbingan,
+    this.pembimbing = const [],
+    this.statusProposal,
+    this.peringatanAccUjian = const [],
+    this.peringatanAccPlagiarisme = const [],
   });
 
   factory SkripsiMainData.fromJson(Map<String, dynamic> json) {
@@ -67,6 +155,23 @@ class SkripsiMainData {
               ?.map((e) => SkripsiBimbinganItem.fromJson(e))
               .toList() ??
           [],
+      pembimbing: (json['pembimbing'] as List?)
+              ?.map((e) => SkripsiDosbim.fromJson(e))
+              .toList() ??
+          [],
+      statusProposal: json['status_proposal'] is Map<String, dynamic>
+          ? SkripsiStatusProposal.fromJson(
+              json['status_proposal'] as Map<String, dynamic>)
+          : null,
+      peringatanAccUjian: (json['peringatan_acc_ujian'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      peringatanAccPlagiarisme:
+          (json['peringatan_acc_plagiarisme'] as List?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              [],
     );
   }
 }

@@ -6,6 +6,7 @@ import '../../models/pusat_studi.dart';
 import '../../services/pusat_studi_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_kit.dart';
+import '../skripsi_page.dart';
 import 'pusat_studi_detail_page.dart';
 
 class PusatStudiJoinedPage extends StatefulWidget {
@@ -336,6 +337,84 @@ class _PusatStudiJoinedPageState extends State<PusatStudiJoinedPage> {
     );
   }
 
+  /// Kontrak BE Nov 2026 §5: teks banner alert-success/alert-danger portal
+  /// (mis. "Pengajuan anda dengan Tema ... Diterima").
+  Widget _buildPesanStatusBanner() {
+    final pesan = _pageData?.pesanStatus;
+    if (pesan == null || pesan.isEmpty) return const SizedBox.shrink();
+
+    final status = _pageData?.statusCode.toLowerCase().trim() ?? '';
+    final AppSurfaceVariant variant;
+    final Color warna;
+    if (status == 'diterima' || status == 'acc') {
+      variant = AppSurfaceVariant.success;
+      warna = AppColors.success;
+    } else if (status == 'ditolak') {
+      variant = AppSurfaceVariant.danger;
+      warna = AppColors.danger;
+    } else {
+      variant = AppSurfaceVariant.plain;
+      warna = AppColors.primary;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: AppSurface(
+        variant: variant,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(CupertinoIcons.info_circle_fill, size: 20, color: warna),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(pesan, style: AppText.body.copyWith(color: warna)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Kontrak BE Nov 2026 §5: masukan dosen pengelola, tampil saat ajuan
+  /// sudah diproses.
+  Widget _buildSaranCard() {
+    final saran = _pageData?.saranPusatStudi;
+    if (saran == null || saran.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: AppSurface(
+        variant: AppSurfaceVariant.warning,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  CupertinoIcons.chat_bubble_text_fill,
+                  size: 20,
+                  color: AppColors.warning,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    'Saran Dari Pusat Studi',
+                    style: AppText.h3.copyWith(color: AppColors.warning),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              saran,
+              style: AppText.body.copyWith(color: AppColors.warning),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildRejectionAlert() {
     if (_pageData?.statusCode.toLowerCase().trim() != 'ditolak') return const SizedBox.shrink();
     final alasan = _pageData?.alasanDitolak;
@@ -448,13 +527,13 @@ class _PusatStudiJoinedPageState extends State<PusatStudiJoinedPage> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
+                  // Kontrak BE Nov 2026 §5: link_pengisian_proposal
+                  // menuju halaman /skripsi portal — padanan di app
+                  // adalah membuka halaman Skripsi sendiri.
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Status Ajuan Diterima! Silakan lanjutkan ke pengisian proposal skripsi.'),
-                        backgroundColor: AppColors.success,
-                      ),
-                    );
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => const SkripsiPage(),
+                    ));
                   },
                   icon: const Icon(CupertinoIcons.doc_text_fill, size: 18),
                   label: const Text('Pengisian Judul Proposal Skripsi'),
@@ -599,7 +678,9 @@ class _PusatStudiJoinedPageState extends State<PusatStudiJoinedPage> {
       ),
       children: [
         _buildInfoBanner(),
+        _buildPesanStatusBanner(),
         _buildRejectionAlert(),
+        _buildSaranCard(),
         _buildStatusCard(),
         if (_temaList.isEmpty)
           const AppEmptyState(
