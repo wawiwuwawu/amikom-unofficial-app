@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/dashboard.dart';
 import '../models/agenda_terpadu.dart';
 import '../models/sp.dart';
+import '../models/skripsi.dart';
 import '../services/absensi_service.dart';
 import '../services/agenda_cache_service.dart';
 import '../services/api_client.dart';
@@ -14,6 +15,7 @@ import '../services/akademik_service.dart';
 import '../services/event_diff_service.dart';
 import '../services/periode_service.dart';
 import '../services/periode_ujian_service.dart';
+import '../services/skripsi_service.dart';
 import '../services/sp_service.dart';
 import '../services/widget_jadwal_service.dart';
 import '../theme/app_theme.dart';
@@ -24,6 +26,7 @@ import 'absensi_page.dart';
 import 'jadwal_page.dart';
 import 'krs/krs_main_page.dart';
 import 'sp_page.dart';
+import 'skripsi_page.dart';
 import 'keuangan_page.dart';
 
 /// Beranda (Dashboard).
@@ -49,17 +52,19 @@ class _DashboardPageState extends State<DashboardPage> {
   final _spService = SpService();
   final _absensiService = AbsensiService();
   final _periodeService = PeriodeService();
+  final _skripsiService = SkripsiService();
 
   Dashboard? _data;
   AgendaTerpaduData? _agendaData;
   SpRekomendasiData? _spRekomendasiData;
+  SkripsiMainData? _skripsiData;
 
-  /// Banner rekomendasi SP sengaja ditutup user: tersembunyi selama
-  /// [_sembunyiSpSelama], setelah itu muncul lagi (event SP hanya sesekali —
-  /// antara UAS dan semester baru — jangan menagging tiap buka app).
-  static const _kunciSpDitutupAt = 'sp_rekomendasi_ditutup_at';
-  static const _sembunyiSpSelama = Duration(days: 30);
-  bool _spBannerDitutup = true;
+  /// Banner rekomendasi SP sengaja ditutup user: tersembunyi SELAMA ISInya
+  /// tak berubah (patokan isi, bukan timer — masukan user 2026-11-01:
+  /// "jangan diingatkan tiap bulan seperti spam"). Tanda tangan = daftar
+  /// kode MK + SKS; nilai baru masuk → isi beda → banner muncul lagi.
+  static const _kunciSpTutupIsi = 'sp_rekomendasi_ditutup_isi';
+  String? _spIsiDitutup;
 
   /// Banner "Periode KRS Dibuka" (dari GET /periode, kontrak BE §2.3).
   /// Ditutup per-PERIODE, bukan per-durasi: kunci rentang tanggal saat ditutup
@@ -67,6 +72,14 @@ class _DashboardPageState extends State<DashboardPage> {
   static const _kunciKrsDitutup = 'krs_banner_ditutup_periode';
   PeriodeKrsData? _periodeKrs;
   String? _krsDitutupPeriode;
+
+  /// Banner "belum pernah bimbingan" skripsi (pesan per dosbim dari
+  /// pembimbing[]). Ditutup sementara: sembunyi 30 hari — pesan ini
+  /// penting, jadi muncul lagi setelah sebulan (masukan user: jangan
+  /// membanjiri beranda).
+  static const _kunciBimbinganDitutupAt = 'bimbingan_banner_ditutup_at';
+  static const _sembunyiBimbinganSelama = Duration(days: 30);
+  bool _bimbinganBannerDitutup = true;
 
   /// Hasil cek "sudah presensi?" untuk kartu berjalan: null = sedang mengecek
   /// (tampilan sama seperti belum tahu — tombol tetap ada, tanpa spinner agar
@@ -125,27 +138,30 @@ class _DashboardPageState extends State<DashboardPage> {
       setState(() => _agendaData = cacheAgenda);
     }
 
-    // Keadaan tutup banner SP dibaca di awal _load (bukan sekali di initState)
+    // Keadaan tutup banner dibaca di awal _load (bukan sekali di initState)
     // supaya pull-to-refresh dan kembali dari halaman lain ikut menyegarkan.
     try {
       final prefs = await SharedPreferences.getInstance();
-      final ditutupAt = prefs.getInt(_kunciSpDitutupAt);
+      final spIsiDitutup = prefs.getString(_kunciSpTutupIsi);
       final krsDitutup = prefs.getString(_kunciKrsDitutup);
+      final bimbinganDitutupAt = prefs.getInt(_kunciBimbinganDitutupAt);
       if (!mounted) return;
       setState(() {
-        _spBannerDitutup = ditutupAt != null &&
-            DateTime.now().difference(
-                  DateTime.fromMillisecondsSinceEpoch(ditutupAt),
-                ) <
-                _sembunyiSpSelama;
+        _spIsiDitutup = spIsiDitutup;
         _krsDitutupPeriode = krsDitutup;
+        _bimbinganBannerDitutup = bimbinganDitutupAt != null &&
+            DateTime.now().difference(
+                  DateTime.fromMillisecondsSinceEpoch(bimbinganDitutupAt),
+                ) <
+                _sembunyiBimbinganSelama;
       });
     } catch (_) {
       // Gagal baca pref → banner tampil (default informatif).
       if (mounted) {
         setState(() {
-          _spBannerDitutup = false;
+          _spIsiDitutup = null;
           _krsDitutupPeriode = null;
+          _bimbinganBannerDitutup = false;
         });
       }
     }
@@ -176,6 +192,13 @@ class _DashboardPageState extends State<DashboardPage> {
             .getPeriodeKrs()
             .then<PeriodeKrsData?>((v) => v)
             .catchError((_) => null),
+        // Info bimbingan skripsi untuk banner "belum pernah bimbingan"
+        // (masukan user 2026-11-01). Gagal / belum relevan → null → banner
+        // tidak tampil (fail-open).
+        _skripsiService
+            .getMainInfo()
+            .then<SkripsiMainData?>((v) => v)
+            .catchError((_) => null),
       ]);
       if (!mounted) return;
       final agenda = agendaGagal ? null : results[1] as AgendaTerpaduData;
@@ -183,6 +206,7 @@ class _DashboardPageState extends State<DashboardPage> {
         _data = results[0] as Dashboard;
         _spRekomendasiData = results[2] as SpRekomendasiData;
         _periodeKrs = results[3] as PeriodeKrsData?;
+        _skripsiData = results[4] as SkripsiMainData?;
         _error = null;
         if (agenda != null) {
           _agendaData = agenda;
@@ -258,12 +282,18 @@ class _DashboardPageState extends State<DashboardPage> {
     }
 
     final perluBayar = d.status.status != 'Aktif' || d.status.status.isEmpty;
-    final adaSp =
-        !_spBannerDitutup && (_spRekomendasiData?.hasRekomendasi ?? false);
+    // Patokan tutup banner SP = ISI rekomendasi (kode MK + SKS): tertutup
+    // selama isi sama, muncul lagi begitu ada nilai baru yang mengubah
+    // daftar — bukan timer bulanan (masukan user 2026-11-01).
+    final adaSp = (_spRekomendasiData?.hasRekomendasi ?? false) &&
+        _spRekomendasiData!.totalRekomendasi > 0 &&
+        _spIsiDitutup != _spIsiSignature(_spRekomendasiData!);
     final krs = _periodeKrs;
     final adaKrs = krs != null &&
         krs.dibuka &&
         _krsDitutupPeriode != krs.kunci;
+    final pesanBimbingan = _pesanBimbingan();
+    final adaBimbingan = !_bimbinganBannerDitutup && pesanBimbingan.isNotEmpty;
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -289,6 +319,10 @@ class _DashboardPageState extends State<DashboardPage> {
             _buildSpRekomendasiBanner(
               _spRekomendasiData!,
             ).animate().fadeIn(delay: 120.ms),
+          ],
+          if (adaBimbingan) ...[
+            const SizedBox(height: AppSpacing.lg),
+            _buildBimbinganBanner(pesanBimbingan).animate().fadeIn(delay: 110.ms),
           ],
           if (adaKrs) ...[
             const SizedBox(height: AppSpacing.lg),
@@ -736,6 +770,17 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // ── Banner rekomendasi Semester Pendek ────────────────────────────────────
 
+  /// Tanda tangan isi rekomendasi SP: daftar "kode:SKS" terurut. Dipakai
+  /// sebagai patokan tutup banner — tertutup selama isi sama; nilai baru
+  /// yang mengubah daftar membuat banner muncul lagi (bukan timer bulanan).
+  String _spIsiSignature(SpRekomendasiData rekomendasi) {
+    final baris = [
+      ...rekomendasi.kategoriSangatDianjurkan,
+      ...rekomendasi.kategoriOpsionalSksBesar,
+    ].map((e) => '${e.kode}:${e.sks}').toList()..sort();
+    return baris.join('|');
+  }
+
   Widget _buildSpRekomendasiBanner(SpRekomendasiData rekomendasi) {
     return AppSurface(
       variant: AppSurfaceVariant.warning,
@@ -790,6 +835,81 @@ class _DashboardPageState extends State<DashboardPage> {
                 size: 18,
               ),
               label: const Text('Lihat Rekomendasi'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Banner Bimbingan Skripsi ──────────────────────────────────────────────
+
+  /// Pesan "belum pernah bimbingan" per dosbim dari `pembimbing[]`
+  /// (kontrak BE Skripsi Nov 2026 §1). Kosong bila belum relevan (dospem
+  /// belum ada / semua sudah pernah bimbingan).
+  List<String> _pesanBimbingan() {
+    final skripsi = _skripsiData;
+    if (skripsi == null || !skripsi.dospemAssigned) return const [];
+    return [
+      for (final d in skripsi.pembimbing)
+        if (d.pesanBimbingan != null && d.pesanBimbingan!.isNotEmpty)
+          '${(d.label != null && d.label!.isNotEmpty) ? '${d.label} — ' : ''}'
+              '${d.nama}: ${d.pesanBimbingan}',
+    ];
+  }
+
+  Widget _buildBimbinganBanner(List<String> pesan) {
+    return AppSurface(
+      variant: AppSurfaceVariant.warning,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                CupertinoIcons.book_circle_fill,
+                size: 18,
+                color: AppColors.warning,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Bimbingan Skripsi',
+                  style: AppText.h3.copyWith(color: AppColors.warning),
+                ),
+              ),
+              // Tutup manual: banner sembunyi 30 hari lalu muncul lagi —
+              // pengingat bimbingan penting, tapi jangan membanjiri beranda.
+              GestureDetector(
+                onTap: _tutupBimbinganBanner,
+                behavior: HitTestBehavior.opaque,
+                child: const Padding(
+                  padding: EdgeInsets.all(AppSpacing.xs),
+                  child: Icon(
+                    CupertinoIcons.xmark,
+                    size: 16,
+                    color: AppColors.warning,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          for (final p in pesan)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: Text(p, style: AppText.bodySm),
+            ),
+          const SizedBox(height: AppSpacing.md),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _push(const SkripsiPage()),
+              icon: const Icon(
+                CupertinoIcons.arrow_right_circle_fill,
+                size: 18,
+              ),
+              label: const Text('Buka Kartu Bimbingan'),
             ),
           ),
         ],
@@ -868,14 +988,27 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // ── Utilitas ──────────────────────────────────────────────────────────────
 
-  /// Tutup banner rekomendasi SP + catat waktunya (sembunyi 30 hari).
-  /// Persist gagal dibiarkan fail-open: banner cuma muncul lagi lebih cepat.
+  /// Tutup banner rekomendasi SP + catat ISI-nya. Banner tetap tersembunyi
+  /// selama isi rekomendasi sama; begitu nilai baru mengubah daftar
+  /// (tanda tangan beda), banner muncul lagi. Persist gagal dibiarkan
+  /// fail-open: banner cuma muncul lagi lebih cepat.
   Future<void> _tutupSpBanner() async {
-    setState(() => _spBannerDitutup = true);
+    final isi = _spIsiSignature(_spRekomendasiData!);
+    setState(() => _spIsiDitutup = isi);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kunciSpTutupIsi, isi);
+    } catch (_) {}
+  }
+
+  /// Tutup banner bimbingan skripsi + catat waktunya (sembunyi 30 hari).
+  /// Persist gagal dibiarkan fail-open: banner cuma muncul lagi lebih cepat.
+  Future<void> _tutupBimbinganBanner() async {
+    setState(() => _bimbinganBannerDitutup = true);
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(
-        _kunciSpDitutupAt,
+        _kunciBimbinganDitutupAt,
         DateTime.now().millisecondsSinceEpoch,
       );
     } catch (_) {}
@@ -898,3 +1031,4 @@ class _DashboardPageState extends State<DashboardPage> {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 }
+

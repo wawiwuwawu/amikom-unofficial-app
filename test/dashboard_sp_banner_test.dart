@@ -1,7 +1,8 @@
 // Regresi banner rekomendasi Semester Pendek di Beranda: bisa ditutup manual
-// (tombol X), tetap tersembunyi setelah app dibuka ulang selama 30 hari, lalu
-// muncul kembali setelah rentang itu. Event SP hanya sesekali (antara UAS dan
-// semester baru) — jangan menagging tiap buka app.
+// (tombol X), tetap tersembunyi SELAMA isi rekomendasi tidak berubah, dan
+// muncul kembali begitu isi berubah (nilai baru masuk). Patokan ISI, bukan
+// timer bulanan — menagging tiap bulan terasa seperti spam (masukan user
+// 2026-11-01).
 // Pola FakeAdapter seperti test/dashboard_presensi_tercatat_test.dart.
 
 import 'dart:convert';
@@ -18,7 +19,37 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const _kunciSpDitutupAt = 'sp_rekomendasi_ditutup_at';
+const _kunciSpDitutupIsi = 'sp_rekomendasi_ditutup_isi';
+
+/// Tanda tangan isi yang dihitung DashboardPage: "kode:SKS" terurut digabung
+/// '|'. Harus konsisten dengan _spIsiSignature di dashboard_page.dart.
+String _signature(List<Map<String, Object>> dianjurkan,
+    [List<Map<String, Object>> opsional = const []]) {
+  final baris = [
+    for (final e in [...dianjurkan, ...opsional]) '${e['kode']}:${e['sks']}',
+  ]..sort();
+  return baris.join('|');
+}
+
+const _mkDianjurkan = [
+  {
+    'kode': 'TIF3204',
+    'mkl': 'Kecerdasan Buatan',
+    'sks': 3,
+    'nilai_sebelumnya': 'C-',
+    'alasan': 'Nilai di bawah standar kelulusan',
+  },
+];
+
+const _mkOpsional = [
+  {
+    'kode': 'TIF2201',
+    'mkl': 'Sistem Digital',
+    'sks': 2,
+    'nilai_sebelumnya': 'C',
+    'alasan': 'Beban SKS besar',
+  },
+];
 
 class _SpBannerAdapter implements HttpClientAdapter {
   @override
@@ -63,13 +94,14 @@ class _SpBannerAdapter implements HttpClientAdapter {
         'has_rekomendasi': true,
         'warning_message': 'Kamu disarankan mengambil SP.',
         'total_rekomendasi': 2,
-        'total_sks': 6,
-        'kategori_sangat_dianjurkan': [],
-        'kategori_opsional_sks_besar': [],
+        'total_sks': 5,
+        'kategori_sangat_dianjurkan': _mkDianjurkan,
+        'kategori_opsional_sks_besar': _mkOpsional,
       });
     }
 
-    // Endpoint lain (absensi, notifikasi, pembaruan) dianggap mati di test.
+    // Endpoint lain (skripsi, absensi, notifikasi, pembaruan) dianggap
+    // mati di test — dashboard fail-open (banner terkait tidak tampil).
     throw DioException(
       requestOptions: options,
       type: DioExceptionType.connectionError,
@@ -86,12 +118,6 @@ Future<void> pumpDashboard(WidgetTester tester) async {
     MaterialApp(theme: AppTheme.light(), home: const DashboardPage()),
   );
   await tester.pumpAndSettle(const Duration(seconds: 1));
-}
-
-Future<void> setDitutupPada(DateTime waktu) async {
-  SharedPreferences.setMockInitialValues({
-    _kunciSpDitutupAt: waktu.millisecondsSinceEpoch,
-  });
 }
 
 void main() {
@@ -113,9 +139,8 @@ void main() {
     expect(find.byIcon(CupertinoIcons.xmark), findsOneWidget);
   });
 
-  testWidgets('tutup manual → banner hilang + waktu tersimpan di prefs', (
-    tester,
-  ) async {
+  testWidgets('tutup manual → banner hilang + ISI rekomendasi tersimpan di prefs',
+      (tester) async {
     await pumpDashboard(tester);
 
     await tester.tap(find.byIcon(CupertinoIcons.xmark));
@@ -124,27 +149,27 @@ void main() {
     expect(find.text('Rekomendasi Semester Pendek'), findsNothing);
 
     final prefs = await SharedPreferences.getInstance();
-    final ditutupAt = prefs.getInt(_kunciSpDitutupAt);
-    expect(ditutupAt, isNotNull);
-    expect(
-      DateTime.now()
-          .difference(DateTime.fromMillisecondsSinceEpoch(ditutupAt!))
-          .inSeconds,
-      lessThan(60),
-    );
+    expect(prefs.getString(_kunciSpDitutupIsi),
+        _signature(_mkDianjurkan, _mkOpsional));
   });
 
-  testWidgets('sudah ditutup < 30 hari → tetap tersembunyi saat app dibuka ulang',
+  testWidgets('isi rekomendasi sama → tetap tersembunyi saat app dibuka ulang',
       (tester) async {
-    await setDitutupPada(DateTime.now().subtract(const Duration(days: 5)));
+    SharedPreferences.setMockInitialValues({
+      _kunciSpDitutupIsi: _signature(_mkDianjurkan, _mkOpsional),
+    });
     await pumpDashboard(tester);
 
     expect(tester.takeException(), isNull);
     expect(find.text('Rekomendasi Semester Pendek'), findsNothing);
   });
 
-  testWidgets('sudah lewat 30 hari → banner muncul lagi', (tester) async {
-    await setDitutupPada(DateTime.now().subtract(const Duration(days: 31)));
+  testWidgets('isi rekomendasi berubah (nilai baru masuk) → banner muncul lagi',
+      (tester) async {
+    // Daftar lama yang pernah ditutup — kini ada MK baru di rekomendasi.
+    SharedPreferences.setMockInitialValues({
+      _kunciSpDitutupIsi: _signature(_mkDianjurkan),
+    });
     await pumpDashboard(tester);
 
     expect(tester.takeException(), isNull);
