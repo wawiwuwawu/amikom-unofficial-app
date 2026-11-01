@@ -312,15 +312,23 @@ class SkkmPoinInfo {
   final int estimasiPoinSkkm;
   final String description;
 
+  /// Asal angka poin (kontrak BE 2026-11-01 §4.2):
+  ///  * `portal-skkm`      → poin valid ASLI dari halaman SKKM;
+  ///  * `estimasi-berkas`  → fallback tebakan 25×berkas (SKKM gagal dibaca);
+  ///  * `tidak-berlaku`    → angkatan < 2024, SKKM tidak berlaku.
+  final String sumber;
+
   SkkmPoinInfo({
     required this.estimasiPoinSkkm,
     required this.description,
+    required this.sumber,
   });
 
   factory SkkmPoinInfo.fromJson(Map<String, dynamic> json) {
     return SkkmPoinInfo(
       estimasiPoinSkkm: int.tryParse(json['estimasi_poin_skkm']?.toString() ?? '0') ?? 0,
       description: json['description']?.toString() ?? '',
+      sumber: json['sumber']?.toString() ?? 'estimasi-berkas',
     );
   }
 }

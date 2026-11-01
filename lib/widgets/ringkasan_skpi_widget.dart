@@ -16,8 +16,20 @@ class RingkasanSkpiWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final isEligible = data.isSkpiEligible;
     final poin = data.skkmPoinInfo.estimasiPoinSkkm;
-    final pct = (poin / 100.0).clamp(0.0, 1.0);
+    // Kontrak BE §4.2: `sumber` menandai asal angka poin. Saat portal-skkm
+    // poin itu ASLI (bukan estimasi) — label ikut diperjelas. Saat
+    // tidak-berlaku (angkatan < 2024) bar 0/100 justru menyesatkan.
+    final poinAsli = data.skkmPoinInfo.sumber == 'portal-skkm';
+    final tidakBerlaku = data.skkmPoinInfo.sumber == 'tidak-berlaku';
+    final pct = tidakBerlaku ? 0.0 : (poin / 100.0).clamp(0.0, 1.0);
     final accent = isEligible ? AppColors.success : AppColors.warning;
+    final pillText = isEligible
+        ? 'LULUS SKPI'
+        : tidakBerlaku
+            ? 'SKKM TIDAK BERLAKU'
+            : poinAsli
+                ? '$poin / 100 POIN (VALID)'
+                : '$poin / 100 POIN';
 
     return AppSurface(
       radius: AppRadius.lg,
@@ -61,24 +73,27 @@ class RingkasanSkpiWidget extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               AppPill(
-                isEligible ? 'LULUS SKPI' : '$poin / 100 POIN',
+                pillText,
                 tone: isEligible ? AppPillTone.success : AppPillTone.warning,
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
 
-          // Progress Bar SKKM
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            child: LinearProgressIndicator(
-              value: pct,
-              minHeight: 10,
-              backgroundColor: AppColors.surfaceMuted,
-              valueColor: AlwaysStoppedAnimation<Color>(accent),
+          // Progress Bar SKKM — disembunyikan saat SKKM tidak berlaku
+          // (angkatan < 2024), supaya tidak tampil bar 0/100 menyesatkan.
+          if (!tidakBerlaku) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              child: LinearProgressIndicator(
+                value: pct,
+                minHeight: 10,
+                backgroundColor: AppColors.surfaceMuted,
+                valueColor: AlwaysStoppedAnimation<Color>(accent),
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.sm),
+          ],
           Text(
             data.skkmPoinInfo.description,
             style: AppText.bodySm.copyWith(color: AppColors.textSecondary),
