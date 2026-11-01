@@ -5,6 +5,7 @@ import 'package:open_filex/open_filex.dart';
 import '../services/akademik_service.dart';
 import '../models/jadwal_ujian.dart';
 import '../theme/app_theme.dart';
+import '../utils/waktu.dart';
 import '../widgets/app_kit.dart';
 import '../models/app_failure.dart';
 
@@ -88,17 +89,22 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
   }
 
   Future<void> _addToGoogleCalendar(JadwalUjian jadwal) async {
-    // TANGGAL format: "08-07-2026"
-    final parts = jadwal.tanggal.split('-');
-    if (parts.length != 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Format tanggal tidak valid')),
-      );
+    // TANGGAL kini yyyy-MM-dd (BE menyeragamkan); format warisan
+    // dd-MM-yyyy tetap diterima lewat tanggalDariPortal.
+    final dt = tanggalDariPortal(jadwal.tanggal);
+    if (dt == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tanggal ujian belum tersedia')),
+        );
+      }
       return;
     }
 
     // YYYYMMDD
-    final dateStr = '${parts[2]}${parts[1]}${parts[0]}';
+    final dateStr = '${dt.year.toString().padLeft(4, '0')}'
+        '${dt.month.toString().padLeft(2, '0')}'
+        '${dt.day.toString().padLeft(2, '0')}';
     final startTimeStr = jadwal.jamMulai.replaceAll(':', '');
     final endTimeStr = jadwal.jamSelesai.replaceAll(':', '');
 
@@ -316,10 +322,15 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
 
   /// Satu baris ujian — ringkas seperti tabel: tanggal · mata kuliah · jam ·
   /// ruang · kursi, plus aksi tambah ke kalender.
+  ///
+  /// Tanggal diparse lewat [tanggalDariPortal] yang menerima format baru
+  /// `yyyy-MM-dd` (TANGGAL dari BE) sekaligus format warisan `dd-MM-yyyy`
+  /// (TGL_UJIAN). Dulu halaman mengasumsikan dd-MM-yyyy, sehingga dengan
+  /// format baru kotak depan menampilkan TAHUN ("2026") sebagai angka hari —
+  /// itulah "jadwal UTS tidak ada tanggalnya" yang dilaporkan.
   Widget _buildJadwalRow(JadwalUjian jadwal) {
-    final parts = jadwal.tanggal.split('-');
-    final tanggal = parts.isNotEmpty ? parts[0] : jadwal.tanggal;
-    final bulan = parts.length > 1 ? parts[1] : '';
+    final dt = tanggalDariPortal(jadwal.tanggal);
+    final tanggalIndo = dt != null ? formatTanggalIndo(dt) : null;
 
     return AppListRow(
       leading: Container(
@@ -327,27 +338,36 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
         height: 50,
         alignment: Alignment.center,
         decoration: AppDeco.softPrimary(radius: AppRadius.sm),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              tanggal,
-              style: AppText.h3.copyWith(
-                color: AppColors.primary,
-                fontSize: 18,
+        child: dt == null
+            // Tanpa tanggal valid → tanda tanya, bukan angka menyesatkan.
+            ? Text(
+                '?',
+                style: AppText.h3.copyWith(
+                  color: AppColors.primary,
+                  fontSize: 18,
+                ),
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${dt.day}',
+                    style: AppText.h3.copyWith(
+                      color: AppColors.primary,
+                      fontSize: 18,
+                    ),
+                  ),
+                  Text(
+                    _bulanPendek(dt.month),
+                    style: AppText.label.copyWith(color: AppColors.primarySoft),
+                  ),
+                ],
               ),
-            ),
-            if (bulan.isNotEmpty)
-              Text(
-                bulan,
-                style: AppText.label.copyWith(color: AppColors.primarySoft),
-              ),
-          ],
-        ),
       ),
       title: jadwal.mkl,
-      subtitle: '${jadwal.kode} • ${jadwal.hari}\n'
+      subtitle: '${jadwal.kode} • ${jadwal.hari}'
+          '${tanggalIndo != null ? ' • $tanggalIndo' : ''}\n'
           '${_jamRange(jadwal)} • ${jadwal.ruang} • Kursi ${jadwal.noKursi}',
       trailing: IconButton(
         tooltip: 'Ingatkan di Kalender',
@@ -360,6 +380,22 @@ class _JadwalUjianPageState extends State<JadwalUjianPage> {
       ),
     );
   }
+
+  /// Nama bulan pendek untuk kotak tanggal (cukup 3 huruf agar muat 50 px).
+  String _bulanPendek(int bulan) => const [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'Mei',
+        'Jun',
+        'Jul',
+        'Agu',
+        'Sep',
+        'Okt',
+        'Nov',
+        'Des',
+      ][bulan - 1];
 
   /// Rentang jam "HH:mm - HH:mm" (aman bila string jam lebih pendek).
   String _jamRange(JadwalUjian jadwal) {

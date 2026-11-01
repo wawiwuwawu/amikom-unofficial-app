@@ -106,4 +106,39 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Coba lagi'), findsOneWidget);
   });
+
+  testWidgets('tanggal format baru yyyy-MM-dd → hari + bulan tampil benar',
+      (tester) async {
+    // Format TANGGAL baru dari BE. Dulu halaman mem-parse dd-MM-yyyy sehingga
+    // kotak depan menampilkan TAHUN "2026" sebagai angka hari.
+    await pumpUjian(tester, [
+      {..._barisUjian(), 'TANGGAL': '2026-11-08', 'HARI': 'Minggu'},
+    ]);
+
+    expect(tester.takeException(), isNull);
+    // Kotak depan: angka hari + bulan pendek.
+    expect(find.text('8'), findsOneWidget);
+    expect(find.text('Nov'), findsOneWidget);
+    // Subtitle memuat tanggal lengkap Indonesia.
+    expect(find.textContaining('8 November 2026'), findsOneWidget);
+  });
+
+  testWidgets('tanggal format warisan dd-MM-yyyy tetap terbaca', (tester) async {
+    await pumpUjian(tester, [_barisUjian()]);
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('8'), findsOneWidget);
+    expect(find.text('Jul'), findsOneWidget);
+    expect(find.textContaining('8 Juli 2026'), findsOneWidget);
+  });
+
+  testWidgets('tanggal rusak/kosong → tanda tanya, bukan angka menyesatkan',
+      (tester) async {
+    await pumpUjian(tester, [
+      {..._barisUjian(), 'TANGGAL': ''},
+    ]);
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('?'), findsOneWidget);
+  });
 }
