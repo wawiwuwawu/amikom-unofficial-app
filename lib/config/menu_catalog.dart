@@ -26,6 +26,7 @@ import '../pages/seminar_page.dart';
 import '../pages/seminar_workshop_page.dart';
 import '../pages/sertifikasi_page.dart';
 import '../pages/skmk_page.dart';
+import '../pages/skkm_page.dart';
 import '../pages/skripsi_page.dart';
 import '../pages/sp_page.dart';
 import '../pages/surat_tugas_page.dart';
@@ -35,51 +36,69 @@ import '../pages/ujian_susulan_page.dart';
 import '../pages/visi_misi_institusi_page.dart';
 import '../pages/visi_misi_page.dart';
 
-/// ─────────────────────────────────────────────────────────────────────────────
-/// KATALOG MENU — sumber tunggal untuk seluruh daftar menu aplikasi.
-///
-/// Dipakai oleh:
-///   * Tab "Menu"  → menampilkan SEMUA menu dikelompokkan per frekuensi
-///                   pemakaian (paling sering → paling jarang).
-///   * Drawer      → pintasan untuk hal yang jarang dibuka TAPI perlu cepat
-///                   ditemukan (pengumuman, berita, panduan, tata krama, dll).
-///   * Pencarian   → mencari menu berdasarkan judul/kata kunci.
-///
-/// Menambah menu baru = cukup tambah satu entri di sini; tab Menu dan Drawer
-/// otomatis ikut terbarui (dulu ada dua daftar terpisah yang harus disinkronkan
-/// manual — sumber bug).
-/// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// KATALOG MENU — sumber tunggal untuk seluruh daftar menu aplikasi.
+//
+// Dipakai oleh:
+//   * Tab "Menu"  → menampilkan SEMUA menu dikelompokkan per KATEGORI
+//                   (mengikuti pengelompokan layanan di web mahasiswa),
+//                   dengan urutan kelompok dari yang paling sering diakses.
+//   * Drawer      → pintasan untuk hal yang jarang dibuka TAPI perlu cepat
+//                   ditemukan (pengumuman, berita, panduan, tata krama, dll).
+//   * Pencarian   → mencari menu berdasarkan judul/kata kunci.
+//
+// Menambah menu baru = cukup tambah satu entri di sini; tab Menu dan Drawer
+// otomatis ikut terbarui (dulu ada dua daftar terpisah yang harus disinkronkan
+// manual — sumber bug).
+//
+// Urutan BARIS di dalam satu kelompok sengaja dipertahankan apa adanya
+// (tidak diurut abjad) — urutannya keputusan desain: yang paling sering
+// dipakai lebih dulu. Jangan tambahkan sort di [byCategory].
+// ─────────────────────────────────────────────────────────────────────────────
 
-/// Seberapa sering mahasiswa membuka menu ini.
-/// Urutan enum = urutan tampil (paling sering lebih dulu).
-enum MenuFrequency {
-  /// Dibuka hampir setiap hari (mis. presensi, jadwal).
-  harian,
+/// Kategori menu, mengikuti pengelompokan layanan di web mahasiswa.
+/// Urutan enum = urutan tampil di tab Menu (paling sering diakses lebih dulu).
+enum MenuCategory {
+  /// Pengumuman Akademik, Berita Kampus, Panduan Akademik, Notifikasi.
+  pengumumanBerita,
 
-  /// Dibuka berkala: mingguan / bulanan (mis. nilai, tagihan, pengumuman).
-  berkala,
+  /// Jadwal, presensi, KRS, agenda, asisten praktikum.
+  akademik,
 
-  /// Dibuka per semester / saat periode tertentu (mis. KRS, surat, MBKM).
-  semesteran,
+  /// KHS, rincian nilai, transkrip.
+  nilai,
 
-  /// Jarang dibuka, umumnya sekali atau insidental (mis. visi misi, penafian).
-  insidental,
+  /// Skripsi, MBKM, PKL, pusat studi.
+  tugasAkhirProgram,
+
+  /// Surat keterangan, surat tugas, SP, ujian susulan, izin penelitian.
+  pengajuanSurat,
+
+  /// Prestasi, sertifikasi, rekognisi, seminar & workshop, organisasi —
+  /// nanti SKKM juga masuk sini.
+  aktivitasMahasiswa,
+
+  /// Tagihan & riwayat pembayaran.
+  keuangan,
+
+  /// Tata krama, visi & misi.
+  informasiUmum,
+
+  /// Sisanya yang tidak masuk kategori lain.
+  lainnya,
 }
 
-extension MenuFrequencyX on MenuFrequency {
+extension MenuCategoryX on MenuCategory {
   String get label => switch (this) {
-        MenuFrequency.harian => 'Sering Digunakan',
-        MenuFrequency.berkala => 'Berkala',
-        MenuFrequency.semesteran => 'Per Semester',
-        MenuFrequency.insidental => 'Jarang Dibuka',
-      };
-
-  /// Keterangan singkat di bawah judul kelompok.
-  String get hint => switch (this) {
-        MenuFrequency.harian => 'Dibuka hampir tiap hari',
-        MenuFrequency.berkala => 'Mingguan atau bulanan',
-        MenuFrequency.semesteran => 'Saat periode akademik tertentu',
-        MenuFrequency.insidental => 'Sesekali — penting tapi jarang',
+        MenuCategory.pengumumanBerita => 'Pengumuman & Berita',
+        MenuCategory.akademik => 'Akademik',
+        MenuCategory.nilai => 'Nilai',
+        MenuCategory.tugasAkhirProgram => 'Tugas Akhir & Program',
+        MenuCategory.pengajuanSurat => 'Pengajuan & Surat',
+        MenuCategory.aktivitasMahasiswa => 'Aktivitas Mahasiswa',
+        MenuCategory.keuangan => 'Keuangan',
+        MenuCategory.informasiUmum => 'Informasi Umum',
+        MenuCategory.lainnya => 'Lainnya',
       };
 }
 
@@ -88,7 +107,7 @@ class MenuEntry {
   final String title;
   final String description;
   final IconData icon;
-  final MenuFrequency frequency;
+  final MenuCategory category;
 
   /// Membangun halaman tujuan. `ctx` dipakai untuk tombol kembali.
   final Widget Function(BuildContext ctx) build;
@@ -97,7 +116,7 @@ class MenuEntry {
     required this.title,
     required this.description,
     required this.icon,
-    required this.frequency,
+    required this.category,
     required this.build,
   });
 
@@ -111,269 +130,283 @@ class MenuEntry {
 }
 
 abstract final class MenuCatalog {
-  /// SEMUA menu aplikasi, diurutkan per frekuensi lalu abjad.
+  /// SEMUA menu aplikasi, diurutkan per kategori lalu urutan pakai.
   static final List<MenuEntry> all = [
-    // ── Sering digunakan (harian) ────────────────────────────────────────────
+    // ── Pengumuman & Berita ─────────────────────────────────────────────────
+    MenuEntry(
+      title: 'Pengumuman Akademik',
+      description: 'Pengumuman resmi dari bagian akademik',
+      icon: CupertinoIcons.speaker_2_fill,
+      category: MenuCategory.pengumumanBerita,
+      build: (ctx) => const PengumumanListPage(),
+    ),
+    MenuEntry(
+      title: 'Berita Kampus',
+      description: 'Kabar dan kegiatan terbaru kampus',
+      icon: CupertinoIcons.news_solid,
+      category: MenuCategory.pengumumanBerita,
+      build: (ctx) => const BeritaListPage(),
+    ),
+    MenuEntry(
+      title: 'Panduan Akademik',
+      description: 'Buku panduan dan aturan akademik',
+      icon: CupertinoIcons.book,
+      category: MenuCategory.pengumumanBerita,
+      build: (ctx) => const PanduanListPage(),
+    ),
+    MenuEntry(
+      title: 'Notifikasi',
+      description: 'Pemberitahuan pribadi & status baca',
+      icon: CupertinoIcons.bell_fill,
+      category: MenuCategory.pengumumanBerita,
+      build: (ctx) => NotifikasiListPage(),
+    ),
+
+    // ── Akademik ────────────────────────────────────────────────────────────
     MenuEntry(
       title: 'Presensi',
       description: 'Absen kehadiran kuliah dengan QR',
       icon: CupertinoIcons.qrcode_viewfinder,
-      frequency: MenuFrequency.harian,
+      category: MenuCategory.akademik,
       build: (ctx) => AbsensiPage(),
     ),
     MenuEntry(
       title: 'Jadwal Kuliah',
       description: 'Jadwal kuliah hari ini & minggu ini',
       icon: CupertinoIcons.time,
-      frequency: MenuFrequency.harian,
+      category: MenuCategory.akademik,
       build: (ctx) => const JadwalPage(),
     ),
+    MenuEntry(
+      title: 'Jadwal Ujian',
+      description: 'Jadwal UTS, UAS, dan ujian susulan',
+      icon: CupertinoIcons.check_mark_circled,
+      category: MenuCategory.akademik,
+      build: (ctx) => JadwalUjianPage(),
+    ),
+    MenuEntry(
+      title: 'Jadwal Seminar',
+      description: 'Jadwal seminar proposal dan hasil',
+      icon: CupertinoIcons.person_3_fill,
+      category: MenuCategory.akademik,
+      build: (ctx) => SeminarPage(),
+    ),
+    MenuEntry(
+      title: 'Agenda Akademik',
+      description: 'Kalender kegiatan akademik kampus',
+      icon: CupertinoIcons.calendar,
+      category: MenuCategory.akademik,
+      build: (ctx) => AgendaAkademikPage(),
+    ),
+    MenuEntry(
+      title: 'KRS Online',
+      description: 'Isi dan lihat kartu rencana studi',
+      icon: CupertinoIcons.doc_text_search,
+      category: MenuCategory.akademik,
+      build: (ctx) => KrsMainPage(),
+    ),
+    MenuEntry(
+      title: 'Asisten Praktikum',
+      description: 'Pendaftaran dan penilaian asisten',
+      icon: CupertinoIcons.briefcase,
+      category: MenuCategory.akademik,
+      build: (ctx) => AsistenPage(),
+    ),
 
-    // ── Berkala (mingguan / bulanan) ─────────────────────────────────────────
+    // ── Nilai ───────────────────────────────────────────────────────────────
     MenuEntry(
       title: 'Nilai & KHS',
       description: 'Kartu hasil studi per semester',
       icon: CupertinoIcons.rosette,
-      frequency: MenuFrequency.berkala,
+      category: MenuCategory.nilai,
       build: (ctx) => const KhsPage(),
     ),
     MenuEntry(
       title: 'Rincian Nilai',
       description: 'Rincian komponen penilaian tiap mata kuliah',
       icon: CupertinoIcons.chart_bar_alt_fill,
-      frequency: MenuFrequency.berkala,
+      category: MenuCategory.nilai,
       build: (ctx) => NilaiRincianPage(),
     ),
     MenuEntry(
       title: 'Transkrip Nilai',
       description: 'Rekap nilai seluruh semester & IPK',
       icon: CupertinoIcons.doc_text_fill,
-      frequency: MenuFrequency.berkala,
+      category: MenuCategory.nilai,
       build: (ctx) => TranskripPage(),
     ),
-    MenuEntry(
-      title: 'Tagihan & Keuangan',
-      description: 'Virtual account, tagihan, dan riwayat bayar',
-      icon: CupertinoIcons.creditcard_fill,
-      frequency: MenuFrequency.berkala,
-      build: (ctx) => KeuanganPage(),
-    ),
-    MenuEntry(
-      title: 'Jadwal Ujian',
-      description: 'Jadwal UTS, UAS, dan ujian susulan',
-      icon: CupertinoIcons.check_mark_circled,
-      frequency: MenuFrequency.berkala,
-      build: (ctx) => JadwalUjianPage(),
-    ),
-    MenuEntry(
-      title: 'Agenda Akademik',
-      description: 'Kalender kegiatan akademik kampus',
-      icon: CupertinoIcons.calendar,
-      frequency: MenuFrequency.berkala,
-      build: (ctx) => AgendaAkademikPage(),
-    ),
-    MenuEntry(
-      title: 'Pengumuman Akademik',
-      description: 'Pengumuman resmi dari bagian akademik',
-      icon: CupertinoIcons.speaker_2_fill,
-      frequency: MenuFrequency.berkala,
-      build: (ctx) => const PengumumanListPage(),
-    ),
-    MenuEntry(
-      title: 'Notifikasi',
-      description: 'Pemberitahuan pribadi & status baca',
-      icon: CupertinoIcons.bell_fill,
-      frequency: MenuFrequency.berkala,
-      build: (ctx) => NotifikasiListPage(),
-    ),
-    MenuEntry(
-      title: 'Berita Kampus',
-      description: 'Kabar dan kegiatan terbaru kampus',
-      icon: CupertinoIcons.news_solid,
-      frequency: MenuFrequency.berkala,
-      build: (ctx) => const BeritaListPage(),
-    ),
 
-    // ── Per semester ────────────────────────────────────────────────────────
-    MenuEntry(
-      title: 'KRS Online',
-      description: 'Isi dan lihat kartu rencana studi',
-      icon: CupertinoIcons.doc_text_search,
-      frequency: MenuFrequency.semesteran,
-      build: (ctx) => KrsMainPage(),
-    ),
+    // ── Tugas Akhir & Program ───────────────────────────────────────────────
     MenuEntry(
       title: 'Skripsi & Tugas Akhir',
       description: 'Pengajuan judul, bimbingan, dan sidang',
       icon: CupertinoIcons.book_circle_fill,
-      frequency: MenuFrequency.semesteran,
+      category: MenuCategory.tugasAkhirProgram,
       build: (ctx) => SkripsiPage(),
     ),
     MenuEntry(
       title: 'MBKM Internal',
       description: 'Pendaftaran dan laporan MBKM',
       icon: CupertinoIcons.building_2_fill,
-      frequency: MenuFrequency.semesteran,
+      category: MenuCategory.tugasAkhirProgram,
       build: (ctx) => MbkmPage(),
     ),
     MenuEntry(
       title: 'PKL & Mandiri',
       description: 'Praktik kerja lapangan dan kegiatan mandiri',
       icon: CupertinoIcons.briefcase_fill,
-      frequency: MenuFrequency.semesteran,
+      category: MenuCategory.tugasAkhirProgram,
       build: (ctx) => PklPage(),
+    ),
+    MenuEntry(
+      title: 'Pusat Studi',
+      description: 'Informasi pusat studi kampus',
+      icon: CupertinoIcons.building_2_fill,
+      category: MenuCategory.tugasAkhirProgram,
+      build: (ctx) => PusatStudiPage(),
+    ),
+
+    // ── Pengajuan & Surat ───────────────────────────────────────────────────
+    MenuEntry(
+      title: 'SKMK',
+      description: 'Surat keterangan mahasiswa aktif',
+      icon: CupertinoIcons.doc_plaintext,
+      category: MenuCategory.pengajuanSurat,
+      build: (ctx) => SkmkPage(),
     ),
     MenuEntry(
       title: 'Surat Tugas',
       description: 'Ajukan dan unduh surat tugas kegiatan',
       icon: CupertinoIcons.doc_on_clipboard_fill,
-      frequency: MenuFrequency.semesteran,
+      category: MenuCategory.pengajuanSurat,
       build: (ctx) => SuratTugasPage(),
-    ),
-    MenuEntry(
-      title: 'SKMK',
-      description: 'Surat keterangan mahasiswa aktif',
-      icon: CupertinoIcons.doc_plaintext,
-      frequency: MenuFrequency.semesteran,
-      build: (ctx) => SkmkPage(),
-    ),
-    MenuEntry(
-      title: 'Izin Penelitian',
-      description: 'Permohonan izin penelitian tugas akhir',
-      icon: CupertinoIcons.search_circle_fill,
-      frequency: MenuFrequency.semesteran,
-      build: (ctx) => IzinPenelitianPage(),
-    ),
-    MenuEntry(
-      title: 'Ujian Susulan',
-      description: 'Pendaftaran ujian susulan',
-      icon: CupertinoIcons.calendar_badge_minus,
-      frequency: MenuFrequency.semesteran,
-      build: (ctx) => UjianSusulanPage(),
     ),
     MenuEntry(
       title: 'Semester Pendek',
       description: 'Pendaftaran semester antara',
       icon: CupertinoIcons.layers_alt_fill,
-      frequency: MenuFrequency.semesteran,
+      category: MenuCategory.pengajuanSurat,
       build: (ctx) => SpPage(),
     ),
     MenuEntry(
-      title: 'Asisten Praktikum',
-      description: 'Pendaftaran dan penilaian asisten',
-      icon: CupertinoIcons.briefcase,
-      frequency: MenuFrequency.semesteran,
-      build: (ctx) => AsistenPage(),
+      title: 'Ujian Susulan',
+      description: 'Pendaftaran ujian susulan',
+      icon: CupertinoIcons.calendar_badge_minus,
+      category: MenuCategory.pengajuanSurat,
+      build: (ctx) => UjianSusulanPage(),
     ),
     MenuEntry(
-      title: 'Jadwal Seminar',
-      description: 'Jadwal seminar proposal dan hasil',
-      icon: CupertinoIcons.person_3_fill,
-      frequency: MenuFrequency.semesteran,
-      build: (ctx) => SeminarPage(),
-    ),
-    MenuEntry(
-      title: 'Seminar & Workshop',
-      description: 'Pendaftaran seminar dan workshop',
-      icon: CupertinoIcons.rectangle_grid_2x2_fill,
-      frequency: MenuFrequency.semesteran,
-      build: (ctx) =>
-          SeminarWorkshopPage(),
-    ),
-    MenuEntry(
-      title: 'Panduan Akademik',
-      description: 'Buku panduan dan aturan akademik',
-      icon: CupertinoIcons.book,
-      frequency: MenuFrequency.semesteran,
-      build: (ctx) => const PanduanListPage(),
+      title: 'Izin Penelitian',
+      description: 'Permohonan izin penelitian tugas akhir',
+      icon: CupertinoIcons.search_circle_fill,
+      category: MenuCategory.pengajuanSurat,
+      build: (ctx) => IzinPenelitianPage(),
     ),
 
-    // ── Jarang dibuka (insidental) ──────────────────────────────────────────
+    // ── Aktivitas Mahasiswa ─────────────────────────────────────────────────
     MenuEntry(
       title: 'Prestasi',
       description: 'Catat dan lihat prestasi mahasiswa',
       icon: CupertinoIcons.star_fill,
-      frequency: MenuFrequency.insidental,
+      category: MenuCategory.aktivitasMahasiswa,
       build: (ctx) => PrestasiPage(),
-    ),
-    MenuEntry(
-      title: 'Organisasi',
-      description: 'Keanggotaan dan kegiatan organisasi',
-      icon: CupertinoIcons.person_3_fill,
-      frequency: MenuFrequency.insidental,
-      build: (ctx) => OrganisasiPage(),
     ),
     MenuEntry(
       title: 'Sertifikasi',
       description: 'Sertifikat kompetensi mahasiswa',
       icon: CupertinoIcons.doc_checkmark_fill,
-      frequency: MenuFrequency.insidental,
+      category: MenuCategory.aktivitasMahasiswa,
       build: (ctx) => SertifikasiPage(),
     ),
     MenuEntry(
       title: 'Rekognisi Mahasiswa',
       description: 'Pengakuan kegiatan terhadap SKS',
       icon: CupertinoIcons.rosette,
-      frequency: MenuFrequency.insidental,
+      category: MenuCategory.aktivitasMahasiswa,
       build: (ctx) => RekognisiPage(),
     ),
     MenuEntry(
-      title: 'Pusat Studi',
-      description: 'Informasi pusat studi kampus',
-      icon: CupertinoIcons.building_2_fill,
-      frequency: MenuFrequency.insidental,
-      build: (ctx) => PusatStudiPage(),
+      title: 'Seminar & Workshop',
+      description: 'Pendaftaran seminar dan workshop',
+      icon: CupertinoIcons.rectangle_grid_2x2_fill,
+      category: MenuCategory.aktivitasMahasiswa,
+      build: (ctx) => SeminarWorkshopPage(),
     ),
     MenuEntry(
-      title: 'Satgas PPKS',
-      description: 'Layanan pencegahan kekerasan seksual',
-      icon: CupertinoIcons.shield_fill,
-      frequency: MenuFrequency.insidental,
-      build: (ctx) => PpksPage(),
+      title: 'Organisasi',
+      description: 'Keanggotaan dan kegiatan organisasi',
+      icon: CupertinoIcons.person_3_fill,
+      category: MenuCategory.aktivitasMahasiswa,
+      build: (ctx) => OrganisasiPage(),
+    ),
+    MenuEntry(
+      title: 'SKKM',
+      description: 'Poin kegiatan mahasiswa (angkatan 2024+)',
+      icon: CupertinoIcons.rosette,
+      category: MenuCategory.aktivitasMahasiswa,
+      build: (ctx) => const SkkmPage(),
+    ),
+
+    // ── Keuangan ────────────────────────────────────────────────────────────
+    MenuEntry(
+      title: 'Tagihan & Keuangan',
+      description: 'Virtual account, tagihan, dan riwayat bayar',
+      icon: CupertinoIcons.creditcard_fill,
+      category: MenuCategory.keuangan,
+      build: (ctx) => KeuanganPage(),
+    ),
+
+    // ── Informasi Umum ──────────────────────────────────────────────────────
+    MenuEntry(
+      title: 'Tata Krama Mahasiswa',
+      description: 'Norma dan etika mahasiswa di kampus',
+      icon: CupertinoIcons.person_2_alt,
+      category: MenuCategory.informasiUmum,
+      build: (ctx) => TataKramaPage(),
     ),
     MenuEntry(
       title: 'Visi & Misi Program Studi',
       description: 'Visi misi program studi',
       icon: CupertinoIcons.eye_fill,
-      frequency: MenuFrequency.insidental,
+      category: MenuCategory.informasiUmum,
       build: (ctx) => VisiMisiPage(),
     ),
     MenuEntry(
       title: 'Visi & Misi Institusi',
       description: 'Visi misi universitas',
       icon: CupertinoIcons.building_2_fill,
-      frequency: MenuFrequency.insidental,
+      category: MenuCategory.informasiUmum,
       build: (ctx) => VisiMisiInstitusiPage(),
     ),
+
+    // ── Lainnya ─────────────────────────────────────────────────────────────
     MenuEntry(
-      title: 'Tata Krama Mahasiswa',
-      description: 'Norma dan etika mahasiswa di kampus',
-      icon: CupertinoIcons.person_2_alt,
-      frequency: MenuFrequency.insidental,
-      build: (ctx) => TataKramaPage(),
+      title: 'Satgas PPKS',
+      description: 'Layanan pencegahan kekerasan seksual',
+      icon: CupertinoIcons.shield_fill,
+      category: MenuCategory.lainnya,
+      build: (ctx) => PpksPage(),
     ),
     MenuEntry(
       title: 'Penafian',
       description: 'Disclaimer aplikasi tidak resmi',
       icon: CupertinoIcons.exclamationmark_shield,
-      frequency: MenuFrequency.insidental,
+      category: MenuCategory.lainnya,
       build: (ctx) => const PenafianPage(),
     ),
   ];
 
-  /// Semua menu pada satu tingkat frekuensi (urut abjad di dalam kelompok).
-  static List<MenuEntry> byFrequency(MenuFrequency f) {
-    final list = all.where((e) => e.frequency == f).toList()
-      ..sort((a, b) => a.title.compareTo(b.title));
-    return list;
-  }
+  /// Menu pada satu kategori, urutan baris = urutan penulisan di [all]
+  /// (keputusan desain, BUKAN abjad — lihat komentar di atas kelas).
+  static List<MenuEntry> byCategory(MenuCategory c) =>
+      all.where((e) => e.category == c).toList();
 
-  /// Menu dikelompokkan per frekuensi, hanya kelompok yang tidak kosong.
-  static Map<MenuFrequency, List<MenuEntry>> get grouped {
-    final result = <MenuFrequency, List<MenuEntry>>{};
-    for (final f in MenuFrequency.values) {
-      final list = byFrequency(f);
-      if (list.isNotEmpty) result[f] = list;
+  /// Menu dikelompokkan per kategori, hanya kelompok yang tidak kosong.
+  static Map<MenuCategory, List<MenuEntry>> get grouped {
+    final result = <MenuCategory, List<MenuEntry>>{};
+    for (final c in MenuCategory.values) {
+      final list = byCategory(c);
+      if (list.isNotEmpty) result[c] = list;
     }
     return result;
   }

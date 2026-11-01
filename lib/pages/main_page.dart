@@ -12,6 +12,7 @@ import '../services/deep_link_service.dart';
 import '../services/pembaruan_service.dart';
 import '../services/pengingat_jadwal_service.dart';
 import '../services/push_service.dart';
+import '../services/skkm_service.dart';
 import '../services/widget_jadwal_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
@@ -30,8 +31,9 @@ import 'notifikasi_list_page.dart';
 ///     di tengah. Hanya untuk hal yang SERING dibuka.
 ///  2. Drawer — pintasan untuk hal yang JARANG dibuka tapi perlu cepat
 ///     ditemukan: pengumuman, berita, panduan, tata krama, visi misi, surat.
-///  3. Tab Menu — SEMUA layanan, dikelompokkan dari yang paling sering
-///     dipakai sampai paling jarang, dilengkapi pencarian.
+///  3. Tab Menu — SEMUA layanan, dikelompokkan per kategori layanan
+///     (mengikuti pengelompokan web mahasiswa) dengan urutan kelompok dari
+///     yang paling sering diakses, dilengkapi pencarian.
 ///
 /// Perubahan dari versi lama:
 ///  * Baris "aksi cepat" di beranda dihapus — dulu 3 dari 4 tombolnya hanya
@@ -497,10 +499,30 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  // ── Tab Menu: semua menu dikelompokkan per frekuensi pemakaian ────────────
+  // ── Tab Menu: semua menu dikelompokkan per kategori layanan ───────────────
 
   Widget _buildMenuPage() {
-    final results = _menuQuery.isEmpty ? null : MenuCatalog.search(_menuQuery);
+    // Indikator lokal angkatan (2 digit pertama NIM — aturan sama dengan BE):
+    // SKKM hanya untuk angkatan 2024+, jadi entri menu disembunyikan untuk
+    // angkatan di bawahnya. NIM tak terbaca → tampilkan saja (fail-open);
+    // halaman SKKM sendiri tetap menjelaskan kebijakan bila dibuka lewat
+    // jalur lain (deep link).
+    final sembunyikanSkkm =
+        SkkmService.berlakuDariNim(ApiClient.instance.nim) == false;
+    bool layakTampil(MenuEntry e) => !(sembunyikanSkkm && e.title == 'SKKM');
+
+    final results = _menuQuery.isEmpty
+        ? null
+        : MenuCatalog.search(_menuQuery).where(layakTampil).toList();
+
+    // Kelompok terlihat setelah filter (kelompok yang kosong tak digambar).
+    final kelompokTerlihat = <MenuCategory, List<MenuEntry>>{};
+    if (results == null) {
+      for (final group in MenuCatalog.grouped.entries) {
+        final layanan = group.value.where(layakTampil).toList();
+        if (layanan.isNotEmpty) kelompokTerlihat[group.key] = layanan;
+      }
+    }
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -534,20 +556,15 @@ class _MainPageState extends State<MainPage> {
           else
             AppListGroup.from([for (final e in results) _menuRow(e)]),
         ] else
-          for (final group in MenuCatalog.grouped.entries)
+          for (final group in kelompokTerlihat.entries)
             AppSection(
               title: group.key.label,
               trailing: Text(
                 '${group.value.length} layanan',
                 style: AppText.label.copyWith(fontWeight: FontWeight.w400),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(group.key.hint, style: AppText.bodySm),
-                  const SizedBox(height: AppSpacing.md),
-                  AppListGroup.from([for (final e in group.value) _menuRow(e)]),
-                ],
+              child: AppListGroup.from(
+                [for (final e in group.value) _menuRow(e)],
               ),
             ),
       ],
