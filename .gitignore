@@ -48,6 +48,15 @@ app.*.map.json
 android/app/google-services.json
 **/google-services.json
 
+# Kredensial signing & korespondensi BE (JANGAN di-commit)
+key.properties
+*.jks
+catatan-fe.md
+pesan-be.md
+panduan-implement-fe.md
+panduan-implementasi-fe.md
+req-be-amiapp.md
+
 # Android Studio will place build artifacts here
 /android/build/
 /android/app/debug
