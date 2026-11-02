@@ -2,6 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import '../theme/app_theme.dart';
 
+/// Style body standar untuk widget `Html` — satu sumber agar margin/font/warna
+/// konten HTML server tidak meng-drift antar halaman. [lineHeight] null =
+/// tidak diset (perilaku bawaan flutter_html).
+Style htmlBodyStyle({double fontSize = 14, double? lineHeight}) => Style(
+      margin: Margins.zero,
+      padding: HtmlPaddings.zero,
+      fontSize: FontSize(fontSize),
+      color: AppColors.textPrimary,
+      lineHeight:
+          lineHeight == null ? null : LineHeight.number(lineHeight),
+    );
+
 class ExpandableHtml extends StatefulWidget {
   final String htmlData;
   const ExpandableHtml({super.key, required this.htmlData});
@@ -33,14 +45,7 @@ class _ExpandableHtmlState extends State<ExpandableHtml> {
                 ClipRect(
                   child: Html(
                     data: widget.htmlData,
-                    style: {
-                      "body": Style(
-                        margin: Margins.zero,
-                        padding: HtmlPaddings.zero,
-                        fontSize: FontSize(13),
-                        color: AppColors.textPrimary,
-                      ),
-                    },
+                    style: {'body': htmlBodyStyle(fontSize: 13)},
                   ),
                 ),
                 if (!_isExpanded && isLong)

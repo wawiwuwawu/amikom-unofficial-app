@@ -17,15 +17,11 @@ import '../theme/app_theme.dart';
 class AppMarkdownComposer extends StatefulWidget {
   final TextEditingController controller;
   final String? hintText;
-  final int minLines;
-  final int maxLines;
 
   const AppMarkdownComposer({
     super.key,
     required this.controller,
     this.hintText,
-    this.minLines = 4,
-    this.maxLines = 8,
   });
 
   @override
@@ -84,8 +80,8 @@ class _AppMarkdownComposerState extends State<AppMarkdownComposer> {
         const SizedBox(height: AppSpacing.sm),
         TextField(
           controller: widget.controller,
-          maxLines: widget.maxLines,
-          minLines: widget.minLines,
+          maxLines: 8,
+          minLines: 4,
           decoration: InputDecoration(hintText: widget.hintText),
         ),
       ],

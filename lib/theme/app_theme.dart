@@ -16,7 +16,7 @@ import 'package:flutter/material.dart';
 const Color kBrandSeed = Color(0xFF501F66);
 
 /// Warna semantik untuk status (nilai, peringatan, sukses).
-/// Dipakai lewat helper [GradeStyle] dan [AppStatus] agar tidak hardcode.
+/// Dipakai lewat helper [GradeStyle] agar tidak hardcode.
 abstract final class AppColors {
   // Aksen brand (turunan seed, eksplisit agar stabil di seluruh app)
   static const Color primary = kBrandSeed;

@@ -290,23 +290,10 @@ class AbsensiService {
     if (bagian.length != 3) return null;
     final d = int.tryParse(bagian[0]);
     final y = int.tryParse(bagian[2]);
-    final m = _bulanIndoKeAngka(bagian[1]);
+    final m = angkaDariBulanIndo(bagian[1]);
     if (d == null || y == null || m == null) return null;
     final t = DateTime(y, m, d);
     if (t.year != y || t.month != m || t.day != d) return null;
     return t;
-  }
-
-  static int? _bulanIndoKeAngka(String nama) {
-    const bulan = [
-      'januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli',
-      'agustus', 'september', 'oktober', 'november', 'desember',
-    ];
-    final k = nama.toLowerCase();
-    if (k.startsWith('sept')) return 9;
-    for (var i = 0; i < bulan.length; i++) {
-      if (k == bulan[i] || k.startsWith(bulan[i])) return i + 1;
-    }
-    return null;
   }
 }

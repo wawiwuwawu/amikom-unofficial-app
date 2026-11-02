@@ -202,12 +202,7 @@ class _JadwalPageState extends State<JadwalPage> {
   /// semula — tidak pernah hilang diam-diam.
   bool _lolosGerbangUjian(AgendaItem item) {
     if (_filterTipe == 'ujian') return true;
-    final tipe = item.tipe.trim().toLowerCase();
-    if (tipe != 'uts' && tipe != 'uas') return true;
-    return PeriodeUjianService.dalamJendela(
-      tanggalDariPortal(item.tanggal ?? ''),
-      _hariIni,
-    );
+    return PeriodeUjianService.barisTampil(item, _hariIni);
   }
 
   DateTime get _hariIni {
@@ -276,15 +271,8 @@ class _JadwalPageState extends State<JadwalPage> {
         sum + entry.value.where((item) => _tampil(entry.key, item)).length,
   );
 
-  /// Label SWR: "Menampilkan data terakhir (dd/mm hh:mm)" — format manual agar
-  /// pola token waktu konsisten (ala dashboard).
-  String get _labelDataTerakhir {
-    final t = _cacheTerakhirDisimpan;
-    if (t == null) return 'Menampilkan data terakhir';
-    String dua(int n) => n.toString().padLeft(2, '0');
-    return 'Menampilkan data terakhir '
-        '(${dua(t.day)}/${dua(t.month)} ${dua(t.hour)}:${dua(t.minute)})';
-  }
+  /// Label SWR: "Menampilkan data terakhir (dd/mm hh:mm)".
+  String get _labelDataTerakhir => labelDataTerakhir(_cacheTerakhirDisimpan);
 
   @override
   Widget build(BuildContext context) {

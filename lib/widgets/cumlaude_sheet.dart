@@ -193,8 +193,6 @@ class CumlaudeSheet extends StatelessWidget {
                               'Syarat Nilai Minimum (${data.analisisSyarat.syaratNilaiMinimum.target})',
                           detail: SyaratDetail(
                             isFulfilled: data.analisisSyarat.syaratNilaiMinimum.isFulfilled,
-                            currentVal:
-                                '${data.analisisSyarat.syaratNilaiMinimum.violatingMatkulCount} pelanggaran',
                             target: data.analisisSyarat.syaratNilaiMinimum.target,
                             description:
                                 data.analisisSyarat.syaratNilaiMinimum.description,

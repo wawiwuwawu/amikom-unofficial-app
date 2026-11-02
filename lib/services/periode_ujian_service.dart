@@ -33,6 +33,16 @@ class PeriodeUjianService {
     return !tanggal.isBefore(hariIni) && !tanggal.isAfter(batas);
   }
 
+  /// Gerbang per-baris untuk render agenda: baris non-ujian selalu tampil;
+  /// baris ujian tampil bila tanggal ujiannya SENDIRI (field `tanggal`
+  /// baris, fail-open tanpa tanggal) dalam jendela pada [hariIni].
+  /// Pengecualian tab filter 'ujian' & mode mingguan DINILAI PEMANGGIL.
+  static bool barisTampil(AgendaItem item, DateTime hariIni) {
+    final tipe = item.tipe.trim().toLowerCase();
+    if (tipe != 'uts' && tipe != 'uas') return true;
+    return dalamJendela(tanggalDariPortal(item.tanggal ?? ''), hariIni);
+  }
+
   /// Periode ujian terdekat (tanggal ≥ [hariIni]) dari seluruh baris ujian
   /// agenda, sebagai `(tanggal, jenis)` — jenis 'UTS'/'UAS'. Dipakai teks
   /// banner JadwalPage. Null bila tidak ada baris ujian ber-tanggal yang

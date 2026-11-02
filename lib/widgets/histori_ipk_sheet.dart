@@ -198,47 +198,32 @@ class _HistoriIpkSheetState extends State<HistoriIpkSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
+                for (final (i, legenda) in const [
+                  (AppColors.primary, 'IPK'),
+                  (AppColors.info, 'IPS'),
+                ].indexed) ...[
+                  if (i > 0) const SizedBox(width: AppSpacing.lg),
+                  Row(
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: legenda.$1,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      'IPK',
-                      style: AppText.label.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        legenda.$2,
+                        style: AppText.label.copyWith(
+                          color: legenda.$1,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: AppSpacing.lg),
-                Row(
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: const BoxDecoration(
-                        color: AppColors.info,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      'IPS',
-                      style: AppText.label.copyWith(
-                        color: AppColors.info,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: AppSpacing.md),

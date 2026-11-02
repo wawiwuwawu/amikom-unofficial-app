@@ -5,6 +5,7 @@ import '../services/mbkm_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
 import '../widgets/app_markdown_composer.dart';
+import '../widgets/expandable_html.dart';
 
 /// Log bimbingan MBKM — identitas program, ringkasan jumlah log, lalu
 /// kronologi bimbingan sebagai daftar bergaris (tanggal sebagai penanda depan).
@@ -372,12 +373,9 @@ class _MbkmBimbinganPageState extends State<MbkmBimbinganPage> {
           child: Html(
             data: item.bimbingan,
             style: {
-              'body': Style(
-                margin: Margins.zero,
-                padding: HtmlPaddings.zero,
-                fontSize: FontSize(AppText.body.fontSize ?? 14),
-                color: AppColors.textPrimary,
-                lineHeight: LineHeight.number(AppText.body.height ?? 1.45),
+              'body': htmlBodyStyle(
+                fontSize: AppText.body.fontSize ?? 14,
+                lineHeight: AppText.body.height ?? 1.45,
               ),
             },
           ),

@@ -473,7 +473,7 @@ class PushService {
   /// [_dedupeListWindow] dibatalkan supaya satu ketukan yang datang lewat dua
   /// mekanisme (deep link + FCM) tidak membuka dua halaman.
   void _bukaList() {
-    final navigator = NavigationService.instance.navigatorKey.currentState;
+    final navigator = NavigationService.navigatorKey.currentState;
     if (navigator == null) {
       _pendingTerbuka ??= const AksiBukaList();
       debugPrint('PushService: ketukan notifikasi ditunda sampai UI siap');

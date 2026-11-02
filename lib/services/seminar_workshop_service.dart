@@ -19,13 +19,11 @@ class SeminarWorkshopService {
       ApiClient.guard<SeminarWorkshopOptionsData>(() async {
         final response = await _dio.get('/api/v1/seminar-workshop/options');
         final data = ApiClient.unwrapData<dynamic>(response.data);
-        if (data is Map<String, dynamic>) {
-          return SeminarWorkshopOptionsData.fromJson(data);
-        } else if (data is Map) {
-          return SeminarWorkshopOptionsData.fromJson(
-              Map<String, dynamic>.from(data));
+        final map = ApiClient.mapOrNull(data);
+        if (map == null) {
+          throw const AppFailure('Data opsi seminar & workshop kosong');
         }
-        throw const AppFailure('Data opsi seminar & workshop kosong');
+        return SeminarWorkshopOptionsData.fromJson(map);
       }, 'Gagal memuat pilihan Seminar & Workshop');
 
   Future<void> tambahSeminarWorkshop(FormData data) =>

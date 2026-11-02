@@ -8,6 +8,7 @@ import '../models/pengumuman.dart'; // for Lampiran
 import '../services/notifikasi_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
+import '../widgets/expandable_html.dart';
 
 class NotifikasiDetailPage extends StatefulWidget {
   final String id;
@@ -174,15 +175,7 @@ class _NotifikasiDetailPageState extends State<NotifikasiDetailPage> {
                     detail.konten[i].contains('>'))
                   Html(
                     data: detail.konten[i],
-                    style: {
-                      "body": Style(
-                        margin: Margins.zero,
-                        padding: HtmlPaddings.zero,
-                        fontSize: FontSize(14),
-                        color: AppColors.textPrimary,
-                        lineHeight: LineHeight.number(1.7),
-                      ),
-                    },
+                    style: {'body': htmlBodyStyle(lineHeight: 1.7)},
                   )
                 else
                   SelectableText(

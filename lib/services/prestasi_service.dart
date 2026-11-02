@@ -18,12 +18,9 @@ class PrestasiService {
       ApiClient.guard<PrestasiOptionsData>(() async {
         final response = await _dio.get('/api/v1/prestasi-mahasiswa/options');
         final data = ApiClient.unwrapData<dynamic>(response.data);
-        if (data is Map<String, dynamic>) {
-          return PrestasiOptionsData.fromJson(data);
-        } else if (data is Map) {
-          return PrestasiOptionsData.fromJson(Map<String, dynamic>.from(data));
-        }
-        throw const AppFailure('Data opsi prestasi kosong');
+        final map = ApiClient.mapOrNull(data);
+        if (map == null) throw const AppFailure('Data opsi prestasi kosong');
+        return PrestasiOptionsData.fromJson(map);
       }, 'Gagal memuat pilihan Prestasi');
 
   Future<void> tambahPrestasi(FormData data) =>

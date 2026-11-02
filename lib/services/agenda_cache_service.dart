@@ -33,19 +33,12 @@ class AgendaCacheService {
   /// Kunci timestamp pembaruan (epoch ms) untuk label "data terakhir".
   static const _kCacheAgendaAt = 'agenda_terpadu_cache_at';
 
-  /// Suffix NIM aktif, pola sama dengan [PengingatJadwalService]: `_<nim>`
-  /// bila tersedia, string kosong bila tidak.
-  String _suffixNim() {
-    final nim = ApiClient.instance.nim;
-    return (nim != null && nim.isNotEmpty) ? '_$nim' : '';
-  }
-
   /// Baca cache agenda milik NIM aktif. Null bila kosong/korup — tidak pernah
   /// melempar.
   Future<AgendaTerpaduData?> baca() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString('$_kCacheAgenda${_suffixNim()}');
+      final raw = prefs.getString('$_kCacheAgenda${ApiClient.nimSuffix()}');
       if (raw == null || raw.isEmpty) return null;
       final decoded = jsonDecode(raw);
       if (decoded is Map<String, dynamic>) {
@@ -61,7 +54,7 @@ class AgendaCacheService {
   Future<void> simpan(AgendaTerpaduData data) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final suffix = _suffixNim();
+      final suffix = ApiClient.nimSuffix();
       await prefs.setString('$_kCacheAgenda$suffix', _agendaKeJson(data));
       await prefs.setInt(
         '$_kCacheAgendaAt$suffix',
@@ -77,7 +70,7 @@ class AgendaCacheService {
   Future<DateTime?> terakhirDisimpan() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final at = prefs.getInt('$_kCacheAgendaAt${_suffixNim()}');
+      final at = prefs.getInt('$_kCacheAgendaAt${ApiClient.nimSuffix()}');
       if (at != null && at > 0) {
         return DateTime.fromMillisecondsSinceEpoch(at);
       }
@@ -93,7 +86,7 @@ class AgendaCacheService {
   Future<void> bersihkanSaatLogout() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final suffix = _suffixNim();
+      final suffix = ApiClient.nimSuffix();
       for (final s in [suffix, '']) {
         await prefs.remove('$_kCacheAgenda$s');
         await prefs.remove('$_kCacheAgendaAt$s');

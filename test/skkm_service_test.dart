@@ -172,14 +172,6 @@ void main() {
     expect(kredit.idSkkm, '45');
   });
 
-  test('inputBukti mengembalikan deskriptor input portal', () async {
-    final input = await SkkmService().inputBukti('45');
-
-    expect(input.single.name, 'bukti_fisik');
-    expect(input.single.type, 'file');
-    expect(input.single.accept, 'application/pdf');
-  });
-
   test('cekSuratTugas: true bila nomor dikenal, false bila tidak', () async {
     final service = SkkmService();
 

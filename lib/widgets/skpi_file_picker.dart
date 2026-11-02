@@ -9,7 +9,6 @@ class SkpiFilePicker extends StatelessWidget {
   final PlatformFile? selectedFile;
   final ValueChanged<PlatformFile?> onFileSelected;
   final String label;
-  final int? maxSizeBytes;
   final List<String> allowedExtensions;
 
   const SkpiFilePicker({
@@ -17,7 +16,6 @@ class SkpiFilePicker extends StatelessWidget {
     required this.selectedFile,
     required this.onFileSelected,
     this.label = 'File Bukti (PDF / JPG / PNG)*',
-    this.maxSizeBytes,
     this.allowedExtensions = const ['pdf', 'jpg', 'jpeg', 'png'],
   });
 
@@ -28,19 +26,6 @@ class SkpiFilePicker extends StatelessWidget {
         allowedExtensions: allowedExtensions,
       );
       if (file != null) {
-        // length() null = ukuran tak dapat dibaca — perlakukan 0 (lolos).
-        final ukuran = await file.length() ?? 0;
-        if (maxSizeBytes != null && ukuran > maxSizeBytes!) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Ukuran file maksimal ${(maxSizeBytes! / (1024 * 1024)).toStringAsFixed(0)}MB'),
-                backgroundColor: AppColors.danger,
-              ),
-            );
-          }
-          return;
-        }
         onFileSelected(file);
       }
     } catch (e) {

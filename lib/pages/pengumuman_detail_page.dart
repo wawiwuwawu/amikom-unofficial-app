@@ -8,6 +8,7 @@ import '../models/pengumuman.dart';
 import '../services/pengumuman_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
+import '../widgets/expandable_html.dart';
 
 /// Detail Pengumuman Akademik — halaman baca.
 ///
@@ -207,15 +208,7 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
                 detail.konten[i].contains('>'))
               Html(
                 data: detail.konten[i],
-                style: {
-                  'body': Style(
-                    margin: Margins.zero,
-                    padding: HtmlPaddings.zero,
-                    fontSize: FontSize(14.5),
-                    color: AppColors.textPrimary,
-                    lineHeight: LineHeight.number(1.65),
-                  ),
-                },
+                style: {'body': htmlBodyStyle(fontSize: 14.5, lineHeight: 1.65)},
               )
             else
               SelectableText(

@@ -480,28 +480,15 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  /// Label SWR untuk seksi "Jadwal Hari Ini": "Menampilkan data terakhir
-  /// (dd/mm hh:mm)" — format manual agar pola token waktu konsisten.
-  String get _labelDataTerakhir {
-    final t = _agendaTerakhirDisimpan;
-    if (t == null) return 'Menampilkan data terakhir';
-    String dua(int n) => n.toString().padLeft(2, '0');
-    return 'Menampilkan data terakhir '
-        '(${dua(t.day)}/${dua(t.month)} ${dua(t.hour)}:${dua(t.minute)})';
-  }
+  /// Label SWR untuk seksi "Jadwal Hari Ini".
+  String get _labelDataTerakhir =>
+      labelDataTerakhir(_agendaTerakhirDisimpan);
 
-  /// Gerbang ujian "Jadwal Hari Ini": non-ujian selalu tampil; ujian tampil
-  /// bila tanggal ujiannya sendiri (field `tanggal` baris) dalam jendela —
-  /// respons lama tanpa tanggal fail-open (tampil).
+  /// Gerbang ujian "Jadwal Hari Ini" — inti dibagi dengan jadwal page.
   bool _ujianTampil(AgendaItem item) {
-    final tipe = item.tipe.trim().toLowerCase();
-    if (tipe != 'uts' && tipe != 'uas') return true;
     final now = DateTime.now();
-    final hariIni = DateTime(now.year, now.month, now.day);
-    return PeriodeUjianService.dalamJendela(
-      tanggalDariPortal(item.tanggal ?? ''),
-      hariIni,
-    );
+    return PeriodeUjianService.barisTampil(
+        item, DateTime(now.year, now.month, now.day));
   }
 
   AgendaItem? _ongoingItem(List<AgendaItem> items) {
@@ -987,17 +974,22 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // ── Utilitas ──────────────────────────────────────────────────────────────
 
+  /// Simpan penutupan banner: setState dulu (UI instan), lalu persist string.
+  /// Persist gagal dibiarkan fail-open: banner cuma muncul lagi lebih cepat.
+  Future<void> _simpanPenutupBanner(String kunci, String nilai) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(kunci, nilai);
+    } catch (_) {}
+  }
+
   /// Tutup banner rekomendasi SP + catat ISI-nya. Banner tetap tersembunyi
   /// selama isi rekomendasi sama; begitu nilai baru mengubah daftar
-  /// (tanda tangan beda), banner muncul lagi. Persist gagal dibiarkan
-  /// fail-open: banner cuma muncul lagi lebih cepat.
+  /// (tanda tangan beda), banner muncul lagi.
   Future<void> _tutupSpBanner() async {
     final isi = _spIsiSignature(_spRekomendasiData!);
     setState(() => _spIsiDitutup = isi);
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_kunciSpTutupIsi, isi);
-    } catch (_) {}
+    unawaited(_simpanPenutupBanner(_kunciSpTutupIsi, isi));
   }
 
   /// Tutup banner bimbingan skripsi + catat waktunya (sembunyi 30 hari).
@@ -1015,15 +1007,11 @@ class _DashboardPageState extends State<DashboardPage> {
 
   /// Tutup banner KRS per-periode: simpan kunci rentang tanggal periode yang
   /// sedang berjalan. Periode baru (kunci beda) menampilkan banner lagi.
-  /// Persist gagal dibiarkan fail-open: banner cuma muncul lagi.
   Future<void> _tutupKrsBanner() async {
     final kunci = _periodeKrs?.kunci;
     if (kunci == null) return;
     setState(() => _krsDitutupPeriode = kunci);
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_kunciKrsDitutup, kunci);
-    } catch (_) {}
+    unawaited(_simpanPenutupBanner(_kunciKrsDitutup, kunci));
   }
 
   void _push(Widget page) {

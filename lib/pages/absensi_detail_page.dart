@@ -159,21 +159,6 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
     }
   }
 
-  static AppPillTone _statusTone(String status) {
-    switch (status.toUpperCase()) {
-      case 'H':
-        return AppPillTone.success;
-      case 'B':
-        return AppPillTone.danger;
-      case 'I':
-        return AppPillTone.info;
-      case 'S':
-        return AppPillTone.warning;
-      default:
-        return AppPillTone.neutral;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -195,7 +180,7 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
   }
 
   Widget _buildContent(PresensiDetail d) {
-    final tone = _statusTone(d.keterangan);
+    final tone = AppAbsensiStatus.tone(d.keterangan);
     final (bg, fg) = AppPill.toneColors(tone);
     final sudahValidasi = d.validasi != null;
 
@@ -246,7 +231,7 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(_statusLabel(d.keterangan), style: AppText.h2),
+                        Text(AppAbsensiStatus.label(d.keterangan), style: AppText.h2),
                         const SizedBox(height: 2),
                         Text('${d.tanggal} · ${d.jam}', style: AppText.bodySm),
                       ],
@@ -272,7 +257,7 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
                   emphasize: true,
                 ),
                 AppKeyValue(label: 'Jam', value: d.jam),
-                AppKeyValue(label: 'Status', value: _statusLabel(d.keterangan)),
+                AppKeyValue(label: 'Status', value: AppAbsensiStatus.label(d.keterangan)),
                 if (d.validasi != null)
                   AppKeyValue(
                     label: 'Validasi',
@@ -445,20 +430,5 @@ class _AbsensiDetailPageState extends State<AbsensiDetailPage> {
         ),
       ],
     );
-  }
-
-  String _statusLabel(String s) {
-    switch (s.toUpperCase()) {
-      case 'H':
-        return 'Hadir';
-      case 'B':
-        return 'Bolos';
-      case 'I':
-        return 'Izin';
-      case 'S':
-        return 'Sakit';
-      default:
-        return s;
-    }
   }
 }

@@ -148,11 +148,8 @@ final _historiPayload = {
 // ── Fixtures objek Dart (konstruktor wajib `required`) ──────────────────────
 
 KelayakanWisuda _kelayakanWisuda() => KelayakanWisuda(
-      ipkLulusEligible: true,
       ipkTerakhir: 3.62,
-      minIpkLulus: 2.5,
       bebasNilaiDEEligible: true,
-      dEMatkulCount: 0,
       dEMatkulItems: const [],
       warningWisuda: '',
     );
@@ -194,7 +191,6 @@ ProgressKelulusanData _progressData({
 
 SyaratDetail _syaratDetail() => SyaratDetail(
       isFulfilled: true,
-      currentVal: '3.62',
       target: '3.60',
       description: 'Syarat terpenuhi',
     );

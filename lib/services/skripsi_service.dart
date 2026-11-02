@@ -13,12 +13,11 @@ class SkripsiService {
       ApiClient.guard<SkripsiMainData>(() async {
         final response = await _dio.get('/api/v1/skripsi');
         final data = ApiClient.unwrapData<dynamic>(response.data);
-        if (data is Map<String, dynamic>) {
-          return SkripsiMainData.fromJson(data);
-        } else if (data is Map) {
-          return SkripsiMainData.fromJson(Map<String, dynamic>.from(data));
+        final map = ApiClient.mapOrNull(data);
+        if (map == null) {
+          throw const AppFailure('Gagal memuat informasi utama skripsi');
         }
-        throw const AppFailure('Gagal memuat informasi utama skripsi');
+        return SkripsiMainData.fromJson(map);
       }, 'Gagal memuat informasi utama skripsi');
 
   // 2. Tab Proposal

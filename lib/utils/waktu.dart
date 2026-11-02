@@ -84,21 +84,44 @@ DateTime? tanggalDariPortal(String teks) {
   return t;
 }
 
-/// Format tanggal Bahasa Indonesia untuk tampilan: "24 November 2026".
-String formatTanggalIndo(DateTime dt) {
-  const bulan = [
-    'Januari',
-    'Februari',
-    'Maret',
-    'April',
-    'Mei',
-    'Juni',
-    'Juli',
-    'Agustus',
-    'September',
-    'Oktober',
-    'November',
-    'Desember',
-  ];
-  return '${dt.day} ${bulan[dt.month - 1]} ${dt.year}';
+/// Label SWR: "Menampilkan data terakhir (dd/mm hh:mm)" — format manual agar
+/// pola token waktu konsisten (dipakai dashboard & jadwal).
+String labelDataTerakhir(DateTime? t) {
+  if (t == null) return 'Menampilkan data terakhir';
+  String dua(int n) => n.toString().padLeft(2, '0');
+  return 'Menampilkan data terakhir '
+      '(${dua(t.day)}/${dua(t.month)} ${dua(t.hour)}:${dua(t.minute)})';
 }
+
+/// Nama bulan penuh Indonesia (Januari = 1 … Desember = 12) — sumber tunggal
+/// untuk formatter & parser tanggal panjang.
+const bulanIndo = [
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
+];
+
+/// Angka bulan (1-12) dari nama bulan Indonesia, longgar: "Sept" juga
+/// diterima dan cocok berdasar awalan. Null bila bukan nama bulan.
+int? angkaDariBulanIndo(String nama) {
+  final k = nama.toLowerCase();
+  if (k.startsWith('sept')) return 9;
+  for (var i = 0; i < bulanIndo.length; i++) {
+    final b = bulanIndo[i].toLowerCase();
+    if (k == b || k.startsWith(b)) return i + 1;
+  }
+  return null;
+}
+
+/// Format tanggal Bahasa Indonesia untuk tampilan: "24 November 2026".
+String formatTanggalIndo(DateTime dt) =>
+    '${dt.day} ${bulanIndo[dt.month - 1]} ${dt.year}';

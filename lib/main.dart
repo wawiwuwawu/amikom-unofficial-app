@@ -84,7 +84,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey: NavigationService.instance.navigatorKey,
+      navigatorKey: NavigationService.navigatorKey,
       title: 'Ini Amikom?',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),

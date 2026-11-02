@@ -20,7 +20,7 @@ class PengumumanService {
         final response = await _dio.get(endpoint);
         final raw = ApiClient.unwrapData<dynamic>(response.data);
 
-        final Map<String, dynamic> jsonMap = _extractJsonMap(raw);
+        final Map<String, dynamic> jsonMap = ApiClient.forceJsonMap(raw);
 
         if (jsonMap.isEmpty) {
           // Tanpa payload mentah — cukup pesan ramah.
@@ -56,7 +56,4 @@ class PengumumanService {
     // Plain ID: construct full path
     return '/api/v1/pengumumanAkademik/$raw';
   }
-
-  Map<String, dynamic> _extractJsonMap(dynamic raw) =>
-      ApiClient.forceJsonMap(raw);
 }

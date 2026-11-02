@@ -126,21 +126,19 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
   void _addMember(SearchMahasiswaItem item) {
     final currentNim = ApiClient.instance.nim;
     if (currentNim != null && item.npm == currentNim) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Anda tidak perlu menambahkan NIM sendiri ke dalam anggota'),
-          backgroundColor: AppColors.warning,
-        ),
+      AppSnack.show(
+        context,
+        'Anda tidak perlu menambahkan NIM sendiri ke dalam anggota',
+        backgroundColor: AppColors.warning,
       );
       return;
     }
 
     if (_selectedMembers.any((m) => m.npm == item.npm)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mahasiswa sudah ada dalam daftar anggota'),
-          backgroundColor: AppColors.warning,
-        ),
+      AppSnack.show(
+        context,
+        'Mahasiswa sudah ada dalam daftar anggota',
+        backgroundColor: AppColors.warning,
       );
       return;
     }
@@ -178,31 +176,28 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
     if (_namaKegiatanController.text.trim().isEmpty ||
         _penyelenggaraController.text.trim().isEmpty ||
         _bentukKegiatanController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Harap lengkapi Nama Kegiatan, Penyelenggara, dan Bentuk Kegiatan'),
-          backgroundColor: AppColors.warning,
-        ),
+      AppSnack.show(
+        context,
+        'Harap lengkapi Nama Kegiatan, Penyelenggara, dan Bentuk Kegiatan',
+        backgroundColor: AppColors.warning,
       );
       return;
     }
 
     if (_startDate == null || _endDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Harap pilih Tanggal Mulai dan Tanggal Selesai'),
-          backgroundColor: AppColors.warning,
-        ),
+      AppSnack.show(
+        context,
+        'Harap pilih Tanggal Mulai dan Tanggal Selesai',
+        backgroundColor: AppColors.warning,
       );
       return;
     }
 
     if (_selectedNikPendamping == null || _selectedNikPendamping!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Harap pilih Dosen Pendamping'),
-          backgroundColor: AppColors.warning,
-        ),
+      AppSnack.show(
+        context,
+        'Harap pilih Dosen Pendamping',
+        backgroundColor: AppColors.warning,
       );
       return;
     }
@@ -226,22 +221,20 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
     try {
       final res = await _service.submitSuratTugas(body);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(res['message'] ?? 'Surat Tugas Berhasil Diajukan'),
-            backgroundColor: AppColors.success,
-          ),
+        AppSnack.show(
+          context,
+          res['message'] ?? 'Surat Tugas Berhasil Diajukan',
+          backgroundColor: AppColors.success,
         );
         _resetForm();
         _fetchData();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(userErrorMessage(e)),
-            backgroundColor: AppColors.danger,
-          ),
+        AppSnack.show(
+          context,
+          userErrorMessage(e),
+          backgroundColor: AppColors.danger,
         );
       }
     } finally {
@@ -262,21 +255,19 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
       try {
         final res = await _service.deleteSuratTugas(item.idSurat);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(res['message'] ?? 'Data surat tugas berhasil dihapus'),
-              backgroundColor: AppColors.success,
-            ),
+          AppSnack.show(
+            context,
+            res['message'] ?? 'Data surat tugas berhasil dihapus',
+            backgroundColor: AppColors.success,
           );
           _fetchData();
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(userErrorMessage(e)),
-              backgroundColor: AppColors.danger,
-            ),
+          AppSnack.show(
+            context,
+            userErrorMessage(e),
+            backgroundColor: AppColors.danger,
           );
         }
       }
@@ -478,21 +469,19 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
                                 final res = await _service.updateSuratTugas(item.idSurat, updateBody);
                                 if (context.mounted) {
                                   Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(res['message'] ?? 'Surat Tugas Berhasil Diperbarui'),
-                                      backgroundColor: AppColors.success,
-                                    ),
+                                  AppSnack.show(
+                                    context,
+                                    res['message'] ?? 'Surat Tugas Berhasil Diperbarui',
+                                    backgroundColor: AppColors.success,
                                   );
                                   _fetchData();
                                 }
                               } catch (e) {
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(userErrorMessage(e)),
-                                      backgroundColor: AppColors.danger,
-                                    ),
+                                  AppSnack.show(
+                                    context,
+                                    userErrorMessage(e),
+                                    backgroundColor: AppColors.danger,
                                   );
                                 }
                               } finally {

@@ -1252,21 +1252,10 @@ class _SkripsiPageState extends State<SkripsiPage>
               pickedFile != null &&
               fileError == null;
 
-          return Container(
+          return _sheetKulit(
+            ctx,
             constraints: BoxConstraints(
               maxHeight: MediaQuery.of(ctx).size.height * 0.85,
-            ),
-            padding: EdgeInsets.fromLTRB(
-              AppSpacing.xl,
-              AppSpacing.xl,
-              AppSpacing.xl,
-              MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl,
-            ),
-            decoration: const BoxDecoration(
-              color: AppColors.scaffold,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(AppRadius.lg),
-              ),
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -1692,19 +1681,8 @@ class _SkripsiPageState extends State<SkripsiPage>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Container(
-        padding: EdgeInsets.fromLTRB(
-          AppSpacing.xl,
-          AppSpacing.xl,
-          AppSpacing.xl,
-          MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl,
-        ),
-        decoration: const BoxDecoration(
-          color: AppColors.scaffold,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppRadius.lg),
-          ),
-        ),
+        builder: (ctx, setSheetState) => _sheetKulit(
+        ctx,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1856,19 +1834,8 @@ class _SkripsiPageState extends State<SkripsiPage>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setBsState) => Container(
-          padding: EdgeInsets.fromLTRB(
-            AppSpacing.xl,
-            AppSpacing.xl,
-            AppSpacing.xl,
-            MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl,
-          ),
-          decoration: const BoxDecoration(
-            color: AppColors.scaffold,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(AppRadius.lg),
-            ),
-          ),
+        builder: (ctx, setBsState) => _sheetKulit(
+          ctx,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2091,19 +2058,8 @@ class _SkripsiPageState extends State<SkripsiPage>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: EdgeInsets.fromLTRB(
-          AppSpacing.xl,
-          AppSpacing.xl,
-          AppSpacing.xl,
-          MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl,
-        ),
-        decoration: const BoxDecoration(
-          color: AppColors.scaffold,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppRadius.lg),
-          ),
-        ),
+      builder: (ctx) => _sheetKulit(
+        ctx,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2173,19 +2129,8 @@ class _SkripsiPageState extends State<SkripsiPage>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: EdgeInsets.fromLTRB(
-          AppSpacing.xl,
-          AppSpacing.xl,
-          AppSpacing.xl,
-          MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl,
-        ),
-        decoration: const BoxDecoration(
-          color: AppColors.scaffold,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppRadius.lg),
-          ),
-        ),
+      builder: (ctx) => _sheetKulit(
+        ctx,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2261,6 +2206,31 @@ class _SkripsiPageState extends State<SkripsiPage>
         isError: true,
       );
     }
+  }
+
+  /// Kulit bottom sheet form — padding viewInsets + decoration sudut atas
+  /// membulat; dipakai semua sheet form di halaman ini.
+  Widget _sheetKulit(
+    BuildContext ctx, {
+    BoxConstraints? constraints,
+    required Widget child,
+  }) {
+    return Container(
+      constraints: constraints,
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        AppSpacing.xl,
+        AppSpacing.xl,
+        MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.scaffold,
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.lg),
+        ),
+      ),
+      child: child,
+    );
   }
 
   void _showSnackBar(String message, {bool isError = false, bool isSuccess = false}) {

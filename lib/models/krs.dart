@@ -1,37 +1,31 @@
 class KrsPeriode {
   final String tanggalMulai;
-  final String tanggalSelesai;
   final String teksMentah;
 
   KrsPeriode({
     required this.tanggalMulai,
-    required this.tanggalSelesai,
     required this.teksMentah,
   });
 
   factory KrsPeriode.fromJson(Map<String, dynamic> json) {
     return KrsPeriode(
       tanggalMulai: json['tanggal_mulai'] ?? '',
-      tanggalSelesai: json['tanggal_selesai'] ?? '',
       teksMentah: json['teks_mentah'] ?? '',
     );
   }
 }
 
 class KrsTagihan {
-  final String downloadUrl;
   final String tahunAkademik;
   final String semester;
 
   KrsTagihan({
-    required this.downloadUrl,
     required this.tahunAkademik,
     required this.semester,
   });
 
   factory KrsTagihan.fromJson(Map<String, dynamic> json) {
     return KrsTagihan(
-      downloadUrl: json['download_url'] ?? '',
       tahunAkademik: json['tahun_akademik'] ?? '',
       semester: json['semester'] ?? '',
     );

@@ -798,6 +798,42 @@ class AppSearchField extends StatelessWidget {
   }
 }
 
+/// Tone & label pill untuk status presensi H/B/I/S — sumber tunggal yang
+/// dipakai halaman absensi dan detailnya (dulunya duplikat statis ×2).
+class AppAbsensiStatus {
+  const AppAbsensiStatus._();
+
+  static AppPillTone tone(String status) {
+    switch (status.toUpperCase()) {
+      case 'H':
+        return AppPillTone.success;
+      case 'B':
+        return AppPillTone.danger;
+      case 'I':
+        return AppPillTone.info;
+      case 'S':
+        return AppPillTone.warning;
+      default:
+        return AppPillTone.neutral;
+    }
+  }
+
+  static String label(String status) {
+    switch (status.toUpperCase()) {
+      case 'H':
+        return 'Hadir';
+      case 'B':
+        return 'Bolos';
+      case 'I':
+        return 'Izin';
+      case 'S':
+        return 'Sakit';
+      default:
+        return status;
+    }
+  }
+}
+
 /// Snackbar ringkas — satu baris teks + warna, melayang (floating).
 class AppSnack {
   const AppSnack._();

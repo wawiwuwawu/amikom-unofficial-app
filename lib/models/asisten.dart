@@ -23,14 +23,12 @@ class AsistenStats {
   final int izin;
   final int pengganti;
   final int alpa;
-  final double rataRataMhs;
 
   AsistenStats({
     required this.hadir,
     required this.izin,
     required this.pengganti,
     required this.alpa,
-    required this.rataRataMhs,
   });
 
   factory AsistenStats.fromJson(Map<String, dynamic> json) {
@@ -39,7 +37,6 @@ class AsistenStats {
       izin: json['izin'] ?? 0,
       pengganti: json['pengganti'] ?? 0,
       alpa: json['alpa'] ?? 0,
-      rataRataMhs: (json['rataRataMhs'] ?? 0).toDouble(),
     );
   }
 }

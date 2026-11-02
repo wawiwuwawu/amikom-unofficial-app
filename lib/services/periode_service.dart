@@ -1,4 +1,5 @@
 import '../models/app_failure.dart';
+import '../utils/waktu.dart';
 import 'api_client.dart';
 
 /// Flag periode KRS dari `GET /api/v1/periode?scope=krs` (kontrak BE
@@ -46,13 +47,9 @@ class PeriodeKrsData {
     if (iso == null) return null;
     final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(iso);
     if (m == null) return null;
-    final bulan = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
-      'Agustus', 'September', 'Oktober', 'November', 'Desember',
-    ];
     final idx = int.tryParse(m.group(2)!);
     if (idx == null || idx < 1 || idx > 12) return null;
-    return '${int.parse(m.group(3)!)} ${bulan[idx - 1]} ${m.group(1)}';
+    return '${int.parse(m.group(3)!)} ${bulanIndo[idx - 1]} ${m.group(1)}';
   }
 }
 

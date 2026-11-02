@@ -90,12 +90,10 @@ class SkkmAktivitas {
   final String level;
   final String jenisKeg;
   final String role;
-  final int jmlAnggota;
   final String suratTugas;
 
   /// Berkas bukti di portal — absen bila portal tidak menampilkannya.
   final SkkmBukti? bukti;
-  final String diuploadOleh;
   final int kredit;
 
   /// Status apa adanya portal ("Valid", "Tidak Valid", dst) — jangan diasumsikan enum.
@@ -113,10 +111,8 @@ class SkkmAktivitas {
     required this.level,
     required this.jenisKeg,
     required this.role,
-    required this.jmlAnggota,
     required this.suratTugas,
     required this.bukti,
-    required this.diuploadOleh,
     required this.kredit,
     required this.status,
     required this.validator,
@@ -135,8 +131,6 @@ class SkkmAktivitas {
       level: kegiatan['level']?.toString() ?? '',
       jenisKeg: kegiatan['jenis_keg']?.toString() ?? '',
       role: kegiatan['role']?.toString() ?? '',
-      jmlAnggota:
-          int.tryParse(kegiatan['jml_anggota']?.toString() ?? '0') ?? 0,
       suratTugas: kegiatan['surat_tugas']?.toString() ?? '',
       bukti: buktiJson is Map
           ? SkkmBukti.fromJson(
@@ -145,7 +139,6 @@ class SkkmAktivitas {
                   : Map<String, dynamic>.from(buktiJson),
             )
           : null,
-      diuploadOleh: json['diupload_oleh']?.toString() ?? '',
       kredit: int.tryParse(json['kredit']?.toString() ?? '0') ?? 0,
       status: json['status']?.toString() ?? '',
       validator: json['validator']?.toString() ?? '',
@@ -180,26 +173,5 @@ class SkkmKredit {
   factory SkkmKredit.fromJson(Map<String, dynamic> json) => SkkmKredit(
         kredit: int.tryParse(json['kredit']?.toString() ?? '0') ?? 0,
         idSkkm: json['id_skkm']?.toString() ?? '',
-      );
-}
-
-/// Satu deskriptor input bukti dari `POST /api/v1/skkm/bukti`
-/// (`{"name":"bukti_fisik","type":"file","accept":"application/pdf"}`).
-class SkkmBuktiInput {
-  final String name;
-  final String type;
-  final String accept;
-
-  const SkkmBuktiInput({
-    required this.name,
-    required this.type,
-    required this.accept,
-  });
-
-  factory SkkmBuktiInput.fromJson(Map<String, dynamic> json) =>
-      SkkmBuktiInput(
-        name: json['name']?.toString() ?? '',
-        type: json['type']?.toString() ?? '',
-        accept: json['accept']?.toString() ?? '',
       );
 }

@@ -230,7 +230,7 @@ class EventDiffService {
   Future<void> bersihkanSaatLogout() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final suffix = _suffixNim();
+      final suffix = ApiClient.nimSuffix();
       for (final s in [suffix, '']) {
         await prefs.remove('$_kSnapTagihan$s');
         await prefs.remove('$_kSnapUjian$s');
@@ -252,7 +252,7 @@ class EventDiffService {
     putuskan,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final suffix = _suffixNim();
+    final suffix = ApiClient.nimSuffix();
 
     // Debounce: evaluasi maksimum 1x per [debounceUntukTest] per jenis.
     final lastAt = prefs.getInt('$prefsKeyAt$suffix') ?? 0;
@@ -394,10 +394,5 @@ class EventDiffService {
       hash = (hash * 0x01000193) & 0xFFFFFFFF;
     }
     return hash;
-  }
-
-  String _suffixNim() {
-    final nim = ApiClient.instance.nim;
-    return (nim != null && nim.isNotEmpty) ? '_$nim' : '';
   }
 }

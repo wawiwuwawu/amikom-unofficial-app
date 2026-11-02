@@ -18,13 +18,11 @@ class OrganisasiService {
       ApiClient.guard<OrganisasiOptionResponse>(() async {
         final response = await _dio.get('/api/v1/organisasi-mahasiswa/options');
         final data = ApiClient.unwrapData<dynamic>(response.data);
-        if (data != null && data is Map<String, dynamic>) {
-          return OrganisasiOptionResponse.fromJson(data);
-        } else if (data != null && data is Map) {
-          return OrganisasiOptionResponse.fromJson(
-              Map<String, dynamic>.from(data));
-        }
-        return OrganisasiOptionResponse(organisasi: [], jabatan: []);
+        return ApiClient.fromJsonGuarded(
+          data,
+          OrganisasiOptionResponse.fromJson,
+          OrganisasiOptionResponse(organisasi: [], jabatan: []),
+        );
       }, 'Gagal memuat pilihan Organisasi');
 
   Future<void> tambahOrganisasi(FormData data) =>

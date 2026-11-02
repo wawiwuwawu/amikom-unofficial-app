@@ -55,12 +55,10 @@ class BeritaDetail {
 class Pagination {
   final int currentPage;
   final int? nextOffset;
-  final int? prevOffset;
 
   Pagination({
     required this.currentPage,
     this.nextOffset,
-    this.prevOffset,
   });
 
   factory Pagination.fromJson(Map<String, dynamic> json) => Pagination(
@@ -70,9 +68,6 @@ class Pagination {
         nextOffset: json['nextOffset'] is num
             ? (json['nextOffset'] as num).toInt()
             : (json['nextOffset'] != null ? int.tryParse(json['nextOffset'].toString()) : null),
-        prevOffset: json['prevOffset'] is num
-            ? (json['prevOffset'] as num).toInt()
-            : (json['prevOffset'] != null ? int.tryParse(json['prevOffset'].toString()) : null),
       );
 
   bool get hasMore => nextOffset != null && nextOffset! > 0;

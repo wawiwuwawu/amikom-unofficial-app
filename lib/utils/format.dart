@@ -24,9 +24,6 @@ String formatDateApi(DateTime dt) {
   return '${dt.year}-$month-$day';
 }
 
-/// Format tanggal untuk tampilan (d/M/yyyy).
-String formatDateDisplay(DateTime dt) => '${dt.day}/${dt.month}/${dt.year}';
-
 /// Opsi tahun untuk dropdown (tahun berjalan mundur 4 tahun).
 List<int> yearOptions() =>
     List.generate(5, (index) => DateTime.now().year - index);

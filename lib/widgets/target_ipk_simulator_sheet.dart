@@ -5,12 +5,12 @@ import '../services/transkrip_service.dart';
 import '../theme/app_theme.dart';
 import 'app_kit.dart';
 
-void showTargetIpkSimulatorBottomSheet(BuildContext context, {double? initialTarget}) {
+void showTargetIpkSimulatorBottomSheet(BuildContext context) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => TargetIpkSimulatorSheet(initialTarget: initialTarget ?? 3.75),
+    builder: (_) => const TargetIpkSimulatorSheet(),
   );
 }
 
@@ -26,7 +26,7 @@ void showTargetIpkSimulatorBottomSheet(BuildContext context, {double? initialTar
 class TargetIpkSimulatorSheet extends StatefulWidget {
   final double initialTarget;
 
-  const TargetIpkSimulatorSheet({super.key, required this.initialTarget});
+  const TargetIpkSimulatorSheet({super.key, this.initialTarget = 3.75});
 
   @override
   State<TargetIpkSimulatorSheet> createState() => _TargetIpkSimulatorSheetState();

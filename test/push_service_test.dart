@@ -212,7 +212,7 @@ void main() {
 
     testWidgets('cold start: aksi bukaList menunggu dan dijalankan saat navigator siap',
         (tester) async {
-      final key = NavigationService.instance.navigatorKey;
+      final key = NavigationService.navigatorKey;
 
       // Ketukan datang sebelum UI siap: navigator masih null → diantrekan.
       PushService.instance.bukaListDariKetukan();
@@ -233,7 +233,7 @@ void main() {
 
     testWidgets('push list kedua dalam 2 detik dibatalkan (guard executor)',
         (tester) async {
-      final key = NavigationService.instance.navigatorKey;
+      final key = NavigationService.navigatorKey;
 
       await tester.pumpWidget(
         MaterialApp(

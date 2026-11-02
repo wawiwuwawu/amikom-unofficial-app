@@ -49,15 +49,6 @@ class KrsService {
         return KrsPengisianResponse.fromJson(root);
       }, 'Gagal memuat pengisian KRS');
 
-  Future<MutationResult> submitPengisian(Map<String, dynamic> formData) =>
-      ApiClient.guard<MutationResult>(() async {
-        final response = await _dio.post(
-          '/api/v1/krs/pengisian',
-          data: {'formData': formData},
-        );
-        return ApiClient.unwrapMutation(response.data);
-      }, 'Gagal menyimpan pengisian kelas');
-
   Future<KrsPengisianResponse> getBelumDiisi() =>
       ApiClient.guard<KrsPengisianResponse>(() async {
         final response = await _dio.get('/api/v1/krs/pengisian/belum-diisi');

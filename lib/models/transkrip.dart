@@ -27,13 +27,11 @@ class TranskripItem {
 
 class SyaratDetail {
   final bool isFulfilled;
-  final String currentVal;
   final String target;
   final String description;
 
   SyaratDetail({
     required this.isFulfilled,
-    required this.currentVal,
     required this.target,
     required this.description,
   });
@@ -41,7 +39,6 @@ class SyaratDetail {
   factory SyaratDetail.fromJson(Map<String, dynamic> json) {
     return SyaratDetail(
       isFulfilled: json['is_fulfilled'] == true,
-      currentVal: json['current_val']?.toString() ?? '',
       target: json['target']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
     );
@@ -166,31 +163,22 @@ class CumlaudeData {
 }
 
 class KelayakanWisuda {
-  final bool ipkLulusEligible;
   final double ipkTerakhir;
-  final double minIpkLulus;
   final bool bebasNilaiDEEligible;
-  final int dEMatkulCount;
   final List<ViolatingMatkul> dEMatkulItems;
   final String warningWisuda;
 
   KelayakanWisuda({
-    required this.ipkLulusEligible,
     required this.ipkTerakhir,
-    required this.minIpkLulus,
     required this.bebasNilaiDEEligible,
-    required this.dEMatkulCount,
     required this.dEMatkulItems,
     required this.warningWisuda,
   });
 
   factory KelayakanWisuda.fromJson(Map<String, dynamic> json) {
     return KelayakanWisuda(
-      ipkLulusEligible: json['ipk_lulus_eligible'] == true,
       ipkTerakhir: double.tryParse(json['ipk_terakhir']?.toString() ?? '0') ?? 0.0,
-      minIpkLulus: double.tryParse(json['min_ipk_lulus']?.toString() ?? '2.5') ?? 2.5,
       bebasNilaiDEEligible: json['bebas_nilai_d_e_eligible'] == true,
-      dEMatkulCount: int.tryParse(json['d_e_matkul_count']?.toString() ?? '0') ?? 0,
       dEMatkulItems: (json['d_e_matkul_items'] as List?)
               ?.map((e) => ViolatingMatkul.fromJson(e))
               .toList() ??
@@ -360,7 +348,6 @@ class SkpiData {
 }
 
 class SimulasiIpkData {
-  final double targetIpk;
   final double ipkSaatIni;
   final int sisaSks;
   final double wajibIpsRataRata;
@@ -368,7 +355,6 @@ class SimulasiIpkData {
   final String analisisKalimat;
 
   SimulasiIpkData({
-    required this.targetIpk,
     required this.ipkSaatIni,
     required this.sisaSks,
     required this.wajibIpsRataRata,
@@ -378,7 +364,6 @@ class SimulasiIpkData {
 
   factory SimulasiIpkData.fromJson(Map<String, dynamic> json) {
     return SimulasiIpkData(
-      targetIpk: double.tryParse(json['target_ipk']?.toString() ?? '0') ?? 0.0,
       ipkSaatIni: double.tryParse(json['ipk_saat_ini']?.toString() ?? '0') ?? 0.0,
       sisaSks: int.tryParse(json['sisa_sks']?.toString() ?? '0') ?? 0,
       wajibIpsRataRata: double.tryParse(json['wajib_ips_rata_rata']?.toString() ?? '0') ?? 0.0,

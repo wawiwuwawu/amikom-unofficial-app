@@ -275,7 +275,7 @@ class PengingatJadwalService {
 
   Future<void> _perbaruiInternal() async {
     final prefs = await SharedPreferences.getInstance();
-    final suffix = _suffixNim();
+    final suffix = ApiClient.nimSuffix();
 
     // Izin notifikasi belum ada → lewati penjadwalan diam-diam. Cek lebih awal
     // supaya tidak ada fetch/cache yang dikerjakan sia-sia.
@@ -367,7 +367,7 @@ class PengingatJadwalService {
   Future<void> bersihkanSaatLogout() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final suffix = _suffixNim();
+      final suffix = ApiClient.nimSuffix();
       // Bersihkan kunci milik NIM aktif maupun kunci tanpa suffix.
       for (final s in [suffix, '']) {
         final registry = _bacaRegistry(prefs, s);
@@ -691,9 +691,4 @@ class PengingatJadwalService {
         ],
     },
   });
-
-  String _suffixNim() {
-    final nim = ApiClient.instance.nim;
-    return (nim != null && nim.isNotEmpty) ? '_$nim' : '';
-  }
 }

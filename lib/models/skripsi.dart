@@ -253,7 +253,6 @@ class SkripsiPendaftaranItem {
 class SkripsiPlagiarismeItem {
   final String id;
   final String judulSkripsi;
-  final String? fileLaporan;
   final String? laporanHasilCek;
   final String persentase;
   final String status;
@@ -261,7 +260,6 @@ class SkripsiPlagiarismeItem {
   SkripsiPlagiarismeItem({
     required this.id,
     required this.judulSkripsi,
-    this.fileLaporan,
     this.laporanHasilCek,
     required this.persentase,
     required this.status,
@@ -271,7 +269,6 @@ class SkripsiPlagiarismeItem {
     return SkripsiPlagiarismeItem(
       id: json['id']?.toString() ?? '',
       judulSkripsi: json['judul_skripsi']?.toString() ?? '',
-      fileLaporan: json['file_laporan']?.toString(),
       laporanHasilCek: json['laporan_hasil_cek']?.toString(),
       persentase: json['persentase']?.toString() ?? '0%',
       status: json['status']?.toString() ?? '',

@@ -165,7 +165,6 @@ class DetailPengajuanTema {
   final String rencanaJudul;
   final String namaTema;
   final String pusatStudi;
-  final String deskripsiTema;
   final String jenisTema;
   final String tanggalPengajuan;
 
@@ -175,7 +174,6 @@ class DetailPengajuanTema {
     required this.rencanaJudul,
     required this.namaTema,
     required this.pusatStudi,
-    required this.deskripsiTema,
     required this.jenisTema,
     required this.tanggalPengajuan,
   });
@@ -187,7 +185,6 @@ class DetailPengajuanTema {
       rencanaJudul: json['rencana_judul'] ?? '',
       namaTema: json['nama_tema'] ?? '',
       pusatStudi: json['pusat_studi'] ?? '',
-      deskripsiTema: json['deskripsi_tema'] ?? '',
       jenisTema: json['jenis_tema'] ?? '',
       tanggalPengajuan: json['tanggal_pengajuan'] ?? '',
     );

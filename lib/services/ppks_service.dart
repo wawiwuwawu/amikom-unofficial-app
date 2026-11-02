@@ -11,12 +11,11 @@ class PpksService {
   Future<PpksData> getPpksData() => ApiClient.guard<PpksData>(() async {
         final response = await _dio.get('/api/v1/ppks');
         final data = ApiClient.unwrapData<dynamic>(response.data);
-        if (data is Map<String, dynamic>) {
-          return PpksData.fromJson(data);
-        } else if (data is Map) {
-          return PpksData.fromJson(Map<String, dynamic>.from(data));
+        final map = ApiClient.mapOrNull(data);
+        if (map == null) {
+          throw const AppFailure('Gagal memuat formulir pengaduan PPKS');
         }
-        throw const AppFailure('Gagal memuat formulir pengaduan PPKS');
+        return PpksData.fromJson(map);
       }, 'Gagal memuat formulir pengaduan PPKS');
 
   Future<Map<String, dynamic>> submitPpks(Map<String, dynamic> body) =>

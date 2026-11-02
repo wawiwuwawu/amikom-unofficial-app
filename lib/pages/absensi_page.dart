@@ -533,36 +533,6 @@ class _AbsensiPageState extends State<AbsensiPage> {
     return null;
   }
 
-  static AppPillTone _statusTone(String status) {
-    switch (status.toUpperCase()) {
-      case 'H':
-        return AppPillTone.success;
-      case 'B':
-        return AppPillTone.danger;
-      case 'I':
-        return AppPillTone.info;
-      case 'S':
-        return AppPillTone.warning;
-      default:
-        return AppPillTone.neutral;
-    }
-  }
-
-  static String _statusLabel(String status) {
-    switch (status.toUpperCase()) {
-      case 'H':
-        return 'Hadir';
-      case 'B':
-        return 'Bolos';
-      case 'I':
-        return 'Izin';
-      case 'S':
-        return 'Sakit';
-      default:
-        return status;
-    }
-  }
-
   static Widget _iconBadge(IconData icon) {
     return Container(
       width: 40,
@@ -652,7 +622,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
     }
 
     final terakhir = m.riwayatPertemuan.first;
-    final tone = _statusTone(terakhir.status);
+    final tone = AppAbsensiStatus.tone(terakhir.status);
     final (bg, fg) = AppPill.toneColors(tone);
     final kehadiran = m.statistik.kehadiran;
 
@@ -687,7 +657,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_statusLabel(terakhir.status), style: AppText.h2),
+                    Text(AppAbsensiStatus.label(terakhir.status), style: AppText.h2),
                     const SizedBox(height: 2),
                     Text(
                       '${terakhir.tanggal} · ${terakhir.materi}',
@@ -961,7 +931,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
   }
 
   Widget _buildRiwayatRow(RiwayatPertemuan r) {
-    final tone = _statusTone(r.status);
+    final tone = AppAbsensiStatus.tone(r.status);
     final (bg, fg) = AppPill.toneColors(tone);
 
     return AppListRow(
@@ -983,7 +953,7 @@ class _AbsensiPageState extends State<AbsensiPage> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AppPill(_statusLabel(r.status), tone: tone),
+          AppPill(AppAbsensiStatus.label(r.status), tone: tone),
           if (r.idPresensi != null) ...[
             const SizedBox(width: AppSpacing.sm),
             const Icon(CupertinoIcons.chevron_forward, size: 18, color: AppColors.textMuted),

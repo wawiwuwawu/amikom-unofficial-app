@@ -11,9 +11,8 @@ import '../utils/waktu.dart';
 ///  * Tampilan: ikon kalender + tanggal lengkap Indonesia ("8 November 2026")
 ///    via [formatTanggalIndo]; belum dipilih → [hint] (default "Pilih Tanggal").
 ///  * Ketukan membuka kalender Material yang kini berbahasa Indonesia
-///    (MaterialApp di-set `locale: id` — lihat `main.dart`).
-///  * `defaultDate` mengisi nilai awal (mis. `DateTime.now()` untuk kasus
-///    yang ingin default hari ini) tanpa memicu onChanged.
+///    (MaterialApp di-set `locale: id` — lihat `main.dart`); kosong →
+///    titik awal `minDate` atau hari ini.
 ///  * `minDate` membatasi pilihan ke atasnya — untuk field Selesai yang tak
 ///    boleh mendahului Mulai; bila hasil pilihan lebih awal, di-clamp otomatis.
 ///
@@ -26,8 +25,6 @@ class AppDateField extends StatelessWidget {
   /// bila [minDate] terlewati. Tidak dipanggil bila dialog ditutup tanpa pilih.
   final ValueChanged<DateTime> onChanged;
 
-  /// Fallback titik awal kalender bila [value] masih kosong.
-  final DateTime? defaultDate;
   final DateTime? firstDate;
   final DateTime? lastDate;
 
@@ -40,7 +37,6 @@ class AppDateField extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onChanged,
-    this.defaultDate,
     this.firstDate,
     this.lastDate,
     this.minDate,
@@ -52,8 +48,7 @@ class AppDateField extends StatelessWidget {
     final awal = minDate != null && minDate!.isAfter(batasAwal)
         ? minDate!
         : batasAwal;
-    final awalDialog =
-        value ?? (minDate ?? defaultDate ?? DateTime.now());
+    final awalDialog = value ?? (minDate ?? DateTime.now());
     final picked = await showDatePicker(
       context: context,
       initialDate:

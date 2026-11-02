@@ -86,13 +86,6 @@ void main() {
     });
   });
 
-  group('formatDateDisplay', () {
-    test('d/M/yyyy tanpa nol di depan', () {
-      expect(formatDateDisplay(DateTime(2026, 3, 5)), '5/3/2026');
-      expect(formatDateDisplay(DateTime(2026, 12, 31)), '31/12/2026');
-    });
-  });
-
   group('yearOptions', () {
     test('lima tahun, mulai tahun berjalan lalu mundur', () {
       final now = DateTime.now().year;

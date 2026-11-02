@@ -33,12 +33,9 @@ class PusatStudiService {
       ApiClient.guard<PusatStudiDetail>(() async {
         final response = await _dio.get('/api/v1/pusat-studi/$base64Id');
         final data = ApiClient.unwrapData<dynamic>(response.data);
-        if (data is Map<String, dynamic>) {
-          return PusatStudiDetail.fromJson(data);
-        } else if (data is Map) {
-          return PusatStudiDetail.fromJson(Map<String, dynamic>.from(data));
-        }
-        throw const AppFailure('Gagal memuat detail pusat studi');
+        final map = ApiClient.mapOrNull(data);
+        if (map == null) throw const AppFailure('Gagal memuat detail pusat studi');
+        return PusatStudiDetail.fromJson(map);
       }, 'Gagal memuat detail pusat studi');
 
   Future<List<JoinedDetailTema>> getJoinedDetail(String id) =>
@@ -54,15 +51,8 @@ class PusatStudiService {
         final response =
             await _dio.get('/api/v1/pusat-studi/$base64Id/joined-page');
         final data = ApiClient.unwrapData<dynamic>(response.data);
-        if (data != null) {
-          if (data is Map<String, dynamic>) {
-            return PusatStudiJoinedPageData.fromJson(data);
-          } else if (data is Map) {
-            return PusatStudiJoinedPageData.fromJson(
-                Map<String, dynamic>.from(data));
-          }
-        }
-        return null;
+        final map = ApiClient.mapOrNull(data);
+        return map != null ? PusatStudiJoinedPageData.fromJson(map) : null;
       }, 'Gagal memuat halaman pusat studi');
 
   Future<Map<String, dynamic>> cancelAjuan(String idAjuan) =>

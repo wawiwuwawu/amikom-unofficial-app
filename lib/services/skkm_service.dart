@@ -73,23 +73,6 @@ class SkkmService {
         return kredit;
       }, 'Gagal memuat poin kegiatan');
 
-  /// Deskriptor input bukti yang portal minta untuk `id_skkm` ini
-  /// (file ATAU teks URL — keduanya bernama `bukti_fisik` di portal).
-  Future<List<SkkmBuktiInput>> inputBukti(String idSkkm) =>
-      ApiClient.guard<List<SkkmBuktiInput>>(() async {
-        final response = await _dio.post('/api/v1/skkm/bukti',
-            data: {'id_skkm': idSkkm});
-        final data = ApiClient.unwrapData<Map<String, dynamic>>(response.data);
-        return (data['input'] as List?)
-                ?.map((e) => SkkmBuktiInput.fromJson(
-                      e is Map<String, dynamic>
-                          ? e
-                          : Map<String, dynamic>.from(e as Map),
-                    ))
-                .toList() ??
-            const [];
-      }, 'Gagal memuat bentuk unggahan bukti');
-
   /// Portal men-enable tombol Ajukan hanya bila nomor surat tugas dikenal.
   Future<bool> cekSuratTugas(String suratTgs) =>
       ApiClient.guard<bool>(() async {

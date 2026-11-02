@@ -18,16 +18,14 @@ class RekognisiService {
       ApiClient.guard<RekognisiOptionResponse>(() async {
         final response = await _dio.get('/api/v1/rekognisi-mahasiswa/options');
         final data = ApiClient.unwrapData<dynamic>(response.data);
-        if (data != null && data is Map<String, dynamic>) {
-          return RekognisiOptionResponse.fromJson(data);
-        } else if (data != null && data is Map) {
-          return RekognisiOptionResponse.fromJson(
-              Map<String, dynamic>.from(data));
-        }
-        return RekognisiOptionResponse(
-          jenisRekognisi: [],
-          tingkat: [],
-          kontribusi: [],
+        return ApiClient.fromJsonGuarded(
+          data,
+          RekognisiOptionResponse.fromJson,
+          RekognisiOptionResponse(
+            jenisRekognisi: [],
+            tingkat: [],
+            kontribusi: [],
+          ),
         );
       }, 'Gagal memuat pilihan Rekognisi');
 

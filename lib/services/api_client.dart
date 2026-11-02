@@ -441,7 +441,7 @@ class ApiClient {
   // ─── Force Logout ────────────────────────────────────
   Future<void> _forceLogout() async {
     await clearTokens();
-    NavigationService.instance.navigatorKey.currentState?.pushReplacementNamed(
+    NavigationService.navigatorKey.currentState?.pushReplacementNamed(
       '/login',
     );
   }
@@ -576,6 +576,36 @@ class ApiClient {
       } catch (_) {}
     }
     return {};
+  }
+
+  /// Suffix kunci SharedPreferences milik NIM aktif (`_<nim>`), kosong bila
+  /// NIM belum diketahui — pengganti `_suffixNim()` yang diduplikasi di
+  /// beberapa service.
+  static String nimSuffix() {
+    final nim = ApiClient.instance.nim;
+    return (nim != null && nim.isNotEmpty) ? '_$nim' : '';
+  }
+
+  /// Koersi payload map ke `Map<String, dynamic>`; selain map (null/tipe
+  /// lain) → null. Pasangan [fromJsonGuarded] untuk pemanggil yang mau
+  /// melempar AppFailure sendiri bila payload bukan map.
+  static Map<String, dynamic>? mapOrNull(dynamic raw) {
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    return null;
+  }
+
+  /// Parse payload map jadi objek; map Dinamis dikonversi dulu, selain itu
+  /// (termasuk null/tipe lain) kembalikan [fallback] — pengganti blok
+  /// `is Map<String, dynamic> ? fromJson : is Map ? fromJson(Map.from) : fallback`
+  /// yang diduplikasi di banyak service.
+  static T fromJsonGuarded<T>(
+    dynamic raw,
+    T Function(Map<String, dynamic> json) fromJson,
+    T fallback,
+  ) {
+    final map = mapOrNull(raw);
+    return map != null ? fromJson(map) : fallback;
   }
 
   /// Ekstensi berkas dari header content-disposition (fallback .pdf).
