@@ -716,7 +716,11 @@ END:VCALENDAR
         adapter.agenda = agendaSenin;
         await service().perbaruiPengingat();
 
-        final sekarang = DateTime.now();
+        // Sumber jam SAMA dengan service (tz.local = Asia/Jakarta) —
+        // DateTime.now() memakai zona mesin (CI = UTC), sehingga begitu CI
+        // berjalan ≥ 17:00 UTC (Jakarta sudah besokan) rentang 14 hari di
+        // bawah meleset satu hari dari jadwal yang direkam gateway (flaky).
+        final sekarang = tz.TZDateTime.now(tz.local);
         final hariIni = DateTime(sekarang.year, sekarang.month, sekarang.day);
         final akhir = hariIni.add(const Duration(days: 13));
 
