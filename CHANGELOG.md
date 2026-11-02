@@ -10,8 +10,12 @@ rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-
 ## [v1.15.0] - 2026-11-01
 
 ### Added
+- 🎓 **SKKM (Satuan Kredit Kegiatan Mahasiswa)** untuk angkatan 2024+: daftar aktivitas + poin valid, pengajuan kegiatan bertingkat (unsur → sub-unsur → jenis → poin), unggah bukti PDF atau URL, cek surat tugas, unduh bukti, hapus aktivitas belum valid, serta kritik & saran untuk validator; entri menu otomatis disembunyikan untuk angkatan di bawah 2024
 - 🎓 Halaman Skripsi: kartu bimbingan **terpisah per dosen pembimbing** — daftar dosbim kini menjadi judul kartu grupnya (bisa dilipat), tiap catatan menampilkan status & komentar, plus tombol hapus catatan bimbingan
 - 🎓 Form tambah/edit bimbingan: dropdown **Progres** kini terisi langsung dari portal (nilai resmi, bukan teks bebas), pemilih tanggal pakai **kalender** (bukan ketik manual), dan dropdown dosen cukup nama
+- 🗂️ Katalog menu dirapikan menjadi **9 kategori** (Pengumuman & Berita, Akademik, Nilai, Tugas Akhir & Program, Pengajuan & Surat, Aktivitas Mahasiswa, Keuangan, Informasi Umum, Lainnya) — mengikuti pengelompokan web mahasiswa
+- 🗓️ Semua form tanggal kini memakai **pemilih kalender** (Izin Penelitian, Surat Tugas, PPKS, Skripsi, dll.) dan tampil dalam **Bahasa Indonesia**
+- 🏷️ Poin SKKM di kartu Sertifikasi/SKPI kini diberi label sesuai sumber angkanya: poin valid portal, estimasi berkas, atau "SKKM TIDAK BERLAKU" (tanpa progress bar yang menyesatkan)
 - ✨ Peringatan "belum ACC" (Pendaftaran Ujian & Cek Plagiarisme) kini hanya tampil di tab yang benar-benar sudah ada pengajuannya — tidak lagi muncul sembarangan
 - ✨ Halaman Pusat Studi: banner pesan status & saran dari pusat studi, tombol pengisian judul proposal langsung membuka halaman Skripsi
 - ✨ Banner **"Belum pernah bimbingan"** di Beranda — bisa ditutup dan sembunyi 30 hari
@@ -22,10 +26,11 @@ rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-
 - 🔧 `open_filex` 5.0.0, `firebase_messaging` 16.7.1, `fl_chart` 1.3.0, `actions/setup-java` 6; `intl` dikunci 0.20.2 mengikuti pin `flutter_localizations` SDK
 
 ### Fixed
-- 🩺 Jadwal Jumat tidak tampil bila portal mengirim varian "Jum'at" dengan apostrof melengkung/kutip — kini dikenali semua variannya (laporan & perbaikan awal dari kontributor)
+- 🩺 Jadwal ujian: tanggal dari server yang kini berformat `yyyy-MM-dd` tidak lagi tampil sebagai angka tahun di kotak tanggal; tautan tambah ke Google Calendar ikut dibetulkan
+- 🩺 Jadwal Jumat tidak tampil bila portal mengirim varian "Jum'at" dengan apostrof melengkung/kutip — kini dikenali semua variannya
 
 ### Kontributor
-- Terima kasih **@saimskywalker** 🙏 — menemukan & memperbaiki jadwal Jumat yang tidak tampil karena apostrof melengkung dari portal (#27)
+- **@saimskywalker** — fixing jadwal Jumat yang tidak tampil karena apostrof melengkung dari portal (#27). Terima kasih! 🙏
 
 ## [v1.14.0] - 2026-10-29
 
