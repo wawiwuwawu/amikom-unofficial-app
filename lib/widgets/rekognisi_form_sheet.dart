@@ -77,11 +77,23 @@ class _RekognisiFormSheetState extends State<RekognisiFormSheet> {
 
     try {
       final options = await _service.getOptions();
+      if (!mounted) return;
+      // Pilihan tersimpan (mode edit) yang tidak ada di daftar opsi dibuang —
+      // teks opsi bisa berubah di portal / data lama; DropdownButtonFormField
+      // meledak bila initialValue tidak ada di items.
+      bool ada(List<dynamic> ops, String? v) =>
+          v == null || ops.any((o) => o.value == v);
+      if (!ada(options.jenisRekognisi, _selectedJudul)) _selectedJudul = null;
+      if (!ada(options.tingkat, _selectedTingkat)) _selectedTingkat = null;
+      if (!ada(options.kontribusi, _selectedKontribusi)) {
+        _selectedKontribusi = null;
+      }
       setState(() {
         _optionsData = options;
         _isLoadingOptions = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = userErrorMessage(e);
         _isLoadingOptions = false;

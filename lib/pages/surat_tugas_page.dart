@@ -332,7 +332,13 @@ class _SuratTugasPageState extends State<SuratTugasPage> {
 
     DateTime? editStartDate = DateTime.tryParse(item.tglMulai);
     DateTime? editEndDate = DateTime.tryParse(item.tglSelesai);
-    String? editNikPendamping = item.nikPendamping.isNotEmpty ? item.nikPendamping : null;
+    // Seed NIK hanya bila masih ada di daftar opsi — DropdownButtonFormField
+    // meledak bila initialValue tidak ada di items (opsi bisa kosong/berubah).
+    final dosenSeedOptions = _data?.options.dosenPendamping ?? const [];
+    final nikTersedia =
+        dosenSeedOptions.any((d) => d.nik == item.nikPendamping);
+    String? editNikPendamping =
+        nikTersedia && item.nikPendamping.isNotEmpty ? item.nikPendamping : null;
     String editPendampingNama = item.pendamping;
 
     bool isUpdating = false;

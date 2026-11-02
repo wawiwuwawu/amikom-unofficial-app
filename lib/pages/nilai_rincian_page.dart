@@ -384,8 +384,7 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
                   ),
                 ),
               ],
-            ),
-            // Dropdown tanpa isi tidak boleh tampil tanpa penjelasan.
+            ),            // Dropdown tanpa isi tidak boleh tampil tanpa penjelasan.
             if (_tahunList.isEmpty || _semesterList.isEmpty) ...[
               const SizedBox(height: AppSpacing.sm),
               Text(
@@ -417,41 +416,16 @@ class _NilaiRincianPageState extends State<NilaiRincianPage> {
     required String hint,
     required ValueChanged<String?> onChanged,
   }) {
-    final effectiveValue = items.any((e) => e.value == value) ? value : null;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      decoration: AppDeco.card(radius: AppRadius.sm),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: effectiveValue,
-          hint: Text(
-            hint,
-            style: AppText.bodySm,
-            overflow: TextOverflow.ellipsis,
-          ),
-          isExpanded: true,
-          icon: const Icon(
-            CupertinoIcons.chevron_down,
-            color: AppColors.primary,
-            size: 14,
-          ),
-          items: items.map((e) {
-            return DropdownMenuItem<String>(
-              value: e.value,
-              child: Text(
-                e.label,
-                style: AppText.bodySm.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            );
-          }).toList(),
-          onChanged: onChanged,
-        ),
-      ),
+    // AppDropdownField: menu selalu ke bawah + dedup value + fallback hint
+    // (DropdownButton lama menjulur ke atas dan meledak saat opsi server
+    // mengandung value ganda).
+    return AppDropdownField<String>(
+      value: value,
+      hint: hint,
+      onChanged: onChanged,
+      entries: [
+        for (final e in items) AppDropdownEntry(value: e.value, label: e.label),
+      ],
     );
   }
 

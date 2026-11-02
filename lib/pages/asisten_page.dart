@@ -673,42 +673,34 @@ class _AsistenPageState extends State<AsistenPage> {
   /// Pemilih tahun akademik — memakai tema input global (AppDeco + AppText),
   /// bukan warna/border yang ditulis ulang di halaman.
   Widget _buildTahunDropdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.lg,
-        vertical: AppSpacing.xs,
+    // AppDropdownField: menu selalu ke bawah + dedup value + fallback hint.
+    return AppDropdownField<AsistenTahunAkademik>(
+      value: _selectedTahun,
+      hint: 'Tahun Akademik',
+      textStyle: AppText.body,
+      icon: const Icon(
+        CupertinoIcons.chevron_down,
+        size: 16,
+        color: AppColors.textMuted,
       ),
-      decoration: AppDeco.card(),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<AsistenTahunAkademik>(
-          isExpanded: true,
-          value: _selectedTahun,
-          icon: const Icon(
-            CupertinoIcons.chevron_down,
-            size: 16,
-            color: AppColors.textMuted,
-          ),
-          items: _tahunAkademikList.map((t) {
-            return DropdownMenuItem(
-              value: t,
-              child: Text(
+      entries: [
+        for (final t in _tahunAkademikList)
+          AppDropdownEntry(
+            value: t,
+            label:
                 '${t.thnAkademik} - ${t.semester == 1
                     ? 'Ganjil'
                     : t.semester == 2
                     ? 'Genap'
                     : 'Pendek'}',
-                style: AppText.body,
-              ),
-            );
-          }).toList(),
-          onChanged: (val) {
-            if (val != null && val != _selectedTahun) {
-              setState(() => _selectedTahun = val);
-              _loadJadwal();
-            }
-          },
-        ),
-      ),
+          ),
+      ],
+      onChanged: (val) {
+        if (val != null && val != _selectedTahun) {
+          setState(() => _selectedTahun = val);
+          _loadJadwal();
+        }
+      },
     );
   }
 

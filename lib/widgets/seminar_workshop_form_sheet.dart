@@ -74,11 +74,21 @@ class _SeminarWorkshopFormSheetState extends State<SeminarWorkshopFormSheet> {
 
     try {
       final options = await _service.getOptions();
+      if (!mounted) return;
+      // Pilihan tersimpan (mode edit) yang tidak ada di daftar opsi dibuang —
+      // DropdownButtonFormField meledak bila initialValue tidak ada di items.
+      bool ada(List<dynamic> ops, String? v) =>
+          v == null || ops.any((o) => o.value == v);
+      if (!ada(options.sebagai, _selectedSebagai)) _selectedSebagai = null;
+      if (!ada(options.tingkatan, _selectedTingkatan)) {
+        _selectedTingkatan = null;
+      }
       setState(() {
         _optionsData = options;
         _isLoadingOptions = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = userErrorMessage(e);
         _isLoadingOptions = false;

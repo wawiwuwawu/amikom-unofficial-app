@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/app_failure.dart';
@@ -884,6 +885,208 @@ class AppConfirm {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Satu entri pilihan untuk [AppDropdownField].
+class AppDropdownEntry<T> {
+  final T value;
+  final String label;
+
+  const AppDropdownEntry({required this.value, required this.label});
+}
+
+/// Dropdown trigger bergaya kartu dengan menu yang SELALU terbuka ke bawah
+/// (`MenuAnchor` + `MenuStyle.alignment: topStart`).
+///
+/// Kenapa bukan `DropdownButton`: menu bawaan menyelaraskan pusat item
+/// terpilih dengan pusat tombol, jadi begitu pilihan bukan entri pertama
+/// (mis. tahun default dari server ada di tengah daftar), menu menjulur ke
+/// ATAS melewati AppBar — `DropdownButton` tidak punya parameter arah.
+///
+/// Pengaman bawaan terhadap dua kelas crash dropdown:
+///  * Entri di-**dedup by value** (yang pertama menang) — mencegah assert
+///    `"There should be exactly one item with [DropdownButton]'s value"`
+///    saat daftar opsi server memuat value ganda.
+///  * [value] yang tidak ada di [entries] jatuh ke [hint] — mencegah crash
+///    pilihan usang setelah daftar opsi dimuat ulang (mis. pull-to-refresh).
+///
+/// Knob tampilan sengaja minimal supaya ketiga filter puncak halaman
+/// (nilai rincian, KHS, asisten) tetap tampak persis seperti sebelumnya.
+class AppDropdownField<T> extends StatefulWidget {
+  /// Daftar pilihan (nilai duplikat dibuang otomatis, yang pertama menang).
+  final List<AppDropdownEntry<T>> entries;
+  final T? value;
+  final String hint;
+  final ValueChanged<T?> onChanged;
+
+  /// Tinggi maksimum panel menu (scrollable bila lebih).
+  final double? maxMenuHeight;
+
+  /// Gaya teks trigger & item (default `AppText.bodySm`).
+  final TextStyle? textStyle;
+
+  /// Warna isi kartu trigger (null = default `AppDeco.card`).
+  final Color? fillColor;
+
+  /// Ikon chevron di kanan trigger.
+  final Widget icon;
+
+  const AppDropdownField({
+    super.key,
+    required this.entries,
+    required this.hint,
+    required this.onChanged,
+    this.value,
+    this.maxMenuHeight,
+    this.textStyle,
+    this.fillColor,
+    this.icon = const Icon(
+      CupertinoIcons.chevron_down,
+      color: AppColors.primary,
+      size: 14,
+    ),
+  });
+
+  @override
+  State<AppDropdownField<T>> createState() => _AppDropdownFieldState<T>();
+}
+
+class _AppDropdownFieldState<T> extends State<AppDropdownField<T>> {
+  final MenuController _menuController = MenuController();
+
+  List<AppDropdownEntry<T>> get _entries {
+    final seen = <T>{};
+    return [
+      for (final e in widget.entries)
+        if (seen.add(e.value)) e,
+    ];
+  }
+
+  @override
+  void dispose() {
+    _menuController.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = _entries;
+    final gaya = widget.textStyle ?? AppText.bodySm;
+    AppDropdownEntry<T>? terpilih;
+    for (final e in entries) {
+      if (e.value == widget.value) terpilih = e;
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final lebar = constraints.maxWidth;
+        return MenuAnchor(
+          controller: _menuController,
+          // Paksa lebar menu = lebar trigger (bukan lebar intrinsik teks).
+          crossAxisUnconstrained: false,
+          style: MenuStyle(
+            // Kunci perbaikan: menu selalu di BAWAH trigger (bottomStart =
+            // y+1; topStart justru membuka ke atas).
+            alignment: AlignmentDirectional.bottomStart,
+            backgroundColor: const WidgetStatePropertyAll(AppColors.surface),
+            surfaceTintColor:
+                const WidgetStatePropertyAll(Colors.transparent),
+            elevation: const WidgetStatePropertyAll(8),
+            shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+            ),
+            // Menu lama DropdownButton: 8 px vertikal, tanpa border.
+            padding: const WidgetStatePropertyAll(
+              EdgeInsets.symmetric(vertical: 8),
+            ),
+            minimumSize: WidgetStatePropertyAll(Size(lebar, 0)),
+            maximumSize: WidgetStatePropertyAll(
+              Size(lebar, widget.maxMenuHeight ?? 320),
+            ),
+          ),
+          menuChildren: [
+            for (final e in entries)
+              MenuItemButton(
+                onPressed: () {
+                  _menuController.close();
+                  widget.onChanged(e.value);
+                },
+                // Bentuk item meniru DropdownButton lama: 48 px, inset 16,
+                // tanpa centang/sorotan — seleksi hanya terlihat di trigger.
+                style: MenuItemButton.styleFrom(
+                  minimumSize: Size(lebar, 48),
+                  maximumSize: Size(lebar, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  foregroundColor: AppColors.textPrimary,
+                  backgroundColor: Colors.transparent,
+                ),
+                child: Text(
+                  e.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: gaya.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+          ],
+          builder: (context, controller, child) {
+            return InkWell(
+              onTap: entries.isEmpty
+                  ? null
+                  : () {
+                      if (controller.isOpen) {
+                        controller.close();
+                      } else {
+                        controller.open();
+                      }
+                    },
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                // Tinggi minimal 48 px = tinggi intrinsik DropdownButton lama
+                // (tanpa ini kartu kolaps setinggi teks — pipih).
+                constraints: const BoxConstraints(minHeight: 48),
+                alignment: Alignment.centerLeft,
+                decoration: AppDeco.card(
+                  color: widget.fillColor,
+                  radius: AppRadius.sm,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        terpilih?.label ?? widget.hint,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: terpilih != null
+                            ? gaya.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              )
+                            // Hint: netral (w400, textSecondary) — sama dengan
+                            // gaya hint DropdownButton lama di kedua halaman.
+                            : gaya.copyWith(
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.textSecondary,
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    widget.icon,
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

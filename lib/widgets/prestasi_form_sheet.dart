@@ -76,11 +76,13 @@ class _PrestasiFormSheetState extends State<PrestasiFormSheet> {
 
     try {
       final options = await _service.getOptions();
+      if (!mounted) return;
       setState(() {
         _optionsData = options;
         _isLoadingOptions = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = userErrorMessage(e);
         _isLoadingOptions = false;

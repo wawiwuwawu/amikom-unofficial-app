@@ -289,38 +289,22 @@ class _KhsPageState extends State<KhsPage> {
     required String hint,
     required ValueChanged<String?> onChanged,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      decoration: AppDeco.card(
-        color: AppColors.surfaceMuted,
-        radius: AppRadius.sm,
+    // AppDropdownField: menu selalu ke bawah + dedup value + fallback hint
+    // (pilihan lama tak lagi ada di daftar tak lagi meledak).
+    return AppDropdownField<String>(
+      value: value,
+      hint: hint,
+      onChanged: onChanged,
+      textStyle: AppText.body.copyWith(fontWeight: FontWeight.w600),
+      fillColor: AppColors.surfaceMuted,
+      icon: const Icon(
+        Icons.keyboard_arrow_down,
+        color: AppColors.primarySoft,
+        size: 18,
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          hint: Text(hint, style: AppText.bodySm),
-          isExpanded: true,
-          icon: const Icon(
-            Icons.keyboard_arrow_down,
-            color: AppColors.primarySoft,
-            size: 18,
-          ),
-          style: AppText.body.copyWith(fontWeight: FontWeight.w600),
-          dropdownColor: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          items: items
-              .map((e) => DropdownMenuItem(
-                    value: e.value,
-                    child: Text(
-                      e.label,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppText.body.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                  ))
-              .toList(),
-          onChanged: onChanged,
-        ),
-      ),
+      entries: [
+        for (final e in items) AppDropdownEntry(value: e.value, label: e.label),
+      ],
     );
   }
 

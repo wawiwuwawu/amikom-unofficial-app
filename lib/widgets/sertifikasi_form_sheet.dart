@@ -58,6 +58,16 @@ class _SertifikasiFormSheetState extends State<SertifikasiFormSheet> {
     super.dispose();
   }
 
+  /// Pilihan tahun = `yearOptions()` + tahun tersimpan (mode edit) bila di
+  /// luar jendela 5 tahun — DropdownButtonFormField meledak bila initialValue
+  /// tidak ada di items (sertifikat lama bisa lebih tua dari jendela).
+  List<int> get _pilihanTahun {
+    final tahun = yearOptions();
+    final t = _selectedTahun;
+    if (t != null && !tahun.contains(t)) tahun.insert(0, t);
+    return tahun;
+  }
+
   Future<void> _loadOptions() async {
     try {
       final opts = await _service.getOptions();
@@ -230,7 +240,7 @@ class _SertifikasiFormSheetState extends State<SertifikasiFormSheet> {
                                 labelText: 'Tahun Sertifikasi',
                               ),
                               initialValue: _selectedTahun,
-                              items: yearOptions().map((thn) {
+                              items: _pilihanTahun.map((thn) {
                                 return DropdownMenuItem(
                                   value: thn,
                                   child: Text(thn.toString()),
