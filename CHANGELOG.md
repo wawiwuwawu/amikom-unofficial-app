@@ -7,6 +7,14 @@ rilis ada di halaman [Releases](https://github.com/wawiwuwawu/amikom-unofficial-
 
 ## [Unreleased]
 
+## [v1.15.1] - 2026-11-03
+
+### Fixed
+- 🩺 Dropdown filter (Rincian Nilai, KHS, Asisten): menu pilihan kini **selalu terbuka ke bawah** — tidak lagi menjulur ke atas melewati AppBar
+- 🩺 Memilih Ganjil/Genap di Rincian Nilai tidak lagi error bila daftar semester dari server memuat nilai ganda — pilihan kini otomatis di-dedup
+- 🩺 Dropdown di form edit (Rekognisi, Seminar & Workshop, Surat Tugas, Organisasi, Sertifikasi) tidak lagi error bila nilai tersimpan tidak ada di daftar pilihan — termasuk tahun kegiatan/sertifikat yang lebih tua dari 5 tahun
+- 🩺 Ukuran tinggi kotak dropdown kembali seperti sebelumnya (48 px)
+
 ## [v1.15.0] - 2026-11-01
 
 ### Added
