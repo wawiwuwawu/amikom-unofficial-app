@@ -47,7 +47,7 @@ dependencies:
   url_launcher: ^6.3.3
   flutter_html: ^3.0.0
   file_picker: ^13.1.0
-  table_calendar: ^3.2.1
+  table_calendar: ^3.3.0
   intl: ^0.20.2
   open_filex: ^5.0.0
   app_links: ^7.0.0
