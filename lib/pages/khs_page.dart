@@ -51,6 +51,18 @@ class _KhsPageState extends State<KhsPage> {
             : <ValueLabelOption>[];
         _error = null;
       });
+      // Auto-select tahun terakhir + semester pertama, lalu langsung muat
+      // detail — konsisten dengan portal web & halaman Rincian Nilai (user
+      // tidak perlu menekan tombol cari untuk tampilan pertama).
+      if (_selectedThn == null && _tahunList.isNotEmpty) {
+        _selectedThn = _tahunList.first.value;
+      }
+      if (_selectedSmt == null && _semesterList.isNotEmpty) {
+        _selectedSmt = _semesterList.first.value;
+      }
+      if (_selectedThn != null && _selectedSmt != null && _detail == null) {
+        await _loadDetail();
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = userErrorMessage(e));

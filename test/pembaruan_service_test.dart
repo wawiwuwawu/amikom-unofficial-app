@@ -442,4 +442,160 @@ void main() {
       );
     });
   });
+
+  group('mulaiUnduh — unduhan background di service', () {
+    late Directory dir;
+    const isiApk = [9, 8, 7, 6, 5, 4, 3, 2];
+    final shaIsi = sha256.convert(isiApk).toString();
+
+    setUp(() async {
+      dir = await Directory.systemTemp.createTemp('pembaruan_bg_test');
+      PembaruanService.instance.gantiDirektoriUnduhUntukTest(dir);
+      PembaruanService.instance.notifGateway = _NotifPalsu();
+      // Plain test() tidak punya WidgetsBinding — override agar
+      // _appTerlihat tidak menyentuh lifecycleState.
+      PembaruanService.instance.appTerlihatOverride = true;
+    });
+
+    tearDown(() async {
+      if (await dir.exists()) await dir.delete(recursive: true);
+    });
+
+    InfoPembaruan info({String? sha, String versi = '1.14.0'}) =>
+        InfoPembaruan(
+          versi: versi,
+          catatan: '',
+          urlApk: 'https://github.test/download/$versi.apk',
+          namaApk: 'app-release.apk',
+          sha256: sha,
+        );
+
+    test(
+      'berjalan → siap: status notifier ikut berubah, path terisi',
+      () async {
+        final dio = Dio();
+        dio.httpClientAdapter = _AdapterTetap(
+          (_) => ResponseBody.fromBytes(
+            isiApk,
+            200,
+            headers: {
+              Headers.contentLengthHeader: ['${isiApk.length}'],
+            },
+          ),
+        );
+        final service = PembaruanService.instance..gantiDioUntukTest(dio);
+
+        service.mulaiUnduh(info(sha: shaIsi));
+        expect(service.statusUnduh.value.fase, FaseUnduh.mengunduh);
+        // Tunggu sampai selesai (polling — unduhan nyata di adapter palsu).
+        while (service.statusUnduh.value.fase == FaseUnduh.mengunduh) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+        expect(service.statusUnduh.value.fase, FaseUnduh.siap);
+        expect(service.statusUnduh.value.pesanGagal, isNull);
+      },
+    );
+
+    test(
+      'single-flight: unduhan kedua versi sama saat berjalan diabaikan',
+      () async {
+        final dio = Dio();
+        final adapter = _AdapterTetap(
+          (_) => ResponseBody.fromBytes(
+            isiApk,
+            200,
+            headers: {
+              Headers.contentLengthHeader: ['${isiApk.length}'],
+            },
+          ),
+        );
+        dio.httpClientAdapter = adapter;
+        final service = PembaruanService.instance..gantiDioUntukTest(dio);
+
+        service.mulaiUnduh(info(sha: shaIsi));
+        service.mulaiUnduh(info(sha: shaIsi));
+        service.mulaiUnduh(info(sha: shaIsi));
+        while (service.statusUnduh.value.fase == FaseUnduh.mengunduh) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+        // Tiga pemanggilan, satu request unduhan saja.
+        expect(adapter.jumlahRequest, 1);
+      },
+    );
+
+    test('gagal → fase gagal + pesan ramah (bukan jejak teknis)', () async {
+      final dio = Dio();
+      dio.httpClientAdapter = _AdapterGagal();
+      final service = PembaruanService.instance..gantiDioUntukTest(dio);
+
+      service.mulaiUnduh(info(sha: null));
+      while (service.statusUnduh.value.fase == FaseUnduh.mengunduh) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(service.statusUnduh.value.fase, FaseUnduh.gagal);
+      expect(
+        service.statusUnduh.value.pesanGagal,
+        'Gagal mengunduh pembaruan. Coba lagi nanti.',
+      );
+    });
+
+    test('app tidak terlihat → notif selesai terkirim', () async {
+      final dio = Dio();
+      dio.httpClientAdapter = _AdapterTetap(
+        (_) => ResponseBody.fromBytes(
+          isiApk,
+          200,
+          headers: {
+            Headers.contentLengthHeader: ['${isiApk.length}'],
+          },
+        ),
+      );
+      final service = PembaruanService.instance..gantiDioUntukTest(dio);
+      final notif = _NotifPalsu();
+      service.notifGateway = notif;
+      service.appTerlihatOverride = false;
+
+      service.mulaiUnduh(info(sha: shaIsi));
+      while (service.statusUnduh.value.fase == FaseUnduh.mengunduh) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(notif.panggilan.length, 1);
+      expect(notif.panggilan.single.$1, '1.14.0');
+    });
+
+    test('app terlihat → TIDAK ada notif', () async {
+      final dio = Dio();
+      dio.httpClientAdapter = _AdapterTetap(
+        (_) => ResponseBody.fromBytes(
+          isiApk,
+          200,
+          headers: {
+            Headers.contentLengthHeader: ['${isiApk.length}'],
+          },
+        ),
+      );
+      final service = PembaruanService.instance..gantiDioUntukTest(dio);
+      final notif = _NotifPalsu();
+      service.notifGateway = notif;
+      service.appTerlihatOverride = true;
+
+      service.mulaiUnduh(info(sha: shaIsi));
+      while (service.statusUnduh.value.fase == FaseUnduh.mengunduh) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(notif.panggilan, isEmpty);
+    });
+  });
+}
+
+class _NotifPalsu implements PembaruanNotifGateway {
+  final List<(String, String)> panggilan = [];
+
+  @override
+  Future<void> tampilkanSelesai({
+    required String versi,
+    required String path,
+  }) async {
+    panggilan.add((versi, path));
+  }
 }

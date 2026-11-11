@@ -36,6 +36,10 @@ class _AsistenPageState extends State<AsistenPage> {
   AsistenInfo? _info;
   AsistenLaporan? _laporan;
 
+  /// Seksi Status Bebas KP bersifat informasi — bisa ditutup user.
+  /// Selalu tampil lagi saat data dimuat ulang (pull-to-refresh).
+  bool _bebasKpDitutup = false;
+
   // Jadwal
   List<AsistenTahunAkademik> _tahunAkademikList = [];
   AsistenTahunAkademik? _selectedTahun;
@@ -63,6 +67,7 @@ class _AsistenPageState extends State<AsistenPage> {
     setState(() {
       _loading = true;
       _error = null;
+      _bebasKpDitutup = false;
     });
 
     try {
@@ -157,35 +162,6 @@ class _AsistenPageState extends State<AsistenPage> {
     }
   }
 
-  Future<void> _submitBebasKp() async {
-    try {
-      await _service.pengajuanBebasKp();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pengajuan Bebas KP berhasil dikirim!'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-        _loadAllData(); // Refresh data
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              userErrorMessage(
-                e,
-                'Gagal mengajukan Bebas KP. Silakan coba lagi sebentar lagi.',
-              ),
-            ),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -217,7 +193,7 @@ class _AsistenPageState extends State<AsistenPage> {
         children: [
           _buildProfileCard(),
           _buildStatsSection(),
-          _buildBebasKpSection(),
+          if (!_bebasKpDitutup) _buildBebasKpSection(),
           if (_laporan != null)
             AppSection(title: 'Grafik Kinerja', child: _buildModernChart()),
           AppSection(title: 'Jadwal Asisten', child: _buildJadwalSection()),
@@ -340,15 +316,15 @@ class _AsistenPageState extends State<AsistenPage> {
     );
   }
 
-  // ── Status Bebas KP (banner + progres + aksi) ──────────────────────────────
+  // ── Status Bebas KP (banner informatif + progres) ────────────────────────
 
   Widget _buildBebasKpSection() {
     final s = _info!.stats;
     final int totalKehadiran = s.hadir + s.pengganti;
-    final int targetKehadiran = 200; // Minimal 200 kali mengajar
+    final int targetKehadiran = 120; // Minimal 120 kali mengajar
 
     final double progress = (totalKehadiran / targetKehadiran).clamp(0.0, 1.0);
-    final bool isEligible = _info!.bisaAjukanBebasKP;
+    final bool isEligible = totalKehadiran >= targetKehadiran;
     final Color progressColor = isEligible
         ? AppColors.success
         : AppColors.primary;
@@ -361,9 +337,28 @@ class _AsistenPageState extends State<AsistenPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Untuk mengajukan Bebas KP, asisten harus mencapai target minimum kehadiran dan rata-rata evaluasi.',
-              style: AppText.bodySm,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    'Pengajuan Bebas KP dilakukan langsung di loket kampus; '
+                    'status akan aktif setelah diverifikasi. Progres '
+                    'kehadiran di bawah hanya sebagai informasi.',
+                    style: AppText.bodySm,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                // Bisa ditutup — teks status tak perlu tampil terus-menerus.
+                GestureDetector(
+                  onTap: () => setState(() => _bebasKpDitutup = true),
+                  child: Icon(
+                    CupertinoIcons.xmark_circle_fill,
+                    size: 20,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.lg),
             Row(
@@ -384,16 +379,6 @@ class _AsistenPageState extends State<AsistenPage> {
                 minHeight: 8,
                 backgroundColor: AppColors.border,
                 color: progressColor,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: isEligible ? _submitBebasKp : null,
-                child: Text(
-                  isEligible ? 'Ajukan Bebas KP' : 'Syarat Belum Terpenuhi',
-                ),
               ),
             ),
           ],

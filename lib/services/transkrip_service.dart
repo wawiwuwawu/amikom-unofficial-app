@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'api_client.dart';
 import '../models/app_failure.dart';
 import '../models/transkrip.dart';
@@ -63,17 +64,15 @@ class TranskripService {
       }, 'Gagal melakukan simulasi target IPK. Silakan coba lagi.');
 
   Future<String> download() => ApiClient.guard<String>(() async {
-        // ponytail: centralized download dir via ApiClient
-        final dir = await ApiClient.getDownloadDir();
-        final nim = ApiClient.instance.nim ?? '';
-        final nama = ApiClient.instance.nama ?? '';
-        final namaFile = nama.isNotEmpty ? '$nama ($nim)' : nim;
-        final savePath = '$dir/Transkrip_$namaFile.pdf';
+        final namaFile = ApiClient.susunNamaBerkas(jenis: 'Transkrip');
         // ponytail: GET request as expected by backend /api/v1/transkrip/download route
-        await _dio.download(
+        final response = await _dio.get(
           '/api/v1/transkrip/download',
-          savePath,
+          options: Options(responseType: ResponseType.bytes),
         );
-        return savePath;
+        return ApiClient.simpanKeDownload(
+          namaFile,
+          response.data is List ? response.data as List<int> : <int>[],
+        );
       }, 'Gagal mengunduh transkrip. Silakan coba lagi.');
 }

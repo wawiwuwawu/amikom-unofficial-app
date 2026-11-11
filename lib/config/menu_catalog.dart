@@ -20,6 +20,7 @@ import '../pages/pengumuman_list_page.dart';
 import '../pages/pkl_page.dart';
 import '../pages/ppks_page.dart';
 import '../pages/prestasi_page.dart';
+import '../pages/profil_page.dart';
 import '../pages/pusat_studi/pusat_studi_page.dart';
 import '../pages/rekognisi_page.dart';
 import '../pages/seminar_page.dart';
@@ -393,6 +394,13 @@ abstract final class MenuCatalog {
       icon: CupertinoIcons.exclamationmark_shield,
       category: MenuCategory.lainnya,
       build: (ctx) => const PenafianPage(),
+    ),
+    MenuEntry(
+      title: 'Profil',
+      description: 'Biodata & pengaturan WiFi kampus',
+      icon: CupertinoIcons.person_crop_circle_fill,
+      category: MenuCategory.lainnya,
+      build: (ctx) => const ProfilPage(),
     ),
   ];
 

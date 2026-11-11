@@ -14,9 +14,11 @@ import '../services/pengingat_jadwal_service.dart';
 import '../services/push_service.dart';
 import '../services/skkm_service.dart';
 import '../services/widget_jadwal_service.dart';
+import '../services/wifi_kampus_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
-import '../widgets/pembaruan_sheet.dart';
+import '../widgets/pembaruan_page.dart';
+import '../widgets/wifi_kampus_sheet.dart';
 import 'absensi_page.dart';
 import 'dashboard_page.dart';
 import 'jadwal_page.dart';
@@ -49,7 +51,7 @@ class MainPage extends StatefulWidget {
   State<MainPage> createState() => _MainPageState();
 }
 
-class _MainPageState extends State<MainPage> {
+class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   int _currentIndex = 0;
   int _refreshTrigger = 0;
   int _unreadNotifCount = 0;
@@ -59,11 +61,16 @@ class _MainPageState extends State<MainPage> {
   final _searchController = TextEditingController();
   String _menuQuery = '';
 
+  /// Auto-login WiFi kampus — singleton (fase diamankan untuk test yang
+  /// membangun MainPage tanpa gateway native).
+  final _wifiKampus = WifiKampusService.instance;
+
   static const _titles = ['Beranda', 'Jadwal', 'Nilai', 'Menu'];
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkUnreadNotif();
     _muatVersiApp();
     // Keputusan user: SEMUA ketukan notifikasi (push maupun deep link) membuka
@@ -88,14 +95,42 @@ class _MainPageState extends State<MainPage> {
       // Pengingat jadwal default-on: susun ulang alarm 30-menit sebelum kelas
       // (14 hari ke depan). Gagal diam-diam — bukan fungsi kritis.
       unawaited(PengingatJadwalService.instance.perbaruiPengingat());
+      // Auto-login WiFi kampus: internet masih jalan saat frame pertama —
+      // ambil/segarkan kredensial portal dari BE lalu coba login portal bila
+      // sedang di Hotspot@Amikom. Gagal diam-diam (fail-open).
+      unawaited(_wifiKampus.segarkanKredensial());
+      unawaited(_wifiKampus.attemptLogin(alasan: 'app-open'));
+      // Snack halus sekali per transisi terhubung (keputusan user).
+      _wifiKampus.onTerhubungPertama = _tampilkanSnackTerhubung;
     });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _wifiKampus.onTerhubungPertama = null;
     DeepLinkService.instance.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Resume = internet mungkin sudah jalan (user datang dari luar) —
+    // segarkan kredensial portal bila perlu, lalu coba login.
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_wifiKampus.segarkanKredensial());
+      unawaited(_wifiKampus.attemptLogin(alasan: 'resume'));
+    }
+  }
+
+  void _tampilkanSnackTerhubung() {
+    if (!mounted) return;
+    AppSnack.show(
+      context,
+      'WiFi kampus terhubung',
+      backgroundColor: AppColors.success,
+    );
   }
 
   Future<void> _checkUnreadNotif() async {
@@ -158,6 +193,9 @@ class _MainPageState extends State<MainPage> {
       titleSpacing: 0,
       title: Text(_titles[_currentIndex], style: AppText.h2),
       actions: [
+        // Indikator WiFi kampus: hanya tampil saat di Hotspot@Amikom
+        // (di luar jaringan kampus appbar tetap bersih).
+        WifiKampusIndicator(service: _wifiKampus),
         IconButton(
           tooltip: 'Notifikasi',
           icon: _unreadNotifCount > 0
@@ -215,7 +253,7 @@ class _MainPageState extends State<MainPage> {
   }
 
   /// Cek manual dari drawer (melewati throttle harian): update tersedia →
-  /// buka sheet unduh; tidak ada → snackbar; gagal → snackbar pesan ramah.
+  /// buka halaman unduh; tidak ada → snackbar; gagal → snackbar pesan ramah.
   Future<void> _cekPembaruanManual() async {
     if (_cekPembaruanLoading) return;
     setState(() => _cekPembaruanLoading = true);
@@ -230,7 +268,7 @@ class _MainPageState extends State<MainPage> {
         );
         return;
       }
-      await showPembaruanSheet(context, info);
+      await bukaPembaruanPage(context, info);
     } catch (e) {
       if (!mounted) return;
       AppSnack.show(
@@ -365,6 +403,14 @@ class _MainPageState extends State<MainPage> {
                         await WidgetJadwalService.instance.bersihkanSaatLogout();
                       } catch (_) {
                         // Logout tetap lanjut walau widget gagal dibersihkan.
+                      }
+                      // Hapus kredensial hotspot (tanggal lahir) + state
+                      // portal milik NIM ini — urutan sama: sebelum fullLogout.
+                      try {
+                        await _wifiKampus.bersihkanSaatLogout();
+                      } catch (_) {
+                        // Logout tetap lanjut walau kredensial hotspot gagal
+                        // dibersihkan.
                       }
                       await ApiClient.instance.fullLogout();
                       if (!mounted) return;

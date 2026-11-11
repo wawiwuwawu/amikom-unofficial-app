@@ -159,9 +159,13 @@ class SkkmService {
   /// bukti karena URL asli portal butuh sesi login.
   Future<String> unduhBukti(String idBukti, String namaFile) =>
       ApiClient.guard<String>(() async {
-        final dir = await ApiClient.getDownloadDir();
-        final savePath = '$dir/$namaFile';
-        await _dio.download('/api/v1/skkm/bukti/$idBukti', savePath);
-        return savePath;
+        final response = await _dio.get(
+          '/api/v1/skkm/bukti/$idBukti',
+          options: Options(responseType: ResponseType.bytes),
+        );
+        return ApiClient.simpanKeDownload(
+          namaFile,
+          response.data is List ? response.data as List<int> : <int>[],
+        );
       }, 'Gagal mengunduh berkas bukti');
 }

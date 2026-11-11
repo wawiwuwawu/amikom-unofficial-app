@@ -44,13 +44,8 @@ class AsistenStats {
 class AsistenInfo {
   final AsistenMahasiswa mahasiswa;
   final AsistenStats stats;
-  final bool bisaAjukanBebasKP;
 
-  AsistenInfo({
-    required this.mahasiswa,
-    required this.stats,
-    required this.bisaAjukanBebasKP,
-  });
+  AsistenInfo({required this.mahasiswa, required this.stats});
 
   factory AsistenInfo.fromJson(Map<String, dynamic> json) {
     final map = (json['mahasiswa'] != null || json['stats'] != null)
@@ -59,7 +54,6 @@ class AsistenInfo {
     return AsistenInfo(
       mahasiswa: AsistenMahasiswa.fromJson(map['mahasiswa'] ?? {}),
       stats: AsistenStats.fromJson(map['stats'] ?? {}),
-      bisaAjukanBebasKP: map['bisaAjukanBebasKP'] ?? false,
     );
   }
 }

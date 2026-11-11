@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'api_client.dart';
 import '../models/agenda.dart';
@@ -38,7 +37,6 @@ class AkademikService {
 
   Future<String> downloadKartuUjian(String jenis) =>
       ApiClient.guard<String>(() async {
-        final dir = await ApiClient.getDownloadDir();
         final response = await _dio.get(
           '/api/v1/akademik/jadwal-ujian/download',
           queryParameters: {'jenis': jenis},
@@ -46,13 +44,10 @@ class AkademikService {
         );
 
         final ext = ApiClient.extensionFromHeaders(response.headers);
-
-        final nim = ApiClient.instance.nim ?? '';
-        final savePath = '$dir/Kartu_Ujian_${jenis.toUpperCase()}_$nim$ext';
-
-        final file = File(savePath);
-        await file.writeAsBytes(response.data);
-
-        return savePath;
+        final namaFile = ApiClient.susunNamaBerkas(
+          jenis: 'Kartu_Ujian_${jenis.toUpperCase()}',
+          ext: ext,
+        );
+        return ApiClient.simpanKeDownload(namaFile, response.data ?? []);
       }, 'Gagal mengunduh kartu ujian');
 }

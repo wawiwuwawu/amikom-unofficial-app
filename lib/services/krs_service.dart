@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'api_client.dart';
 import '../models/api_response.dart';
@@ -70,25 +69,34 @@ class KrsService {
 
   Future<String> downloadKrs(Function(int, int)? onReceiveProgress) =>
       ApiClient.guard<String>(() async {
-        // ponytail: centralized download dir via ApiClient
-        final dir = await ApiClient.getDownloadDir();
-
         final response = await _dio.get(
           '/api/v1/krs/download',
           options: Options(responseType: ResponseType.bytes),
           onReceiveProgress: onReceiveProgress,
         );
-
         final ext = ApiClient.extensionFromHeaders(response.headers);
-
-        final nim = ApiClient.instance.nim ?? '';
-        final nama = ApiClient.instance.nama ?? '';
-        final namaFile = nama.isNotEmpty ? '$nama ($nim)' : nim;
-        final savePath = '$dir/KRS_$namaFile$ext';
-
-        final file = File(savePath);
-        await file.writeAsBytes(response.data);
-
-        return savePath;
+        // Semester aktif dari tagihan KRS (satu-satunya sumber semester di
+        // payload KRS); kosong → nama tanpa semester (fail-open).
+        String? semester;
+        String? tahun;
+        try {
+          final info = await getInfo();
+          final tagihan = info.tagihan;
+          if (tagihan != null) {
+            final sem = tagihan.semester.trim();
+            if (sem.isNotEmpty) semester = 'SMT$sem';
+            final thn = tagihan.tahunAkademik.trim();
+            if (thn.isNotEmpty) tahun = thn.replaceAll('/', '-');
+          }
+        } catch (_) {
+          // Info gagal → tetap unduh, nama tanpa konteks semester.
+        }
+        final namaFile = ApiClient.susunNamaBerkas(
+          jenis: 'KRS',
+          tahun: tahun,
+          semester: semester,
+          ext: ext,
+        );
+        return ApiClient.simpanKeDownload(namaFile, response.data ?? []);
       }, 'Gagal mengunduh KRS PDF');
 }

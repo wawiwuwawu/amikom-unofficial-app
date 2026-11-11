@@ -401,7 +401,7 @@ class _SkkmPageState extends State<SkkmPage> {
       );
       final path = await _service.unduhBukti(
         bukti.id,
-        'SKKM_bukti_${bukti.id}.pdf',
+        ApiClient.beriKonteksUnduh('SKKM_bukti_${bukti.id}.pdf'),
       );
       if (!mounted) return;
       // Aksi "Buka" butuh SnackBar mentah — AppSnack tidak punya param action.

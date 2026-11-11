@@ -188,18 +188,19 @@ class SkripsiService {
 
   Future<String> downloadKartuBimbingan(String id) =>
       ApiClient.guard<String>(() async {
-        // ponytail: centralized download dir via ApiClient
-        final dir = await ApiClient.getDownloadDir();
-        final nim = ApiClient.instance.nim ?? '';
-        final savePath = '$dir/Kartu_Bimbingan_Skripsi_${id}_$nim.pdf';
+        final namaFile = ApiClient.susunNamaBerkas(
+          jenis: 'Kartu_Bimbingan_Skripsi_$id',
+        );
 
-        await _dio.download(
+        final response = await _dio.get(
           '/api/v1/skripsi/bimbingan/download/$id',
-          savePath,
           options: Options(responseType: ResponseType.bytes),
         );
 
-        return savePath;
+        return ApiClient.simpanKeDownload(
+          namaFile,
+          response.data is List ? response.data as List<int> : <int>[],
+        );
       }, 'Gagal mengunduh kartu bimbingan');
 
   // 4. Tab Pendaftaran & Jadwal Ujian
@@ -234,18 +235,19 @@ class SkripsiService {
 
   Future<String> downloadFormulirPendaftaran(String id) =>
       ApiClient.guard<String>(() async {
-        // ponytail: centralized download dir via ApiClient
-        final dir = await ApiClient.getDownloadDir();
-        final nim = ApiClient.instance.nim ?? '';
-        final savePath = '$dir/Formulir_Pendaftaran_Skripsi_${id}_$nim.pdf';
+        final namaFile = ApiClient.susunNamaBerkas(
+          jenis: 'Formulir_Pendaftaran_Skripsi_$id',
+        );
 
-        await _dio.download(
+        final response = await _dio.get(
           '/api/v1/skripsi/pendaftaran/download/$id',
-          savePath,
           options: Options(responseType: ResponseType.bytes),
         );
 
-        return savePath;
+        return ApiClient.simpanKeDownload(
+          namaFile,
+          response.data is List ? response.data as List<int> : <int>[],
+        );
       }, 'Gagal mengunduh formulir pendaftaran');
 
   // 5. Tab Cek Plagiarisme

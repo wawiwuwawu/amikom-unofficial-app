@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'api_client.dart';
 import '../models/panduan.dart';
@@ -17,9 +16,6 @@ class PanduanService {
   Future<String> downloadPanduan(
           String link, String filename, Function(int, int)? onReceiveProgress) =>
       ApiClient.guard<String>(() async {
-        // ponytail: centralized download dir via ApiClient
-        final dir = await ApiClient.getDownloadDir();
-
         final response = await _dio.get(
           '/api/v1/panduan/download/$link',
           options: Options(responseType: ResponseType.bytes),
@@ -56,10 +52,13 @@ class PanduanService {
           }
         }
 
-        final savePath = '$dir/$filename$ext';
-        final file = File(savePath);
-        await file.writeAsBytes(response.data);
-
-        return savePath;
+        // Nama: `{Panduan}_{judul} {tanggal}{ext}` — tanggal unduh agar
+        // berkas panduan lama/baru tidak sulit dibedakan di Download.
+        final now = DateTime.now();
+        String duaDigit(int n) => n.toString().padLeft(2, '0');
+        final tanggal =
+            '${duaDigit(now.day)}-${duaDigit(now.month)}-${now.year}';
+        final namaFile = '${filename}_$tanggal$ext';
+        return ApiClient.simpanKeDownload(namaFile, response.data ?? []);
       }, 'Gagal mengunduh panduan. Silakan coba lagi.');
 }

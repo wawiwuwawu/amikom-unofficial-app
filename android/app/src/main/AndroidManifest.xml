@@ -16,6 +16,18 @@
          didistribusikan sideload-only sehingga izin wajib dideklarasikan
          sendiri agar pemasang APK bisa membuka file hasil unduhan. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- Auto-login WiFi kampus (captive portal Hotspot@Amikom):
+         baca SSID butuh ACCESS_FINE_LOCATION (Android 11-) atau
+         NEARBY_WIFI_DEVICES (Android 13+); CHANGE_WIFI_STATE untuk
+         NetworkCallback registrasi. Tidak ada izin untuk mengubah
+         koneksi WiFi — app hanya POST login ke portal saat sudah
+         tersambung. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation"/>
     <application
         android:label="Ini Amikom?"
         android:name="${applicationName}"

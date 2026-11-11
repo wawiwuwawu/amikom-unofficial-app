@@ -81,7 +81,6 @@ void main() {
             'total_presensi': 14,
             'rata_rata': 80.0,
           },
-          'bisaAjukanBebasKP': true,
         }
       };
 
@@ -89,7 +88,6 @@ void main() {
       final asistenInfo = AsistenInfo.fromJson(asistenData);
       expect(asistenInfo.mahasiswa.npm, equals('21.11.0001'));
       expect(asistenInfo.stats.hadir, equals(10));
-      expect(asistenInfo.bisaAjukanBebasKP, isTrue);
 
       final laporanPayload = {
         'status': 'success',

@@ -46,12 +46,13 @@ class AktivitasHelper {
     String fallbackError,
   ) =>
       ApiClient.guard<String>(() async {
-        final dir = await ApiClient.getDownloadDir();
-        final savePath = '$dir/$namaFile';
-        await ApiClient.instance.dio.download(
+        final response = await ApiClient.instance.dio.get(
           '$path/$id/file',
-          savePath,
+          options: Options(responseType: ResponseType.bytes),
         );
-        return savePath;
+        return ApiClient.simpanKeDownload(
+          namaFile,
+          response.data is List ? response.data as List<int> : const <int>[],
+        );
       }, fallbackError);
 }

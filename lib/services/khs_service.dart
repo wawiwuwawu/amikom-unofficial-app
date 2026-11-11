@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'api_client.dart';
 import '../models/khs.dart';
@@ -26,19 +28,29 @@ class KhsService {
 
   Future<String> download(String thn, String smt) =>
       ApiClient.guard<String>(() async {
-        // ponytail: centralized download dir via ApiClient
-        final dir = await ApiClient.getDownloadDir();
         final nim = ApiClient.instance.nim ?? '';
-        final nama = ApiClient.instance.nama ?? '';
-        final namaFile = nama.isNotEmpty ? '$nama ($nim)' : nim;
-        final safeThn = thn.replaceAll('/', '_');
-        final savePath = '$dir/KHS_${namaFile}_${safeThn}_SMT$smt.pdf';
+        final namaFile = ApiClient.susunNamaBerkas(
+          jenis: 'KHS',
+          tahun: thn.replaceAll('/', '-'),
+          semester: 'SMT$smt',
+        );
+        // ponytail: dio.download ke temp lalu pindah via MediaStore —
+        // direct-write ke Download publik gagal di Android 10+ (scoped storage).
+        final dir = await ApiClient.getDownloadDir();
+        final tempPath =
+            '$dir${Platform.pathSeparator}khs_tmp_$nim${DateTime.now().millisecondsSinceEpoch}.pdf';
         await _dio.download(
           '/api/v1/khs/download',
-          savePath,
+          tempPath,
           data: {'thn': thn, 'smt': smt},
           options: Options(method: 'POST'),
         );
-        return savePath;
+        final bytes = await File(tempPath).readAsBytes();
+        try {
+          return await ApiClient.simpanKeDownload(namaFile, bytes);
+        } finally {
+          final temp = File(tempPath);
+          if (await temp.exists()) await temp.delete();
+        }
       }, 'Gagal mengunduh KHS. Silakan coba lagi.');
 }

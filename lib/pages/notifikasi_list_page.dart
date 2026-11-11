@@ -13,7 +13,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
 import '../widgets/notifikasi_push_card.dart';
 import '../widgets/oem_panduan_sheet.dart';
-import '../widgets/pembaruan_sheet.dart';
+import '../widgets/pembaruan_page.dart';
 import 'notifikasi_detail_page.dart';
 
 class NotifikasiListPage extends StatefulWidget {
@@ -191,7 +191,7 @@ class _NotifikasiListPageState extends State<NotifikasiListPage>
   Future<void> _bukaSheetPembaruan() async {
     final info = _infoPembaruan;
     if (info == null) return;
-    final hasil = await showPembaruanSheet(context, info);
+    final hasil = await bukaPembaruanPage(context, info);
     if (hasil == 'lewati' && mounted) {
       setState(() => _infoPembaruan = null);
     }

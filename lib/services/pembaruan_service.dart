@@ -1,10 +1,14 @@
+import 'dart:async' show unawaited;
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
+import 'package:flutter/widgets.dart'
+    show AppLifecycleState, ValueNotifier, WidgetsBinding;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:open_filex/open_filex.dart' show OpenFilex, ResultType;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -60,6 +64,27 @@ class InfoPembaruan {
       sha256: json['sha256'] as String?,
     );
   }
+}
+
+/// Status unduhan APK yang hidup di service (bukan di UI) — unduhan tetap
+/// berjalan saat halaman pembaruan ditutup atau app diminimalkan; UI hanya
+/// mengamati notifier ini.
+enum FaseUnduh { idle, mengunduh, siap, gagal }
+
+class StatusUnduh {
+  final FaseUnduh fase;
+  final double? progres; // 0..1, null = indeterminate
+  final String? pathApk;
+  final String? pesanGagal;
+  final String? versi;
+
+  const StatusUnduh({
+    this.fase = FaseUnduh.idle,
+    this.progres,
+    this.pathApk,
+    this.pesanGagal,
+    this.versi,
+  });
 }
 
 /// Layanan cek + unduh pembaruan APK langsung dari GitHub Releases.
@@ -139,12 +164,44 @@ class PembaruanService {
   static const _keyInfoJson = 'pembaruan_info_json';
   static const _keyUnduhanJson = 'pembaruan_unduhan_json';
 
+  /// Channel notifikasi "unduhan selesai" (hanya saat app tidak di layar).
+  static const channelId = 'pembaruan_app';
+  static const channelName = 'Pembaruan Aplikasi';
+  static const channelDescription =
+      'Pemberitahuan saat pembaruan aplikasi selesai diunduh.';
+
   InfoPembaruan? _cache;
   bool _cacheTerisi = false;
   DateTime _cekTerakhir = DateTime.fromMillisecondsSinceEpoch(0);
   bool _gagalTerakhir = false;
   DateTime _gagalWaktu = DateTime.fromMillisecondsSinceEpoch(0);
   Future<InfoPembaruan?>? _cekBerjalan;
+
+  // ── Unduhan di background (state milik service, bukan UI) ────────────────
+
+  /// Status unduhan yang diamati UI (halaman pembaruan). Unduhan berjalan
+  /// di service — menutup halaman atau minimalkan app tidak membatalkannya.
+  final ValueNotifier<StatusUnduh> statusUnduh = ValueNotifier(
+    const StatusUnduh(),
+  );
+
+  Future<void>? _unduhBerjalan;
+  String? _unduhVersiBerjalan;
+
+  /// Seam notifikasi "unduhan selesai" (diuji dengan pengganti palsu).
+  @visibleForTesting
+  PembaruanNotifGateway notifGateway = PembaruanNotifGatewayNyata();
+
+  /// Uji: paksa app dianggap sedang TIDAK terlihat (lifecycle butuh tester).
+  @visibleForTesting
+  bool? appTerlihatOverride;
+
+  bool get _appTerlihat {
+    final override = appTerlihatOverride;
+    if (override != null) return override;
+    final state = WidgetsBinding.instance.lifecycleState;
+    return state == null || state == AppLifecycleState.resumed;
+  }
 
   /// Hasil cek terakhir (dari memori atau cache disk) — dipakai banner.
   InfoPembaruan? get hasilTerakhir => _cacheTerisi ? _cache : null;
@@ -331,6 +388,62 @@ class PembaruanService {
 
   // ── Unduh & pasang ───────────────────────────────────────────────────────
 
+  /// Mulai unduhan di background: state ditulis ke [statusUnduh], method
+  /// segera kembali. Single-flight — unduhan kedua untuk versi sama saat
+  /// masih berjalan diabaikan (memperbaiki race sheet lama yang menimpa
+  /// berkas unduhan berjalan). Versi berbeda saat berjalan → gagalkan yang
+  /// lama dulu (perubahan versi jarang; menghindari dua request paralel).
+  void mulaiUnduh(InfoPembaruan info) {
+    if (_unduhBerjalan != null) {
+      if (_unduhVersiBerjalan == info.versi) return;
+      _unduhBerjalan = null;
+      _unduhVersiBerjalan = null;
+    }
+    statusUnduh.value = StatusUnduh(
+      fase: FaseUnduh.mengunduh,
+      progres: null,
+      versi: info.versi,
+    );
+    final berjalan = unduhApk(info, onProgress: (terunduh, total) {
+      if (total <= 0) return;
+      statusUnduh.value = StatusUnduh(
+        fase: FaseUnduh.mengunduh,
+        progres: (terunduh / total).clamp(0.0, 1.0),
+        versi: info.versi,
+      );
+    }).then((path) {
+      statusUnduh.value = StatusUnduh(
+        fase: FaseUnduh.siap,
+        progres: 1,
+        pathApk: path,
+        versi: info.versi,
+      );
+      _unduhBerjalan = null;
+      _unduhVersiBerjalan = null;
+      if (!_appTerlihat) {
+        unawaited(
+          notifGateway.tampilkanSelesai(
+            versi: info.versi,
+            path: path,
+          ),
+        );
+      }
+    }).catchError((Object e) {
+      statusUnduh.value = StatusUnduh(
+        fase: FaseUnduh.gagal,
+        pesanGagal: AppFailure.messageOf(
+          e,
+          'Gagal mengunduh pembaruan. Coba lagi nanti.',
+        ),
+        versi: info.versi,
+      );
+      _unduhBerjalan = null;
+      _unduhVersiBerjalan = null;
+    });
+    _unduhBerjalan = berjalan;
+    _unduhVersiBerjalan = info.versi;
+  }
+
   /// Unduh APK ke cache app (tanpa izin storage), verifikasi SHA-256 bila
   /// tersedia, lalu kembalikan path berkas. Bila unduhan valid sebelumnya
   /// untuk versi yang sama masih ada, dipakai ulang tanpa mengunduh ulang.
@@ -487,5 +600,68 @@ class PembaruanService {
   String _gagalPesan(Object e) {
     if (e is AppFailure) return e.message;
     return 'Gagal memeriksa pembaruan. Coba lagi nanti.';
+  }
+}
+
+/// Seam notifikasi "unduhan selesai" — dipakai [PembaruanService.mulaiUnduh]
+/// saat app tidak sedang terlihat. Pola sama dengan [EventDiffGateway].
+abstract class PembaruanNotifGateway {
+  Future<void> tampilkanSelesai({required String versi, required String path});
+}
+
+/// Implementasi nyata dengan instance plugin SENDIRI (terpisah dari push,
+/// pengingat jadwal & event diff) + channel `pembaruan_app` lazily. Fail-open:
+/// galat apa pun diemankan — notifikasi tidak pernah merusak unduhan.
+class PembaruanNotifGatewayNyata implements PembaruanNotifGateway {
+  static final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
+  bool _channelSiap = false;
+
+  AndroidFlutterLocalNotificationsPlugin? get _android => _plugin
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >();
+
+  @override
+  Future<void> tampilkanSelesai({
+    required String versi,
+    required String path,
+  }) async {
+    try {
+      final diizinkan =
+          await _android?.areNotificationsEnabled() ?? false;
+      if (!diizinkan) return;
+      if (!_channelSiap) {
+        await _android?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            PembaruanService.channelId,
+            PembaruanService.channelName,
+            description: PembaruanService.channelDescription,
+            importance: Importance.high,
+          ),
+        );
+        _channelSiap = true;
+      }
+      // Id tetap: satu unduhan pembaruan = satu notifikasi (menimpa dirinya).
+      await _plugin.show(
+        id: 47012,
+        title: 'Pembaruan v$versi siap dipasang',
+        body:
+            'Unduhan selesai dan terverifikasi. Ketuk halaman Pembaruan '
+            'Aplikasi untuk memasang.',
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            PembaruanService.channelId,
+            PembaruanService.channelName,
+            channelDescription: PembaruanService.channelDescription,
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+        ),
+        payload: path,
+      );
+    } catch (e) {
+      debugPrint('Pembaruan: notif selesai gagal (${e.runtimeType})');
+    }
   }
 }

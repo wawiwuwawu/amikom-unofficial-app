@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import 'package:flutter/services.dart' show MethodChannel, MissingPluginException;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
@@ -472,6 +474,81 @@ class ApiClient {
     }
     final dir = await getApplicationDocumentsDirectory();
     return dir.path;
+  }
+
+  // ─── Unduh berkas ke Download (MediaStore) ─────────────
+
+  static const MethodChannel _downloadChannel =
+      MethodChannel('amikom/download_storage');
+
+  /// Simpan [bytes] sebagai berkas [namaFile] ke folder Download publik.
+  /// Android 10+ memakai MediaStore via channel native `DownloadStorageManager`
+  /// (tanpa izin storage; menimpa berkas milik app ini boleh, berkas yatim
+  /// diberi suffix oleh MediaStore); Android 9- dan platform lain jatuh ke
+  /// [getDownloadDir] + dart:io. Return path/lokasi tampilan untuk pesan UI.
+  static Future<String> simpanKeDownload(String namaFile, List<int> bytes) async {
+    if (Platform.isAndroid) {
+      try {
+        final path = await _downloadChannel.invokeMethod<String>('simpan', {
+          'namaFile': namaFile,
+          'bytes': Uint8List.fromList(bytes),
+        });
+        if (path != null && path.isNotEmpty) return path;
+      } on MissingPluginException {
+        // Channel belum terpasang (hot restart / test) — jatuh ke fallback.
+      }
+      // PlatformException dibiarkan naik: kegagalan tulis nyata harus terlihat
+      // (snackbar error), bukan pura-pura sukses.
+    }
+    final dir = await getDownloadDir();
+    final file = File('$dir${Platform.pathSeparator}$namaFile');
+    await file.writeAsBytes(bytes);
+    return file.path;
+  }
+
+  /// Tambahkan konteks unduh (tanggal + identitas) ke nama berkas bawaan
+  /// server: `{stem} {tanggal} {identitas}{ext}` — untuk berkas yang namanya
+  /// datang dari portal (bukti aktivitas SKPI dsb). Tanggal = waktu unduh.
+  static String beriKonteksUnduh(String namaBerkas, {DateTime? sekarang}) {
+    String duaDigit(int n) => n.toString().padLeft(2, '0');
+    final now = sekarang ?? DateTime.now();
+    final tanggal = '${duaDigit(now.day)}-${duaDigit(now.month)}-${now.year}';
+    final nim = instance.nim ?? '';
+    final nama = instance.nama ?? '';
+    final identitas = nama.isNotEmpty ? '$nama ($nim)' : nim;
+    final dot = namaBerkas.lastIndexOf('.');
+    final stem = dot > 0 ? namaBerkas.substring(0, dot) : namaBerkas;
+    final ext = dot > 0 ? namaBerkas.substring(dot) : '';
+    return '$stem $tanggal $identitas$ext';
+  }
+
+  /// Susun nama berkas unduhan yang seragam & informatif:
+  /// `{Jenis} {tahun?}{semester?} {tanggal} {nama-nim}.pdf`
+  /// mis. `KRS 2026-2027 SMT3 12-11-2026 Wawi (23SA21A060).pdf`.
+  /// [tahun] tanpa garis miring aman untuk nama berkas; tanggal = hari ini
+  /// (waktu unduh) format dd-MM-yyyy supaya berkas ketahuan diunduh kapan.
+  /// Bagian kosong (tahun/semester/nama) dilewati tanpa menyisakan spasi ganda.
+  static String susunNamaBerkas({
+    required String jenis,
+    String? tahun,
+    String? semester,
+    String ext = '.pdf',
+    DateTime? sekarang,
+  }) {
+    final nim = instance.nim ?? '';
+    final nama = instance.nama ?? '';
+    final identitas = nama.isNotEmpty ? '$nama ($nim)' : nim;
+    final now = sekarang ?? DateTime.now();
+    String duaDigit(int n) => n.toString().padLeft(2, '0');
+    final tanggal = '${duaDigit(now.day)}-${duaDigit(now.month)}-${now.year}';
+    final sementara = [
+      jenis,
+      tahun,
+      semester,
+      tanggal,
+      identitas,
+    ].whereType<String>().where((s) => s.trim().isNotEmpty).toList();
+    return '${sementara.join(' ')}$ext';
   }
 
   // ponytail: direct login method on ApiClient instead of redundant AuthService wrapper

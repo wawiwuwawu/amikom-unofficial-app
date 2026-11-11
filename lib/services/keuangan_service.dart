@@ -24,40 +24,37 @@ class KeuanganService {
       }, 'Gagal memuat rincian pembayaran');
 
   Future<String> downloadHistoryPdf() => ApiClient.guard<String>(() async {
-        // ponytail: centralized download dir via ApiClient
-        final dir = await ApiClient.getDownloadDir();
-        final nim = ApiClient.instance.nim ?? '';
-        final nama = ApiClient.instance.nama ?? '';
-        final namaFile = nama.isNotEmpty ? '$nama ($nim)' : nim;
-        final savePath = '$dir/Histori_Pembayaran_$namaFile.pdf';
+        final namaFile = ApiClient.susunNamaBerkas(jenis: 'Histori_Pembayaran');
 
-        await _dio.download(
+        final response = await _dio.get(
           '/api/v1/keuangan/history/download',
-          savePath,
           options: Options(responseType: ResponseType.bytes),
         );
 
-        return savePath;
+        return ApiClient.simpanKeDownload(
+          namaFile,
+          response.data is List ? response.data as List<int> : <int>[],
+        );
       }, 'Gagal mengunduh riwayat pembayaran');
 
   Future<String> downloadDetailPdf(KeuanganHistoryItem item) =>
       ApiClient.guard<String>(() async {
-        // ponytail: centralized download dir via ApiClient
-        final dir = await ApiClient.getDownloadDir();
-        final nim = ApiClient.instance.nim ?? '';
-        final kwitansi = item.nomorKwitansi ?? 'Detail';
-        final safeThn = item.tahunAkademik.replaceAll('/', '_');
-        final savePath =
-            '$dir/Kwitansi_${kwitansi}_${nim}_SMT${item.semester}_$safeThn.pdf';
+        final namaFile = ApiClient.susunNamaBerkas(
+          jenis: 'Kwitansi_${item.nomorKwitansi ?? 'Detail'}',
+          tahun: item.tahunAkademik.replaceAll('/', '-'),
+          semester: 'SMT${item.semester}',
+        );
 
-        await _dio.download(
+        final response = await _dio.get(
           '/api/v1/keuangan/history/detail/download',
-          savePath,
           queryParameters: item.toDownloadQueryParams(),
           options: Options(responseType: ResponseType.bytes),
         );
 
-        return savePath;
+        return ApiClient.simpanKeDownload(
+          namaFile,
+          response.data is List ? response.data as List<int> : <int>[],
+        );
       }, 'Gagal mengunduh rincian pembayaran');
 
   Future<KeuanganVaResult> bayarTagihan(

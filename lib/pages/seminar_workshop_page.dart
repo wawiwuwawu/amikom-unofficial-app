@@ -5,6 +5,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/seminar_workshop.dart';
+import '../services/api_client.dart';
 import '../services/seminar_workshop_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
@@ -132,7 +133,9 @@ class _SeminarWorkshopPageState extends State<SeminarWorkshopPage> {
 
       final filePath = await _service.downloadFile(
         item.id,
-        item.file.isNotEmpty ? item.file : 'seminar_${item.id}.pdf',
+        ApiClient.beriKonteksUnduh(
+          item.file.isNotEmpty ? item.file : 'seminar_${item.id}.pdf',
+        ),
       );
 
       if (!mounted) return;

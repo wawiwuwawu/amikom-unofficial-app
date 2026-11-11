@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -99,5 +100,31 @@ void main() {
       expect(find.text(label), findsOneWidget, reason: 'Kartu $label hilang.');
     }
     expect(tester.getSize(find.text('Hadir')).height, greaterThan(10));
+  });
+
+  testWidgets('Status Bebas KP: target 120, tanpa tombol ajukan, bisa ditutup',
+      (tester) async {
+    ApiClient.instance.dio.httpClientAdapter = _FakeAdapter();
+
+    await tester.pumpWidget(
+      MaterialApp(theme: AppTheme.light(), home: const AsistenPage()),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    // Target kehadiran Bebas KP = 120 (bukan 200), kehadiran fake = 12.
+    expect(find.text('12 / 120'), findsOneWidget);
+    expect(find.text('200'), findsNothing);
+
+    // Pengajuan in-app dihapus — dilakukan di loket kampus.
+    expect(find.text('Ajukan Bebas KP'), findsNothing);
+    expect(find.text('Syarat Belum Terpenuhi'), findsNothing);
+
+    // Teks status bisa ditutup.
+    expect(find.textContaining('loket kampus'), findsOneWidget);
+    await tester.tap(find.byIcon(CupertinoIcons.xmark_circle_fill));
+    await tester.pump();
+    expect(find.textContaining('loket kampus'), findsNothing);
+    expect(find.text('12 / 120'), findsNothing);
   });
 }

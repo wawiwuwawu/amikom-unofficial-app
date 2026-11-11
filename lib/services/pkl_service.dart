@@ -28,18 +28,18 @@ class PklService {
 
   Future<String> downloadFormulirPkl(String idPengajuan) =>
       ApiClient.guard<String>(() async {
-        // ponytail: centralized download dir via ApiClient
-        final dir = await ApiClient.getDownloadDir();
-        final nim = ApiClient.instance.nim ?? '';
-        final savePath = '$dir/Formulir_PKL_${idPengajuan}_$nim.pdf';
+        final namaFile =
+            ApiClient.susunNamaBerkas(jenis: 'Formulir_PKL_$idPengajuan');
 
-        await _dio.download(
+        final response = await _dio.get(
           '/api/v1/pkl/download/$idPengajuan',
-          savePath,
           options: Options(responseType: ResponseType.bytes),
         );
 
-        return savePath;
+        return ApiClient.simpanKeDownload(
+          namaFile,
+          response.data is List ? response.data as List<int> : <int>[],
+        );
       }, 'Gagal mengunduh formulir PKL');
 
   Future<MutationResult> deletePkl(String idPengajuan) =>

@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/rekognisi.dart';
+import '../services/api_client.dart';
 import '../services/rekognisi_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
@@ -132,7 +133,9 @@ class _RekognisiPageState extends State<RekognisiPage> {
     );
 
     try {
-      final filename = item.file.isNotEmpty ? item.file : 'rekognisi_${item.id}.pdf';
+      final filename = ApiClient.beriKonteksUnduh(
+        item.file.isNotEmpty ? item.file : 'rekognisi_${item.id}.pdf',
+      );
       final path = await _service.downloadFile(item.id, filename);
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
