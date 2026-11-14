@@ -17,12 +17,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:app_amikom/pages/absensi_page.dart';
 import 'package:app_amikom/services/api_client.dart';
 import 'package:app_amikom/theme/app_theme.dart';
+import 'package:app_amikom/widgets/app_kit.dart';
 
 /// Adapter palsu dengan respons auto-validasi yang bisa diganti per tes.
 class _FakeAdapter implements HttpClientAdapter {
   /// Pertemuan yang dikembalikan endpoint auto-validasi (inspeksi & tulis).
   List<Map<String, dynamic>> pertemuan;
   Map<String, dynamic> ringkasan;
+
+  /// null = map makul belum-validasi normal; kosong = semua sudah divalidasi.
+  Map<String, dynamic>? belumValidasi;
+
+  /// true → endpoint makul-belum-validasi lempar connectionError.
+  bool belumValidasiGagal = false;
 
   /// mode terakhir yang dipanggil ('inspeksi' | 'tulis') + jumlah panggilan.
   final List<String> modes = [];
@@ -37,7 +44,13 @@ class _FakeAdapter implements HttpClientAdapter {
   ) async {
     final path = options.path;
     if (path == '/api/v1/absensi/makul-belum-validasi') {
-      return _body({
+      if (belumValidasiGagal) {
+        throw DioException(
+          requestOptions: options,
+          type: DioExceptionType.connectionError,
+        );
+      }
+      return _body(belumValidasi ?? {
         'PSSIW034': {
           'makul': 'Sistem Penunjang Keputusan',
           'count': 2,
@@ -189,5 +202,48 @@ void main() {
     expect(find.text('Tidak ada pertemuan yang perlu divalidasi.'),
         findsOneWidget);
     expect(find.text('Validasi gagal'), findsNothing);
+  });
+
+  testWidgets('semua presensi sudah divalidasi → status sukses, tanpa tombol Validasi', (
+    tester,
+  ) async {
+    final adapter = _FakeAdapter(
+      pertemuan: [],
+      ringkasan: {'total': 0, 'sukses': 0, 'gagal': 0, 'dilewati': 0},
+    );
+    adapter.belumValidasi = {}; // map kosong = tidak ada yang menunggu
+    await pumpPage(tester, adapter);
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Semua presensi sudah divalidasi.'), findsOneWidget);
+    expect(
+      find.widgetWithText(FilledButton, 'Validasi'),
+      findsNothing,
+      reason: 'tidak ada yang menunggu — tombol validasi tidak perlu',
+    );
+  });
+
+  testWidgets('endpoint belum-validasi gagal → AppErrorState, tanpa status sukses palsu', (
+    tester,
+  ) async {
+    final adapter = _FakeAdapter(
+      pertemuan: [],
+      ringkasan: {'total': 0, 'sukses': 0, 'gagal': 0, 'dilewati': 0},
+    );
+    adapter.belumValidasiGagal = true;
+    await pumpPage(tester, adapter);
+
+    expect(tester.takeException(), isNull);
+    expect(
+      find.text('Semua presensi sudah divalidasi.'),
+      findsNothing,
+      reason: 'galat jangan diterima sebagai "semua sudah divalidasi" (§8.5)',
+    );
+    expect(find.byType(AppErrorState), findsOneWidget);
+    expect(
+      find.textContaining('DioException'),
+      findsNothing,
+      reason: 'pesan galat ramah, tanpa jejak teknis',
+    );
   });
 }

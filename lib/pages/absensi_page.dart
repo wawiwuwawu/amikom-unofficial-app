@@ -692,7 +692,30 @@ class _AbsensiPageState extends State<AbsensiPage> {
     if (_loadingBelumValidasi) {
       return const AppLoading(message: 'Memeriksa presensi yang perlu divalidasi…');
     }
-    if (_belumValidasi.isEmpty) return const SizedBox.shrink();
+    if (_belumValidasi.isEmpty) {
+      // Galat sumber ini → jangan tampilkan "sudah divalidasi" palsu; pesan
+      // galatnya ditangani blok AppErrorState di bawah (§8.5).
+      if (_errorSource == _SumberMuat.belumValidasi) {
+        return const SizedBox.shrink();
+      }
+      return AppSection(
+        title: 'Perlu validasi',
+        child: AppSurface(
+          variant: AppSurfaceVariant.success,
+          child: Row(
+            children: [
+              const Icon(
+                CupertinoIcons.checkmark_circle_fill,
+                size: 20,
+                color: AppColors.success,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              const Expanded(child: Text('Semua presensi sudah divalidasi.')),
+            ],
+          ),
+        ),
+      );
+    }
 
     return AppSection(
       title: 'Perlu validasi',

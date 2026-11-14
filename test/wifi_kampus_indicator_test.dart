@@ -23,6 +23,7 @@ import 'package:app_amikom/widgets/wifi_kampus_sheet.dart';
 class _GatewayFake implements WifiKampusGateway {
   String statusLogin = 'bukanWifiKampus';
   bool diWifiKampus = false;
+  bool online = false;
 
   @override
   Future<void> setCredentials(String nim, String password) async {}
@@ -38,6 +39,7 @@ class _GatewayFake implements WifiKampusGateway {
         'diWifiKampus': diWifiKampus,
         'ssidTerbaca': true,
         'portalTerjangkau': true,
+        'online': online,
       };
 
   @override
@@ -102,6 +104,7 @@ void main() {
     final gateway = _GatewayFake();
     gateway.statusLogin = 'berhasil';
     final service = WifiKampusService.untukTest(gateway);
+    await service.setAutoLogin(true);
     var snack = 0;
     service.onTerhubungPertama = () => snack++;
     // Transisi nyata lewat attemptLogin — bukan penulisan fase langsung.

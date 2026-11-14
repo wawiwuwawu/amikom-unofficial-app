@@ -52,7 +52,8 @@ abstract class WifiKampusGateway {
   /// loginDiterimaTanpaInternet / portalGagal / responsTakDikenal.
   Future<String> loginIfConnected();
 
-  /// Status jaringan ringkas: {diWifiKampus, ssidTerbaca, portalTerjangkau}.
+  /// Status jaringan ringkas: {diWifiKampus, ssidTerbaca, portalTerjangkau,
+  /// online}. `online` = generate_204 sukses (internet nyata di WiFi kampus).
   Future<Map<String, dynamic>> statusJaringan();
 
   /// Daftarkan callback yang dipanggil native saat WiFi kampus baru
@@ -110,6 +111,7 @@ class MethodChannelWifiKampusGateway implements WifiKampusGateway {
           'diWifiKampus': false,
           'ssidTerbaca': false,
           'portalTerjangkau': false,
+          'online': false,
         };
   }
 
@@ -157,9 +159,9 @@ class WifiKampusService {
   WifiKampusService._({WifiKampusGateway? gatewayForTest})
       : _gateway = gatewayForTest ?? MethodChannelWifiKampusGateway() {
     _gateway.onWifiUp(() {
-      // WiFi kampus baru tersambung → coba login (throttle & backoff tetap
-      // berlaku). Native tidak bisa fetch BE di sini — portal memblokir BE;
-      // cukup pakai kredensial cache.
+      // WiFi (apa pun) baru tersambung → sinkron fase + coba login (throttle
+      // & backoff tetap berlaku). Native tidak bisa fetch BE di sini — portal
+      // memblokir BE; cukup pakai kredensial cache.
       unawaited(attemptLogin(alasan: 'wifi-up'));
     });
     // Setelah dialog izin SSID diberikan → gerbang SSID native mulai bekerja;
@@ -190,9 +192,9 @@ class WifiKampusService {
   /// Kunci prefs: backoff aktif sampai epoch ms ini (3 gagal → 24 jam).
   static const _kBackoffUntil = 'wifi_kampus_backoff_until';
 
-  /// Kunci prefs: toggle auto-login (default ON; OFF = attempt otomatis hanya
-  /// sinkron fase jaringan, tanpa kirim portal). Setting perangkat — dipertahan
-  /// saat logout.
+  /// Kunci prefs: toggle auto-login (default OFF — keputusan user 2026-11-12;
+  /// bila belum pernah di-set, attempt otomatis hanya sinkron fase jaringan,
+  /// tanpa kirim portal). Setting perangkat — dipertahankan saat logout.
   static const _kAutoLogin = 'wifi_kampus_auto_login';
 
   /// Kunci secure storage: override username manual dari halaman Profil.
@@ -242,6 +244,7 @@ class WifiKampusService {
   bool _sedangBerjalan = false;
   bool _pernahTerhubungSesiIni = false;
   bool _izinSudahDiminta = false;
+  Timer? _sinkronUlangTimer;
 
   /// Info terakhir dari BE: biodata portal belum terisi → kredensial WiFi
   /// tidak dapat dibentuk (502 + [kodeBiodataKosong], kontrak 2026-11-11).
@@ -308,9 +311,17 @@ class WifiKampusService {
     return body['code']?.toString() == kodeBiodataKosong;
   }
 
-  /// Titik masuk utama — hook: app dibuka (MainPage post-frame), resume, dan
-  /// WiFi kampus baru tersambung (callback native). Tidak pernah melempar.
-  Future<void> attemptLogin({String alasan = 'app-open'}) async {
+  /// Titik masuk utama — hook: splash (sebelum health check), app dibuka
+  /// (MainPage post-frame), resume, dan WiFi kampus baru tersambung
+  /// (callback native). Tidak pernah melempar.
+  ///
+  /// [bypassThrottle] true → jendela 5 menit diabaikan (dipakai splash:
+  /// satu-satunya momen being-throttled = user stuck offline). Backoff 24
+  /// jam & toggle auto-login TETAP dihormati.
+  Future<void> attemptLogin({
+    String alasan = 'app-open',
+    bool bypassThrottle = false,
+  }) async {
     if (_sedangBerjalan) return;
     _sedangBerjalan = true;
     try {
@@ -340,9 +351,11 @@ class WifiKampusService {
 
       // 2. Throttle antar attempt. Cek SEBELUM fase `mencoba` — attempt yang
       //    di-skip tidak boleh meninggalkan spinner tersangkut (regresi
-      //    tertangkap test).
+      //    tertangkap test). Splash boleh menembus jendela ini.
       final terakhir = prefs.getInt(_kAttemptTerakhir) ?? 0;
-      if (terakhir != 0 && now - terakhir < jedaThrottle.inMilliseconds) {
+      if (!bypassThrottle &&
+          terakhir != 0 &&
+          now - terakhir < jedaThrottle.inMilliseconds) {
         return;
       }
       await prefs.setInt(_kAttemptTerakhir, now);
@@ -360,6 +373,16 @@ class WifiKampusService {
       await _setFaseDenganCekJaringan();
     } finally {
       _sedangBerjalan = false;
+    }
+
+    // 5. Jaringan belum jelas (masih diLuar) → sinkron ulang SEKALI beberapa
+    //    detik kemudian. Menutup race "app dibuka saat WiFi baru nyambung":
+    //    pemeriksaan pertama jalan sebelum DHCP/portal settle dan menyimpulkan
+    //    diLuar — tanpa pemeriksaan ulang, ikon tidak pernah muncul sampai
+    //    user logout/login. Hanya sinkron FASE (bukan POST portal), jadi
+    //    throttle/backoff tidak terpengaruh.
+    if (fase.value == WifiKampusFase.diLuar) {
+      _jadwalkanSinkronUlang();
     }
   }
 
@@ -380,6 +403,26 @@ class WifiKampusService {
     } catch (_) {
       await _setFaseDenganCekJaringan();
       return HasilPortal.portalGagal;
+    }
+  }
+
+  /// Attempt untuk splash screen (dipanggil SEBELUM health check): satu
+  /// percobaan login portal dengan batas waktu ketat — portal lambat tidak
+  /// boleh menggantung startup. Menembus throttle 5 menit (splash =
+  /// satu-satunya momen being-throttled = user stuck offline), tetap hormati
+  /// toggle auto-login & backoff 24 jam. Tidak pernah melempar; hasil cukup
+  /// lewat fase (indikator) — splash tidak menampilkan apa pun.
+  Future<void> attemptLoginSplash() async {
+    // Toggle OFF → pulang begitu saja: tanpa timer timeout, tanpa sentuh
+    // gateway (cold-start test boot pun bersih — fase awal memang diLuar).
+    if (!await autoLoginAktif()) return;
+    try {
+      await attemptLogin(alasan: 'splash', bypassThrottle: true).timeout(
+        const Duration(seconds: 12),
+      );
+    } catch (_) {
+      // Timeout / galat — splash langsung lanjut ke health check (fail-open).
+      await _setFaseDenganCekJaringan();
     }
   }
 
@@ -406,6 +449,7 @@ class WifiKampusService {
         'diWifiKampus': false,
         'ssidTerbaca': false,
         'portalTerjangkau': false,
+        'online': false,
       };
     }
   }
@@ -443,15 +487,15 @@ class WifiKampusService {
   @visibleForTesting
   set biodataKosong(bool nilai) => _biodataKosong = nilai;
 
-  /// Toggle auto-login aktif? Default ON (pref belum ada = ON — fail-open ke
-  /// perilaku lama). Dipertahankan saat logout (setting perangkat, bukan data
-  /// sesi).
+  /// Toggle auto-login aktif? Default OFF (pref belum ada = OFF — keputusan
+  /// user 2026-11-12: fitur opsional, user aktifkan sendiri di Profil).
+  /// Dipertahankan saat logout (setting perangkat, bukan data sesi).
   Future<bool> autoLoginAktif() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getBool(_kAutoLogin) ?? true;
+      return prefs.getBool(_kAutoLogin) ?? false;
     } catch (_) {
-      return true;
+      return false;
     }
   }
 
@@ -549,6 +593,8 @@ class WifiKampusService {
     await prefs.remove(_kOverrideAktif);
     _biodataKosong = false;
     _pernahTerhubungSesiIni = false;
+    _sinkronUlangTimer?.cancel();
+    _sinkronUlangTimer = null;
     fase.value = WifiKampusFase.diLuar;
   }
 
@@ -625,15 +671,39 @@ class WifiKampusService {
     } catch (_) {}
   }
 
+  /// Jeda sinkron ulang fase setelah app-open menyimpulkan diLuar (race WiFi
+  /// baru nyambung — lihat langkah 5 di [attemptLogin]). Field (bukan const)
+  /// supaya test bisa memperpendek — pola [nowProvider].
+  @visibleForTesting
+  Duration jedaSinkronUlang = const Duration(seconds: 8);
+
+  /// Sinkron ulang fase SEKALI setelah [jedaSinkronUlang], hanya bila masih
+  /// diLuar (network mungkin belum settle saat pemeriksaan pertama). Timer
+  /// di-reset bila dipicu lagi; tidak pernah mengirim POST portal.
+  void _jadwalkanSinkronUlang() {
+    _sinkronUlangTimer?.cancel();
+    _sinkronUlangTimer = Timer(jedaSinkronUlang, () async {
+      _sinkronUlangTimer = null;
+      if (fase.value != WifiKampusFase.diLuar) return;
+      await _setFaseDenganCekJaringan();
+    });
+  }
+
   /// Set fase berdasar posisi jaringan nyata (dipakai saat keputusan bukan
-  /// sekadar hasil login): di WiFi kampus = terputus, di luar = sembunyi.
+  /// sekadar hasil login): kampus + online = terhubung (hijau — login bisa
+  /// dari app ATAU browser, yang penting internet jalan), kampus belum
+  /// online = terputus, di luar = sembunyi.
   Future<void> _setFaseDenganCekJaringan() async {
     try {
       final status = await _gateway.statusJaringan();
+      if (status['diWifiKampus'] != true) {
+        _setFase(WifiKampusFase.diLuar);
+        return;
+      }
       _setFase(
-        status['diWifiKampus'] == true
-            ? WifiKampusFase.terputus
-            : WifiKampusFase.diLuar,
+        status['online'] == true
+            ? WifiKampusFase.terhubung
+            : WifiKampusFase.terputus,
       );
     } catch (_) {
       _setFase(WifiKampusFase.diLuar);

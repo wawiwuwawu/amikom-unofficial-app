@@ -141,9 +141,10 @@ class WifiKampusLoginManager private constructor(private val appContext: Context
     }
 
     /**
-     * Pasang NetworkCallback yang memicu [onWifiKampusUp] tiap WiFi kampus
-     * tersambung (availabilitas transport WiFi). Idempoten — boleh dipanggil
-     * berulang; callback terpasang sekali per proses.
+     * Pasang NetworkCallback yang memicu [onWifiKampusUp] tiap WiFi
+     * tersambung (availabilitas transport WiFi — TANPA gerbang SSID; lihat
+     * komentar onAvailable). Idempoten — boleh dipanggil berulang; callback
+     * terpasang sekali per proses.
      */
     private fun mulaiPantauWifi() {
         if (callbackTerpasang) return
@@ -157,13 +158,14 @@ class WifiKampusLoginManager private constructor(private val appContext: Context
                 request,
                 object : ConnectivityManager.NetworkCallback() {
                     override fun onAvailable(network: Network) {
-                        // SSID menentukan ini WiFi kampus, bukan WiFi lain.
-                        val caps = cm.getNetworkCapabilities(network)
-                        val currentSsid = ssidDari(caps)
-                        Log.d(TAG, "callback onAvailable ssid=${currentSsid ?: "<tidak terbaca>"}")
-                        if (currentSsid == ssid) {
-                            onWifiKampusUp?.invoke()
-                        }
+                        // Pemicu mentah: SEMUA WiFi up diteruskan ke Dart —
+                        // keputusan "kampus atau bukan" ada di sinkronisasi
+                        // fase (statusJaringan, fail-open probe portal).
+                        // Gerbang SSID di sini sempat jadi race: SSID sering
+                        // belum terbaca saat onAvailable baru menyala, event
+                        // dibuang, dan pemeriksaan ulang tak pernah jalan.
+                        Log.d(TAG, "callback onAvailable (wifi up) → sync fase")
+                        onWifiKampusUp?.invoke()
                     }
                 },
             )
@@ -198,7 +200,13 @@ class WifiKampusLoginManager private constructor(private val appContext: Context
                 }
                 loginAsync(user, pass, result)
             }
-            "statusJaringan" -> result.success(statusJaringan())
+            "statusJaringan" -> {
+                // Sekarang berisi probe HTTP (204 + portal) — WAJIB di thread
+                // background, main thread tidak boleh melakukan network I/O.
+                Thread {
+                    runCatching { result.success(statusJaringan()) }
+                }.start()
+            }
             "izinSsidStatus" -> result.success(izinSsidGranted())
             "mintaIzinSsid" -> {
                 val activity = hostActivity
@@ -247,7 +255,12 @@ class WifiKampusLoginManager private constructor(private val appContext: Context
 
     /**
      * Status jaringan ringkas untuk UI: dipanggil Dart saat app open/resume.
-     * Map: {diWifiKampus: bool, ssidTerbaca: bool, portalTerjangkau: bool}.
+     * Map: {diWifiKampus, ssidTerbaca, portalTerjangkau, online}.
+     *
+     * Konteks kampus fail-open (konsisten dgn gerbang login): SSID terbaca
+     * persis kampus, ATAU SSID tak terbaca (izin belum granted) tapi portal
+     * 172.20.8.1 terjangkau — portal hanya reachable di jaringan kampus, jadi
+     * dia adalah gerbang sebenarnya. `online` = verifikasi generate_204.
      */
     private fun statusJaringan(): Map<String, Any> {
         val cm = appContext.getSystemService(Context.CONNECTIVITY_SERVICE)
@@ -255,13 +268,102 @@ class WifiKampusLoginManager private constructor(private val appContext: Context
         val wifi = wifiNetwork(cm)
         val capabilities = wifi?.let { cm.getNetworkCapabilities(it) }
         val currentSsid = ssidDari(capabilities)
+        val ssidKampus = currentSsid == ssid
+        // Fail-open: SSID tak terbaca + portal terjangkau = kampus (network
+        // probe adalah kebenaran; SSID terbaca ≠ kampus = WiFi lain, skip).
         val diWifi = capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true &&
-            currentSsid == ssid
+            (ssidKampus || (currentSsid == null && wifi != null && portalTerjangkau()))
+        val online = diWifi && cekOnline()
+        Log.d(
+            TAG,
+            "statusJaringan: ssid=${currentSsid ?: "<tidak terbaca>"} diWifi=$diWifi online=$online",
+        )
         return mapOf(
             "diWifiKampus" to diWifi,
             "ssidTerbaca" to (currentSsid != null),
             "portalTerjangkau" to (wifi != null),
+            "online" to online,
         )
+    }
+
+    /** Portal 172.20.8.1 terjangkau dari antarmuka WiFi? (probe GET ringan.) */
+    private fun portalTerjangkau(): Boolean {
+        var connection: HttpURLConnection? = null
+        return try {
+            val bound = cmBindWifi()
+            if (!bound) return false
+            try {
+                val conn = (URL(portalUrl).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 5_000
+                    readTimeout = 5_000
+                    instanceFollowRedirects = false
+                    setRequestProperty("User-Agent", "AmikomHotspotAutoLogin/1.0")
+                }
+                connection = conn
+                // Portal membalas apa pun (termasuk halaman login) = di kampus.
+                runCatching { conn.responseCode in 200..399 }.getOrDefault(false)
+            } finally {
+                cmBindUlang(null)
+            }
+        } catch (e: Exception) {
+            false
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
+    /** Verifikasi internet nyata lewat generate_204 (bukan sekadar WiFi connected). */
+    private fun verifyInternet(): Boolean {
+        var connection: HttpURLConnection? = null
+        return try {
+            val conn = (URL(connectivityCheckUrl).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 8_000
+                readTimeout = 8_000
+                instanceFollowRedirects = false
+                setRequestProperty("User-Agent", "AmikomHotspotAutoLogin/1.0")
+            }
+            connection = conn
+            conn.responseCode == 204
+        } catch (e: IOException) {
+            false
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
+    /**
+     * Cek internet nyata (generate_204 = 204) — dipanggil dari [statusJaringan]
+     * SEBELUM bind; kalau WiFi kampus sudah online, koneksi default memang
+     * lewat WiFi kampus (seluler tidak aktif bersamaan), jadi probe lewat
+     * jalur default cukup dan tidak mengganggu routing.
+     */
+    private fun cekOnline(): Boolean {
+        return try {
+            verifyInternet()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /** Bind proses ke network WiFi aktif (helper statusJaringan/portal probe). */
+    private fun cmBindWifi(): Boolean {
+        val cm = appContext.getSystemService(Context.CONNECTIVITY_SERVICE)
+            as ConnectivityManager
+        val wifi = wifiNetwork(cm) ?: return false
+        return cm.bindProcessToNetwork(wifi)
+    }
+
+    /** Lepas bind (helper pasangan [cmBindWifi]). */
+    private fun cmBindUlang(network: Network?) {
+        try {
+            val cm = appContext.getSystemService(Context.CONNECTIVITY_SERVICE)
+                as ConnectivityManager
+            cm.bindProcessToNetwork(network)
+        } catch (e: Exception) {
+            // Fail-open.
+        }
     }
 
     /**
@@ -333,6 +435,15 @@ class WifiKampusLoginManager private constructor(private val appContext: Context
                     )
                 }
                 Log.d(TAG, "gerbang: ssid tak terbaca → fail-open, coba portal")
+            }
+
+            // Probe-first: bila WiFi kampus SUDAH online (login dilakukan via
+            // browser / attempt sebelumnya), portal tidak perlu dikirim POST —
+            // langsung terhubung. Tanpa ini, attempt ke portal yang sudah
+            // logged-in tidak terdeteksi sukses dan ikon tetap tidak hijau.
+            if (verifyInternet()) {
+                Log.d(TAG, "gerbang: sudah online (204) → berhasil tanpa POST")
+                return mapOf("status" to "berhasil", "sudahOnline" to true)
             }
 
             val login = postLogin(username, password)
@@ -430,26 +541,6 @@ class WifiKampusLoginManager private constructor(private val appContext: Context
             }
         } catch (e: IOException) {
             mapOf("status" to "portalGagal", "alasan" to "Koneksi ke portal gagal")
-        } finally {
-            connection?.disconnect()
-        }
-    }
-
-    /** Verifikasi internet nyata lewat generate_204 (bukan sekadar WiFi connected). */
-    private fun verifyInternet(): Boolean {
-        var connection: HttpURLConnection? = null
-        return try {
-            val conn = (URL(connectivityCheckUrl).openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                connectTimeout = 8_000
-                readTimeout = 8_000
-                instanceFollowRedirects = false
-                setRequestProperty("User-Agent", "AmikomHotspotAutoLogin/1.0")
-            }
-            connection = conn
-            conn.responseCode == 204
-        } catch (e: IOException) {
-            false
         } finally {
             connection?.disconnect()
         }

@@ -2,11 +2,17 @@
 // Dijalankan otomatis di CI (GitHub Actions) via `flutter test`.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:app_amikom/main.dart';
 
 void main() {
   setUpAll(() {
+    // Splash kini mengecek toggle auto-login WiFi (prefs) sebelum health
+    // check — tanpa mock, SharedPreferences.getInstance() menggantung di
+    // test environment (timer 12s splash tersisa → assertion gagal).
+    // Default OFF → splash tidak menyentuh portal sama sekali.
+    SharedPreferences.setMockInitialValues({});
   });
 
   testWidgets('App boots to splash screen', (WidgetTester tester) async {

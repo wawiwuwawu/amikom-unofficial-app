@@ -57,9 +57,14 @@ class _GatewayFake implements WifiKampusGateway {
 
   @override
   Future<Map<String, dynamic>> statusJaringan() async =>
-      {'diWifiKampus': diWifiKampus, 'ssidTerbaca': true, 'portalTerjangkau': true};
+      {'diWifiKampus': diWifiKampus, 'ssidTerbaca': true, 'portalTerjangkau': true, 'online': diWifiKampus && onlinePortal};
 
   bool diWifiKampus = false;
+
+  /// Simulasi internet nyata di WiFi kampus (generate_204 sukses) — flag
+  /// `online` baru dari native. Default true: fake login 'berhasil' berarti
+  /// online, sehingga fase sinkron tidak tiba-tiba turun ke terputus.
+  bool onlinePortal = true;
 
   @override
   void onWifiUp(VoidCallback callback) {
@@ -328,10 +333,13 @@ void main() {
     late _GatewayFake gateway;
     late WifiKampusService service;
 
-    setUp(() {
+    setUp(() async {
       SharedPreferences.setMockInitialValues({});
       gateway = _GatewayFake();
       service = WifiKampusService.untukTest(gateway);
+      // Default toggle = OFF (keputusan user 2026-11-12) — grup ini menguji
+      // alur attempt, jadi toggle di-ON-kan dulu.
+      await service.setAutoLogin(true);
     });
 
     test('berhasil → fase terhubung, snack callback sekali', () async {
@@ -343,6 +351,53 @@ void main() {
       await service.attemptLogin();
       expect(service.fase.value, WifiKampusFase.terhubung);
       expect(snackCount, 1);
+    });
+
+    test('bukanWifiKampus saat app-open → sinkron ulang → fase naik',
+        () async {
+      // Race produksi: WiFi baru nyambung saat app dibuka → pemeriksaan
+      // pertama menyimpulkan diLuar → ikon hilang sampai user logout/login.
+      // Perbaikan: setelah attempt dengan hasil diLuar, fase disinkron ulang
+      // sekali setelah jedaSinkronUlang (bukan POST — cukup statusJaringan).
+      gateway.diWifiKampus = false; // pemeriksaan pertama: belum settle
+      gateway.statusLogin = 'bukanWifiKampus';
+      service.jedaSinkronUlang = const Duration(milliseconds: 50);
+      await service.attemptLogin();
+      expect(service.fase.value, WifiKampusFase.diLuar);
+
+      gateway.diWifiKampus = true; // network settle — sekarang kampus online
+      gateway.onlinePortal = true;
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(service.fase.value, WifiKampusFase.terhubung,
+          reason: 'sinkron ulang menutup race WiFi baru nyambung');
+      expect(gateway.loginCalls, 1,
+          reason: 'sinkron ulang hanya baca status jaringan, tanpa POST portal');
+    });
+
+    test('sinkron ulang TIDAK dijadwalkan bila attempt tidak berakhir diLuar',
+        () async {
+      gateway.statusLogin = 'berhasil';
+      gateway.diWifiKampus = true;
+      await service.attemptLogin();
+      expect(service.fase.value, WifiKampusFase.terhubung);
+      gateway.diWifiKampus = false; // seolah pindah jaringan setelahnya
+      service.jedaSinkronUlang = const Duration(milliseconds: 50);
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(service.fase.value, WifiKampusFase.terhubung,
+          reason: 'tanpa timer sinkron ulang — fase tidak turun diam-diam');
+    });
+
+    test('bersihkanSaatLogout membatalkan timer sinkron ulang', () async {
+      gateway.statusLogin = 'bukanWifiKampus';
+      await service.attemptLogin();
+      expect(service.fase.value, WifiKampusFase.diLuar);
+
+      await service.bersihkanSaatLogout();
+      gateway.diWifiKampus = true; // seolah settle tepat setelah logout
+      service.jedaSinkronUlang = const Duration(milliseconds: 50);
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(service.fase.value, WifiKampusFase.diLuar,
+          reason: 'timer sudah dibatalkan — logout mengembalikan keadaan bersih');
     });
 
     test('bukanWifiKampus → fase diLuar (indikator disembunyikan)', () async {
@@ -365,6 +420,7 @@ void main() {
         () async {
       gateway.statusLogin = 'kredensialSalah';
       gateway.diWifiKampus = true;
+      gateway.onlinePortal = false; // portal menolak → generate_204 pasti gagal
       await service.attemptLogin();
       expect(service.fase.value, WifiKampusFase.terputus,
           reason: 'di WiFi kampus = indikator terputus, bukan sembunyi');
@@ -378,6 +434,7 @@ void main() {
       service.nowProvider = () => now;
       gateway.statusLogin = 'kredensialSalah';
       gateway.diWifiKampus = true;
+      gateway.onlinePortal = false; // portal menolak → belum online
 
       await service.attemptLogin(); // gagal 1
       now = now.add(const Duration(minutes: 6));
@@ -422,6 +479,7 @@ void main() {
       gateway.diWifiKampus = true;
 
       gateway.statusLogin = 'kredensialSalah';
+      gateway.onlinePortal = false; // portal menolak → belum online
       await service.attemptLogin(); // gagal 1
       now = now.add(const Duration(minutes: 6));
       await service.attemptLogin(); // gagal 2
@@ -439,6 +497,7 @@ void main() {
         () async {
       gateway.statusLogin = 'portalGagal';
       gateway.diWifiKampus = true;
+      gateway.onlinePortal = false; // portal gagal → verifikasi 204 gagal
       await service.attemptLogin();
       expect(service.fase.value, WifiKampusFase.terputus);
     });
@@ -446,6 +505,7 @@ void main() {
     test('tanpaKredensial + di WiFi kampus → fase terputus', () async {
       gateway.statusLogin = 'tanpaKredensial';
       gateway.diWifiKampus = true;
+      gateway.onlinePortal = false; // tanpa login → belum online
       await service.attemptLogin();
       expect(service.fase.value, WifiKampusFase.terputus);
     });
@@ -479,16 +539,92 @@ void main() {
       });
       expect(service.fase.value, WifiKampusFase.terhubung);
     });
+
+    test('bypassThrottle: splash menembus jendela 5 menit', () async {
+      var now = DateTime(2026, 11, 11, 8, 0);
+      service.nowProvider = () => now;
+      gateway.statusLogin = 'berhasil';
+      gateway.diWifiKampus = true;
+
+      await service.attemptLogin();
+      expect(gateway.loginCalls, 1);
+      now = now.add(const Duration(minutes: 2));
+
+      // Attempt biasa masih kena throttle...
+      await service.attemptLogin();
+      expect(gateway.loginCalls, 1);
+
+      // ...attempt splash menembusnya.
+      await service.attemptLogin(alasan: 'splash', bypassThrottle: true);
+      expect(gateway.loginCalls, 2, reason: 'splash = user stuck offline, '
+          'being-throttled di sini berarti tidak bisa masuk app');
+      expect(service.fase.value, WifiKampusFase.terhubung);
+    });
+
+    test('bypassThrottle TIDAK menembus backoff 24 jam', () async {
+      var now = DateTime(2026, 11, 11, 8, 0);
+      service.nowProvider = () => now;
+      gateway.statusLogin = 'kredensialSalah';
+      gateway.diWifiKampus = true;
+      gateway.onlinePortal = false; // portal menolak → belum online
+
+      await service.attemptLogin(); // gagal 1
+      now = now.add(const Duration(minutes: 6));
+      await service.attemptLogin(); // gagal 2
+      now = now.add(const Duration(minutes: 6));
+      await service.attemptLogin(); // gagal 3 → backoff
+      expect(await service.sedangBackoff(), isTrue);
+      final sebelum = gateway.loginCalls;
+
+      // Splash dengan backoff aktif: tetap di-skip (anti-spam portal tetap
+      // berlaku; jalan keluar = tombol manual).
+      await service.attemptLogin(alasan: 'splash', bypassThrottle: true);
+      expect(gateway.loginCalls, sebelum);
+      expect(service.fase.value, WifiKampusFase.terputus,
+          reason: 'fase tetap sinkron via cek jaringan');
+    });
+
+    test('bypassThrottle TIDAK menembus toggle auto-login OFF', () async {
+      gateway.statusLogin = 'berhasil';
+      gateway.diWifiKampus = true;
+      gateway.onlinePortal = false; // tanpa login → belum online
+      await service.setAutoLogin(false);
+
+      await service.attemptLogin(alasan: 'splash', bypassThrottle: true);
+      expect(gateway.loginCalls, 0,
+          reason: 'toggle OFF = portal tidak pernah dikirim otomatis');
+      expect(service.fase.value, WifiKampusFase.terputus,
+          reason: 'fase tetap sinkron (di WiFi kampus)');
+    });
+
+    test('attemptLoginSplash: wrapper menjalankan attempt dengan bypass',
+        () async {
+      var now = DateTime(2026, 11, 11, 8, 0);
+      service.nowProvider = () => now;
+      gateway.statusLogin = 'berhasil';
+      gateway.diWifiKampus = true;
+
+      await service.attemptLogin(); // mengisi attempt-at
+      now = now.add(const Duration(minutes: 2));
+      await service.attemptLoginSplash();
+
+      expect(gateway.loginCalls, 2,
+          reason: 'splash menembus throttle lewat wrapper');
+      expect(service.fase.value, WifiKampusFase.terhubung);
+    });
   });
 
   group('cobaLoginManual — menembus throttle & backoff', () {
     late _GatewayFake gateway;
     late WifiKampusService service;
 
-    setUp(() {
+    setUp(() async {
       SharedPreferences.setMockInitialValues({});
       gateway = _GatewayFake();
       service = WifiKampusService.untukTest(gateway);
+      // Manual tidak membaca toggle, tapi sinkron kredensial tetap jalan —
+      // konsisten: grup ini fokus penghambat, toggle ON agar setara produksi.
+      await service.setAutoLogin(true);
     });
 
     test('manual tetap jalan saat throttle & backoff aktif', () async {
@@ -541,6 +677,7 @@ void main() {
       final service = WifiKampusService.untukTest(gateway);
       gateway.statusLogin = 'kredensialSalah';
       gateway.diWifiKampus = true;
+      await service.setAutoLogin(true);
       await service.attemptLogin();
       await service.bersihkanSaatLogout();
 
@@ -579,14 +716,16 @@ void main() {
       service = WifiKampusService.untukTest(gateway);
     });
 
-    test('default ON — pref belum ada = perilaku lama', () async {
-      expect(await service.autoLoginAktif(), isTrue);
+    test('default OFF — pref belum ada = fitur opsional (keputusan user '
+        '2026-11-12)', () async {
+      expect(await service.autoLoginAktif(), isFalse);
     });
 
     test('OFF → attempt otomatis tidak mengirim portal, fase tetap sinkron',
         () async {
       gateway.statusLogin = 'berhasil';
       gateway.diWifiKampus = true;
+      gateway.onlinePortal = false; // tanpa login portal → belum online
 
       await service.setAutoLogin(false);
       await service.attemptLogin();
@@ -628,6 +767,29 @@ void main() {
       expect(hasil, HasilPortal.berhasil);
       expect(gateway.loginCalls, 1);
       expect(service.fase.value, WifiKampusFase.terhubung);
+    });
+
+    test('OFF → kampus + online (login via browser) → fase terhubung '
+        '(laporan user: ikon hijau tidak muncul walau sudah konek)',
+        () async {
+      gateway.diWifiKampus = true;
+      gateway.onlinePortal = true;
+      await service.setAutoLogin(false);
+      await service.attemptLogin();
+
+      expect(gateway.loginCalls, 0);
+      expect(service.fase.value, WifiKampusFase.terhubung,
+          reason: 'internet nyata jalan → indikator hijau apa pun sumber login');
+    });
+
+    test('OFF → kampus + BELUM online → fase terputus (bukan hijau palsu)',
+        () async {
+      gateway.diWifiKampus = true;
+      gateway.onlinePortal = false;
+      await service.setAutoLogin(false);
+      await service.attemptLogin();
+
+      expect(service.fase.value, WifiKampusFase.terputus);
     });
   });
 
@@ -727,6 +889,7 @@ void main() {
     test('attemptLogin memakai override (bukan cache BE)', () async {
       final gateway = _GatewayFake();
       final service = WifiKampusService.untukTest(gateway);
+      await service.setAutoLogin(true);
       gateway.statusLogin = 'berhasil';
       gateway.diWifiKampus = true;
 

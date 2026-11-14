@@ -68,6 +68,19 @@ const _kuliahBerjalan = {
   'komponen': 'teori',
 };
 
+/// Item asisten yang SELALU berjalan — asisten tidak punya absensi validasi,
+/// jadi kartu berjalan TIDAK boleh menawarkan tombol presensi.
+const _asistenBerjalan = {
+  'tipe': 'asisten',
+  'hari': 'HariIni',
+  'jam': '00:00 - 23:59',
+  'jam_mulai': '00:00',
+  'jam_selesai': '23:59',
+  'ruang': 'Lab. Jaringan',
+  'matakuliah': 'Praktikum Jaringan',
+  'detail': 'Asisten: Wawi',
+};
+
 class _PresensiAdapter implements HttpClientAdapter {
   _PresensiAdapter({
     required this.agendaHariIni,
@@ -358,5 +371,60 @@ void main() {
           'tidak boleh menambah fetch sia-sia',
     );
     expect(find.text('Presensi Sekarang'), findsNothing);
+  });
+
+  testWidgets('item asisten berjalan → kartu tampil tanpa tombol presensi, tanpa request absensi', (
+    tester,
+  ) async {
+    await pumpDashboard(tester, agendaHariIni: [_asistenBerjalan]);
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Sedang berlangsung'), findsOneWidget);
+    expect(find.text('Praktikum Jaringan'), findsWidgets);
+    expect(
+      find.text('Presensi Sekarang'),
+      findsNothing,
+      reason: 'asisten tidak punya absensi validasi — tombol jangan ditawarkan',
+    );
+    expect(find.textContaining('Presensi tercatat'), findsNothing);
+    expect(
+      _adapter.paths.where((p) => p.contains('/api/v1/absensi/')),
+      isEmpty,
+      reason: 'cek presensi hanya untuk kuliah — asisten tidak boleh '
+          'memicu fetch absensi sia-sia',
+    );
+  });
+
+  testWidgets('item ujian berjalan → kartu tampil tanpa tombol presensi', (
+    tester,
+  ) async {
+    await pumpDashboard(
+      tester,
+      agendaHariIni: [
+        {
+          'tipe': 'uts',
+          'hari': 'HariIni',
+          'jam': '00:00 - 23:59',
+          'jam_mulai': '00:00',
+          'jam_selesai': '23:59',
+          'ruang': 'R. Icon +',
+          'matakuliah': 'Pemrograman Web',
+          'detail': 'UTS',
+          'tanggal': _iso(DateTime.now()),
+        },
+      ],
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Sedang berlangsung'), findsOneWidget);
+    expect(
+      find.text('Presensi Sekarang'),
+      findsNothing,
+      reason: 'ujian tidak punya absensi validasi',
+    );
+    expect(
+      _adapter.paths.where((p) => p.contains('/api/v1/absensi/')),
+      isEmpty,
+    );
   });
 }

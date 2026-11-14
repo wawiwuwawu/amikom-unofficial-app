@@ -3,17 +3,23 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dio/dio.dart';
 import '../services/api_client.dart';
+import '../services/wifi_kampus_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_kit.dart';
 
 class SplashPage extends StatefulWidget {
-  const SplashPage({super.key});
+  const SplashPage({super.key, this.wifiKampus});
+
+  /// Injeksi untuk test — tanpa ini memakai singleton asli.
+  final WifiKampusService? wifiKampus;
 
   @override
   State<SplashPage> createState() => _SplashPageState();
 }
 
 class _SplashPageState extends State<SplashPage> {
+  WifiKampusService get _wifi => widget.wifiKampus ?? WifiKampusService.instance;
+
   @override
   void initState() {
     super.initState();
@@ -26,6 +32,14 @@ class _SplashPageState extends State<SplashPage> {
     setState(() {
       _serverError = null;
     });
+
+    // Auto-login WiFi kampus dulu (silent): saat user terhubung
+    // Hotspot@Amikom tapi portal belum login, internet belum jalan —
+    // satu attempt di sini menyalakannya sebelum health check, jadi alur
+    // normal tidak berakhir di "periksa jaringan". Sudah online / di luar
+    // kampus / toggle OFF → bubar cepat tanpa POST (cek jaringan saja).
+    // Gagal/timeout → langsung lanjut ke bawah (fail-open).
+    await _wifi.attemptLoginSplash();
 
     try {
       final health = await ApiClient.instance.dio.get(
@@ -151,7 +165,13 @@ class _SplashPageState extends State<SplashPage> {
                             ),
                             const SizedBox(height: AppSpacing.md),
                             FilledButton.icon(
-                              onPressed: _checkSession,
+                              // Retry user = jalur manual (menembus throttle
+                              // & backoff, satu POST) — jalan keluar saat
+                              // user menganggap ini error sistem.
+                              onPressed: () async {
+                                await _wifi.cobaLoginManual();
+                                if (mounted) await _checkSession();
+                              },
                               icon: const Icon(Icons.refresh, size: 18),
                               label: const Text('Coba Lagi'),
                             ),

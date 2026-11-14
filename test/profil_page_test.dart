@@ -25,6 +25,7 @@ class _GatewayFake implements WifiKampusGateway {
 
   String statusLogin = 'berhasil';
   bool diWifiKampus = false;
+  bool online = false;
   String? usernameTerkirim;
   String? passwordTerkirim;
   int loginCalls = 0;
@@ -53,6 +54,7 @@ class _GatewayFake implements WifiKampusGateway {
         'diWifiKampus': diWifiKampus,
         'ssidTerbaca': true,
         'portalTerjangkau': true,
+        'online': diWifiKampus,
       };
 
   @override

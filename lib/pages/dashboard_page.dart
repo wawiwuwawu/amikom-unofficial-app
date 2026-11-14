@@ -409,8 +409,11 @@ class _DashboardPageState extends State<DashboardPage> {
 
     // Kartu berjalan terdeteksi → cek sekali (unawaited) apakah presensinya
     // sudah tercatat. Tanpa item berjalan TIDAK ada request absensi sama
-    // sekali (jangan menambah fetch sia-sia saat agenda kosong).
-    if (ongoing != null) _mulaiCekPresensiOngoing(ongoing);
+    // sekali (jangan menambah fetch sia-sia saat agenda kosong). Cek hanya
+    // untuk kuliah — asisten & ujian tidak punya absensi validasi.
+    if (ongoing != null && ongoing.tipe == 'kuliah') {
+      _mulaiCekPresensiOngoing(ongoing);
+    }
 
     return AppSection(
       title: 'Jadwal Hari Ini',
@@ -592,37 +595,40 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ],
           const SizedBox(height: AppSpacing.lg),
-          if (sudahTercatat)
-            // Sudah presensi → informatif, tanpa tombol (navigasi tetap bisa
-            // lewat baris agenda / tab Presensi).
-            Row(
-              children: [
-                const Icon(
-                  CupertinoIcons.checkmark_circle_fill,
-                  size: 20,
-                  color: AppColors.success,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    'Presensi tercatat — menunggu validasi dosen',
-                    style: AppText.bodySm.copyWith(
-                      color: AppColors.success,
-                      fontWeight: FontWeight.w600,
+          // Presensi hanya ada untuk kuliah — asisten & ujian tidak punya
+          // absensi validasi, jadi kartu mereka berhenti setelah ruang.
+          if (item.tipe == 'kuliah')
+            if (sudahTercatat)
+              // Sudah presensi → informatif, tanpa tombol (navigasi tetap bisa
+              // lewat baris agenda / tab Presensi).
+              Row(
+                children: [
+                  const Icon(
+                    CupertinoIcons.checkmark_circle_fill,
+                    size: 20,
+                    color: AppColors.success,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Presensi tercatat — menunggu validasi dosen',
+                      style: AppText.bodySm.copyWith(
+                        color: AppColors.success,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
+                ],
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => _push(AbsensiPage()),
+                  icon: const Icon(CupertinoIcons.qrcode_viewfinder, size: 18),
+                  label: const Text('Presensi Sekarang'),
                 ),
-              ],
-            )
-          else
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () => _push(AbsensiPage()),
-                icon: const Icon(CupertinoIcons.qrcode_viewfinder, size: 18),
-                label: const Text('Presensi Sekarang'),
               ),
-            ),
         ],
       ),
     );
